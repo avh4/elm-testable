@@ -1,17 +1,35 @@
 module Testable.TestContext (..) where
 
+{-| A `TestContext` allows you to manage the lifecycle of an Elm component that
+uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
+the entire lifecycle of your component.
+
+@docs Component, TestContext, startForTest, update
+
+# Inspecting
+@docs currentModel, assertCurrentModel, assertHttpRequest
+
+# Simulating Effects
+@docs resolveHttpRequest
+-}
+
 import ElmTest as Test exposing (Assertion)
 import Testable.Effects as Effects exposing (Effects)
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
 import Testable.Http as Http
 
 
+{-| A component that can be used to create a `TestContext`
+-}
 type alias Component action model =
   { init : ( model, Effects action )
   , update : action -> model -> ( model, Effects action )
   }
 
 
+{-| The representation of the current state of a testable component, including
+a representaiton of any pending Effects.
+-}
 type alias TestContext action model =
   { state : model
   , component : Component action model
@@ -20,6 +38,8 @@ type alias TestContext action model =
   }
 
 
+{-| Create a `TestContext` for the given Component
+-}
 startForTest : Component action model -> TestContext action model
 startForTest component =
   let
@@ -35,6 +55,8 @@ startForTest component =
     }
 
 
+{-| Apply an action to the component in a given TestContext
+-}
 update : action -> TestContext action model -> TestContext action model
 update action context =
   let
@@ -49,6 +71,8 @@ update action context =
     }
 
 
+{-| Assert that a given Http.Request has been made by the componet under test
+-}
 assertHttpRequest : Http.Request -> TestContext action model -> Assertion
 assertHttpRequest request testContext =
   case EffectsLog.httpAction request (Http.ok "") testContext.effects of
@@ -65,6 +89,8 @@ assertHttpRequest request testContext =
         )
 
 
+{-| Simulate an HTTP response
+-}
 resolveHttpRequest : Http.Request -> Result Http.RawError Http.Response -> TestContext action model -> TestContext action model
 resolveHttpRequest request response context =
   case
@@ -81,6 +107,8 @@ resolveHttpRequest request response context =
       { context | errors = (message :: context.errors) }
 
 
+{-| Get the current state of the component under test
+-}
 currentModel : TestContext action model -> Result (List String) model
 currentModel context =
   case context.errors of
@@ -91,6 +119,8 @@ currentModel context =
       Err errors
 
 
+{-| A convenient way to assert about the current state of the component under test
+-}
 assertCurrentModel : model -> TestContext action model -> Assertion
 assertCurrentModel expectedModel context =
   context
