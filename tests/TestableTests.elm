@@ -1,6 +1,7 @@
 module TestableTests (..) where
 
 import ElmTest exposing (..)
+import Json.Decode as Decode
 import Testable.TestContext as TestContext
 import Testable.Effects as Effects
 import Testable.Http as Http
@@ -120,4 +121,21 @@ all =
         |> TestContext.currentModel
         |> assertEqual (Ok <| Just "myData-2")
         |> test "multiple initial effects should be resolvable"
+    , { init =
+          ( Ok 0
+          , Http.post Decode.float "https://a" (Http.string "requestBody")
+          )
+      , update = \value model -> ( value, Effects.none )
+      }
+        |> TestContext.startForTest
+        |> TestContext.resolveHttpRequest
+            { verb = "POST"
+            , headers = []
+            , url = "https://a"
+            , body = Http.string "requestBody"
+            }
+            "99.1"
+        |> TestContext.currentModel
+        |> assertEqual (Ok <| Ok 99.1)
+        |> test "Http.post effect"
     ]
