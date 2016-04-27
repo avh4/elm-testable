@@ -2,13 +2,13 @@ module RandomGif (..) where
 
 -- From section 5 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial#example-5-random-gif-viewer
 
-import Effects exposing (Effects, Never)
+import Testable.Effects as Effects exposing (Effects, Never)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
-import Http
+import Testable.Http as Http
 import Json.Decode as Json
-import Task
+import Testable.Task as Task
 
 
 -- MODEL

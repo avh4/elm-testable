@@ -4,12 +4,13 @@ import Effects exposing (Never)
 import RandomGif exposing (init, update, view)
 import StartApp
 import Task
+import Testable
 
 
 app =
   StartApp.start
-    { init = init "funny cats"
-    , update = update
+    { init = Testable.init <| init "funny cats"
+    , update = Testable.update update
     , view = view
     , inputs = []
     }
