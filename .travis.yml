@@ -4,8 +4,8 @@ install:
   - node --version
   - npm --version
   - npm install -f elm@0.16.0 elm-test
-  - (cd test; elm-package install)
+  - (cd tests; elm-package install --yes)
 
 script:
-  - elm-make
+  - elm-make --yes
   - elm-test
