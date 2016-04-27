@@ -1,4 +1,4 @@
-module Testable.Http (url, getString, get, post, Error, empty, string, Request, getRequest, Response, RawError, ok) where
+module Testable.Http (url, getString, get, post, Error, empty, string, Request, getRequest, Response, RawError, ok, serverError) where
 
 import Dict
 import Http
@@ -156,4 +156,15 @@ ok responseBody =
     , headers = Dict.empty
     , url = "<< Not Implemented >>"
     , value = Http.Text responseBody
+    }
+
+
+serverError : Result RawError Response
+serverError =
+  Ok
+    { status = 500
+    , statusText = "Internal Server Error"
+    , headers = Dict.empty
+    , url = "<< Not Implemented >>"
+    , value = Http.Text ""
     }
