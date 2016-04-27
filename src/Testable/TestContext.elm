@@ -42,11 +42,10 @@ update action context =
       context.component.update action context.state
   in
     { context
-      | state =
-          newModel
-          -- , effects =
-          --     context.effects
-          --       |> Set.insert newEffects
+      | state = newModel
+      , effects =
+          context.effects
+            |> EffectsLog.insert newEffects
     }
 
 
