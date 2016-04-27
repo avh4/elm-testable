@@ -3,6 +3,7 @@ module TestableTests (..) where
 import ElmTest exposing (..)
 import Testable.TestContext as TestContext
 import Testable.Effects as Effects
+import Testable.Http as Http
 
 
 type CounterAction
@@ -32,7 +33,7 @@ loadingComponent : TestContext.Component LoadingAction (Maybe String)
 loadingComponent =
   { init =
       ( Nothing
-      , Effects.http "https://example.com/"
+      , Http.getString "https://example.com/"
           |> Effects.map NewData
       )
   , update =
@@ -48,8 +49,8 @@ loadingComponentWithMultipleEffects =
   { init =
       ( Nothing
       , Effects.batch
-          [ Effects.http "https://example.com/" |> Effects.map NewData
-          , Effects.http "https://secondexample.com/" |> Effects.map NewData
+          [ Http.getString "https://example.com/" |> Effects.map NewData
+          , Http.getString "https://secondexample.com/" |> Effects.map NewData
           ]
       )
   , update =
@@ -78,31 +79,44 @@ all =
         |> test "sending an action"
     , loadingComponent
         |> TestContext.startForTest
-        |> TestContext.assertHttpRequest "https://example.com/"
+        |> TestContext.assertHttpRequest
+            (Http.getRequest "https://example.com/")
         |> test "records initial effects"
     , loadingComponent
         |> TestContext.startForTest
-        |> TestContext.stubHttpRequest "https://example.com/" "myData-1"
+        |> TestContext.resolveHttpRequest
+            (Http.getRequest "https://example.com/")
+            "myData-1"
         |> TestContext.currentModel
         |> assertEqual (Ok <| Just "myData-1")
         |> test "records initial effects"
     , loadingComponent
         |> TestContext.startForTest
-        |> TestContext.stubHttpRequest "https://badwebsite.com" "_"
+        |> TestContext.resolveHttpRequest
+            (Http.getRequest "https://badwebsite.com/")
+            "_"
         |> TestContext.currentModel
-        |> assertEqual (Err [ "No pending HTTP request: https://badwebsite.com" ])
+        |> assertEqual (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://badwebsite.com/\", body = Empty }" ])
         |> test "stubbing an unmatched effect should produce an error"
     , loadingComponent
         |> TestContext.startForTest
-        |> TestContext.stubHttpRequest "https://example.com/" "myData-1"
-        |> TestContext.stubHttpRequest "https://example.com/" "myData-2"
+        |> TestContext.resolveHttpRequest
+            (Http.getRequest "https://example.com/")
+            "myData-1"
+        |> TestContext.resolveHttpRequest
+            (Http.getRequest "https://example.com/")
+            "myData-2"
         |> TestContext.currentModel
-        |> assertEqual (Err [ "No pending HTTP request: https://example.com/" ])
+        |> assertEqual (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://example.com/\", body = Empty }" ])
         |> test "effects should be removed after they are run"
     , loadingComponentWithMultipleEffects
         |> TestContext.startForTest
-        |> TestContext.stubHttpRequest "https://example.com/" "myData-1"
-        |> TestContext.stubHttpRequest "https://secondexample.com/" "myData-2"
+        |> TestContext.resolveHttpRequest
+            (Http.getRequest "https://example.com/")
+            "myData-1"
+        |> TestContext.resolveHttpRequest
+            (Http.getRequest "https://secondexample.com/")
+            "myData-2"
         |> TestContext.currentModel
         |> assertEqual (Ok <| Just "myData-2")
         |> test "multiple initial effects should be resolvable"

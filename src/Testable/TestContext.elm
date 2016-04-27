@@ -3,6 +3,7 @@ module Testable.TestContext (..) where
 import ElmTest as Test exposing (Assertion)
 import Testable.Effects as Effects exposing (Effects)
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
+import Testable.Http as Http
 
 
 type alias Component action model =
@@ -49,7 +50,7 @@ update action context =
     }
 
 
-assertHttpRequest : String -> TestContext action model -> Assertion
+assertHttpRequest : Http.Request -> TestContext action model -> Assertion
 assertHttpRequest request testContext =
   case EffectsLog.httpAction request "" testContext.effects of
     Just _ ->
@@ -65,11 +66,11 @@ assertHttpRequest request testContext =
         )
 
 
-stubHttpRequest : String -> String -> TestContext action model -> TestContext action model
-stubHttpRequest request response context =
+resolveHttpRequest : Http.Request -> String -> TestContext action model -> TestContext action model
+resolveHttpRequest request response context =
   case
     EffectsLog.httpAction request response context.effects
-      |> Result.fromMaybe ("No pending HTTP request: " ++ request)
+      |> Result.fromMaybe ("No pending HTTP request: " ++ toString request)
   of
     Ok ( effects, action ) ->
       { context

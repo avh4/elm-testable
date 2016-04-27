@@ -1,10 +1,11 @@
 module Testable.EffectsLog (EffectsLog, Entry, empty, insert, remove, httpAction) where
 
-import Testable.Effects as Effects exposing (Effects)
+import Testable.Effects.Internal as Internal exposing (Effects)
+import Testable.Http as Http
 
 
 type Entry action
-  = Log_HttpGet String (String -> action)
+  = HttpEntry Http.Request (String -> action)
 
 
 matches : Entry action -> Entry action -> Bool
@@ -12,7 +13,7 @@ matches a b =
   let
     toComparable entry =
       case entry of
-        Log_HttpGet url _ ->
+        HttpEntry url _ ->
           url
   in
     toComparable a == toComparable b
@@ -30,13 +31,13 @@ empty =
 insert : Effects action -> EffectsLog action -> EffectsLog action
 insert effects (EffectsLog log) =
   case effects of
-    Effects.None ->
+    Internal.None ->
       EffectsLog log
 
-    Effects.HttpGet url mapResponse ->
-      EffectsLog ((Log_HttpGet url mapResponse) :: log)
+    Internal.HttpEffect request mapResponse ->
+      EffectsLog ((HttpEntry request mapResponse) :: log)
 
-    Effects.Batch list ->
+    Internal.Batch list ->
       List.foldl insert (EffectsLog log) list
 
 
@@ -57,12 +58,12 @@ remove entry (EffectsLog log) =
     EffectsLog (step [] log)
 
 
-httpAction : String -> String -> EffectsLog action -> Maybe ( Entry action, action )
+httpAction : Http.Request -> String -> EffectsLog action -> Maybe ( Entry action, action )
 httpAction expectedRequest response (EffectsLog log) =
   List.filterMap
     (\effects ->
       case effects of
-        Log_HttpGet request mapResponse ->
+        HttpEntry request mapResponse ->
           if request == expectedRequest then
             Just ( effects, mapResponse response )
           else

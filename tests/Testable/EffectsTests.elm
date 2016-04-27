@@ -2,6 +2,7 @@ module Testable.EffectsTests (..) where
 
 import ElmTest exposing (..)
 import Testable.Effects as Effects
+import Testable.Http as Http
 
 
 type MyWrapper a
@@ -20,11 +21,11 @@ all =
             |> test "(1)"
         , assertNotEqual
             (Effects.none)
-            (Effects.http "https://example.com/")
+            (Http.getString "https://example.com/")
             |> test "(2)"
         , assertNotEqual
-            (Effects.http "gopher://gopher.example.com")
-            (Effects.http "https://example.com/")
+            (Http.getString "gopher://gopher.example.com")
+            (Http.getString "https://example.com/")
             |> test "(3)"
         ]
     ]
