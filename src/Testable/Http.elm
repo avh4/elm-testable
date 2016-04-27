@@ -1,11 +1,22 @@
-module Testable.Http (getString, post, Error, empty, string, Request, getRequest, Response, RawError, ok) where
+module Testable.Http (url, getString, get, post, Error, empty, string, Request, getRequest, Response, RawError, ok) where
 
 import Dict
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Testable.Task as Task exposing (Task)
-import Testable.Effects as Effects exposing (Effects)
 import Testable.Internal as Internal
+
+
+-- Encoding and Decoding
+
+
+url : String -> List ( String, String ) -> String
+url =
+  Http.url
+
+
+
+-- Fetch Strings and JSON
 
 
 rawErrorError : RawError -> Error
@@ -25,6 +36,29 @@ getString url =
       case response.value of
         Http.Text responseBody ->
           Ok responseBody
+
+        Http.Blob _ ->
+          Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
+  in
+    Internal.HttpTask
+      { verb = "GET"
+      , headers = []
+      , url = url
+      , body = Http.empty
+      }
+      (Result.formatError rawErrorError
+        >> (flip Result.andThen) decodeResponse
+      )
+
+
+get : Decoder value -> String -> Task Error value
+get decoder url =
+  let
+    decodeResponse response =
+      case response.value of
+        Http.Text responseBody ->
+          Decode.decodeString decoder responseBody
+            |> Result.formatError Http.UnexpectedPayload
 
         Http.Blob _ ->
           Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
