@@ -4,6 +4,7 @@ install:
   - node --version
   - npm --version
   - npm install -f elm@0.16.0 elm-test
+  - export PATH="./node_modules/.bin:$PATH"
   - (cd tests; elm-package install --yes)
 
 script:
