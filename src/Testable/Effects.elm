@@ -1,6 +1,12 @@
-module Testable.Effects (Effects, none, batch, map) where
+module Testable.Effects (Never, Effects, none, task, batch, map) where
 
-import Testable.Effects.Internal as Internal
+import Effects as RealEffects
+import Testable.Internal as Internal
+import Testable.Task as Task exposing (Task)
+
+
+type alias Never =
+  RealEffects.Never
 
 
 type alias Effects action =
@@ -10,6 +16,11 @@ type alias Effects action =
 none : Effects never
 none =
   Internal.None
+
+
+task : Task Never a -> Effects a
+task wrapped =
+  Internal.TaskEffect wrapped
 
 
 batch : List (Effects action) -> Effects action
@@ -23,8 +34,8 @@ map f source =
     Internal.None ->
       Internal.None
 
-    Internal.HttpEffect request mapResponse ->
-      Internal.HttpEffect request (mapResponse >> f)
+    Internal.TaskEffect wrapped ->
+      Internal.TaskEffect (Task.map f wrapped)
 
     Internal.Batch list ->
       Internal.Batch (List.map (map f) list)

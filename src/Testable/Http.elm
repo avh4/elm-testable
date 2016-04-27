@@ -3,8 +3,9 @@ module Testable.Http (getString, post, Error, empty, string, Request, getRequest
 import Dict
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Testable.Task as Task exposing (Task)
 import Testable.Effects as Effects exposing (Effects)
-import Testable.Effects.Internal as Internal
+import Testable.Internal as Internal
 
 
 rawErrorError : RawError -> Error
@@ -17,7 +18,7 @@ rawErrorError rawError =
       Http.NetworkError
 
 
-getString : String -> Effects (Result Error String)
+getString : String -> Task Error String
 getString url =
   let
     decodeResponse response =
@@ -28,7 +29,7 @@ getString url =
         Http.Blob _ ->
           Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
   in
-    Internal.HttpEffect
+    Internal.HttpTask
       { verb = "GET"
       , headers = []
       , url = url
@@ -39,7 +40,7 @@ getString url =
       )
 
 
-post : Decoder value -> String -> Body -> Effects (Result Error value)
+post : Decoder value -> String -> Body -> Task Error value
 post decoder url requestBody =
   let
     decodeResponse response =
@@ -51,7 +52,7 @@ post decoder url requestBody =
         Http.Blob _ ->
           Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
   in
-    Internal.HttpEffect
+    Internal.HttpTask
       { verb = "POST"
       , headers = []
       , url = url

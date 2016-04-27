@@ -4,6 +4,7 @@ import ElmTest exposing (..)
 import Testable.Effects as Effects
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
 import Testable.Http as Http
+import Testable.Task as Task
 
 
 type MyWrapper a
@@ -28,19 +29,19 @@ all =
     [ suite
         "resulting actions"
         [ EffectsLog.empty
-            |> EffectsLog.insert (Http.getString "https://example.com/")
+            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task)
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
             |> assertEqual (Just <| Ok "responseBody")
             |> test "directly consuming the result"
         , EffectsLog.empty
-            |> EffectsLog.insert (Http.getString "https://example.com/" |> Effects.map MyWrapper)
+            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task |> Effects.map MyWrapper)
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
             |> assertEqual (Just <| MyWrapper <| Ok "responseBody")
             |> test "mapping the result"
         , EffectsLog.empty
-            |> EffectsLog.insert (Http.getString "https://example.com/")
+            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task)
             |> httpGetAction "https://XXXX/" "responseBody"
             |> Maybe.map snd
             |> assertEqual Nothing

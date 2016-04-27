@@ -1,6 +1,7 @@
 module Testable.EffectsLog (EffectsLog, Entry, empty, insert, remove, httpAction) where
 
-import Testable.Effects.Internal as Internal exposing (Effects)
+import Testable.Effects exposing (Never)
+import Testable.Internal as Internal exposing (Effects)
 import Testable.Http as Http
 
 
@@ -28,14 +29,24 @@ empty =
   EffectsLog []
 
 
+unsafeFromResult : Result Never a -> a
+unsafeFromResult result =
+  case result of
+    Ok a ->
+      a
+
+    Err never ->
+      Debug.crash ("Never had a value: " ++ toString never)
+
+
 insert : Effects action -> EffectsLog action -> EffectsLog action
 insert effects (EffectsLog log) =
   case effects of
     Internal.None ->
       EffectsLog log
 
-    Internal.HttpEffect request mapResponse ->
-      EffectsLog ((HttpEntry request mapResponse) :: log)
+    Internal.TaskEffect (Internal.HttpTask request mapResponse) ->
+      EffectsLog (HttpEntry request (mapResponse >> unsafeFromResult) :: log)
 
     Internal.Batch list ->
       List.foldl insert (EffectsLog log) list

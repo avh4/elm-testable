@@ -5,6 +5,7 @@ import Json.Decode as Decode
 import Testable.TestContext as TestContext
 import Testable.Effects as Effects
 import Testable.Http as Http
+import Testable.Task as Task
 
 
 type CounterAction
@@ -35,7 +36,9 @@ loadingComponent =
   { init =
       ( Nothing
       , Http.getString "https://example.com/"
-          |> Effects.map NewData
+          |> Task.toResult
+          |> Task.map NewData
+          |> Effects.task
       )
   , update =
       \action model ->
@@ -96,8 +99,8 @@ all =
     , { init =
           ( Nothing
           , Effects.batch
-              [ Http.getString "https://example.com/"
-              , Http.getString "https://secondexample.com/"
+              [ Effects.task <| Task.toResult <| Http.getString "https://example.com/"
+              , Effects.task <| Task.toResult <| Http.getString "https://secondexample.com/"
               ]
           )
       , update = \data model -> ( Just data, Effects.none )
@@ -114,6 +117,8 @@ all =
     , { init =
           ( Ok 0
           , Http.post Decode.float "https://a" (Http.string "requestBody")
+              |> Task.toResult
+              |> Effects.task
           )
       , update = \value model -> ( value, Effects.none )
       }
