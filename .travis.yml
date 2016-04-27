@@ -1,4 +1,7 @@
 sudo: false
+
+language: node_js
+node_js: "5.1"
  
 install:
   - node --version
@@ -9,4 +12,5 @@ install:
 
 script:
   - elm-make --yes
+  - rsync -va elm-stuff/build-artifacts/ tests/elm-stuff/build-artifacts/
   - elm-test
