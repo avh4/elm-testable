@@ -5,7 +5,7 @@ import Testable.Http as Http
 
 
 type Entry action
-  = HttpEntry Http.Request (String -> action)
+  = HttpEntry Http.Request (Result Http.RawError Http.Response -> action)
 
 
 matches : Entry action -> Entry action -> Bool
@@ -58,7 +58,7 @@ remove entry (EffectsLog log) =
     EffectsLog (step [] log)
 
 
-httpAction : Http.Request -> String -> EffectsLog action -> Maybe ( Entry action, action )
+httpAction : Http.Request -> Result Http.RawError Http.Response -> EffectsLog action -> Maybe ( Entry action, action )
 httpAction expectedRequest response (EffectsLog log) =
   List.filterMap
     (\effects ->

@@ -1,28 +1,55 @@
-module Testable.Http (getString, post, empty, string, Request, getRequest) where
+module Testable.Http (getString, post, Error, empty, string, Request, getRequest, Response, RawError, ok) where
 
+import Dict
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Testable.Effects as Effects exposing (Effects)
 import Testable.Effects.Internal as Internal
 
 
-getString : String -> Effects String
+rawErrorError : RawError -> Error
+rawErrorError rawError =
+  case rawError of
+    Http.RawTimeout ->
+      Http.Timeout
+
+    Http.RawNetworkError ->
+      Http.NetworkError
+
+
+getString : String -> Effects (Result Error String)
 getString url =
-  Internal.HttpEffect
-    { verb = "GET"
-    , headers = []
-    , url = url
-    , body = Http.empty
-    }
-    identity
+  let
+    decodeResponse response =
+      case response.value of
+        Http.Text responseBody ->
+          Ok responseBody
+
+        Http.Blob _ ->
+          Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
+  in
+    Internal.HttpEffect
+      { verb = "GET"
+      , headers = []
+      , url = url
+      , body = Http.empty
+      }
+      (Result.formatError rawErrorError
+        >> (flip Result.andThen) decodeResponse
+      )
 
 
 post : Decoder value -> String -> Body -> Effects (Result Error value)
 post decoder url requestBody =
   let
-    decodeResponse responseBody =
-      Decode.decodeString decoder responseBody
-        |> Result.formatError Http.UnexpectedPayload
+    decodeResponse response =
+      case response.value of
+        Http.Text responseBody ->
+          Decode.decodeString decoder responseBody
+            |> Result.formatError Http.UnexpectedPayload
+
+        Http.Blob _ ->
+          Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
   in
     Internal.HttpEffect
       { verb = "POST"
@@ -30,7 +57,9 @@ post decoder url requestBody =
       , url = url
       , body = requestBody
       }
-      decodeResponse
+      (Result.formatError rawErrorError
+        >> (flip Result.andThen) decodeResponse
+      )
 
 
 type alias Error =
@@ -70,3 +99,26 @@ getRequest url =
   , url = url
   , body = Http.empty
   }
+
+
+
+-- Responses
+
+
+type alias Response =
+  Http.Response
+
+
+type alias RawError =
+  Http.RawError
+
+
+ok : String -> Result RawError Response
+ok responseBody =
+  Ok
+    { status = 200
+    , statusText = "OK"
+    , headers = Dict.empty
+    , url = "<< Not Implemented >>"
+    , value = Http.Text responseBody
+    }

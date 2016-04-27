@@ -27,7 +27,7 @@ counterComponent =
 
 
 type LoadingAction
-  = NewData String
+  = NewData (Result Http.Error String)
 
 
 loadingComponent : TestContext.Component LoadingAction (Maybe String)
@@ -40,8 +40,11 @@ loadingComponent =
   , update =
       \action model ->
         case action of
-          NewData data ->
+          NewData (Ok data) ->
             ( Just data, Effects.none )
+
+          NewData (Err _) ->
+            ( model, Effects.none )
   }
 
 
@@ -68,14 +71,14 @@ all =
         |> TestContext.startForTest
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://example.com/")
-            "myData-1"
+            (Http.ok "myData-1")
         |> TestContext.assertCurrentModel (Just "myData-1")
         |> test "records initial effects"
     , loadingComponent
         |> TestContext.startForTest
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://badwebsite.com/")
-            "_"
+            (Http.ok "_")
         |> TestContext.currentModel
         |> assertEqual (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://badwebsite.com/\", body = Empty }" ])
         |> test "stubbing an unmatched effect should produce an error"
@@ -83,10 +86,10 @@ all =
         |> TestContext.startForTest
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://example.com/")
-            "myData-1"
+            (Http.ok "myData-1")
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://example.com/")
-            "myData-2"
+            (Http.ok "myData-2")
         |> TestContext.currentModel
         |> assertEqual (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://example.com/\", body = Empty }" ])
         |> test "effects should be removed after they are run"
@@ -102,11 +105,11 @@ all =
         |> TestContext.startForTest
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://example.com/")
-            "myData-1"
+            (Http.ok "myData-1")
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://secondexample.com/")
-            "myData-2"
-        |> TestContext.assertCurrentModel (Just "myData-2")
+            (Http.ok "myData-2")
+        |> TestContext.assertCurrentModel (Just <| Ok "myData-2")
         |> test "multiple initial effects should be resolvable"
     , { init =
           ( Ok 0
@@ -121,7 +124,7 @@ all =
             , url = "https://a"
             , body = Http.string "requestBody"
             }
-            "99.1"
+            (Http.ok "99.1")
         |> TestContext.assertCurrentModel (Ok 99.1)
         |> test "Http.post effect"
     ]

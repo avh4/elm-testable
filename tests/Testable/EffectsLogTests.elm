@@ -2,7 +2,7 @@ module Testable.EffectsLogTests (..) where
 
 import ElmTest exposing (..)
 import Testable.Effects as Effects
-import Testable.EffectsLog as EffectsLog
+import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
 import Testable.Http as Http
 
 
@@ -10,13 +10,15 @@ type MyWrapper a
   = MyWrapper a
 
 
-httpGetAction url =
+httpGetAction : String -> String -> EffectsLog action -> Maybe ( EffectsLog.Entry action, action )
+httpGetAction url responseBody =
   EffectsLog.httpAction
     { verb = "GET"
     , headers = []
     , url = url
     , body = Http.empty
     }
+    (Http.ok responseBody)
 
 
 all : Test
@@ -29,13 +31,13 @@ all =
             |> EffectsLog.insert (Http.getString "https://example.com/")
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
-            |> assertEqual (Just "responseBody")
+            |> assertEqual (Just <| Ok "responseBody")
             |> test "directly consuming the result"
         , EffectsLog.empty
             |> EffectsLog.insert (Http.getString "https://example.com/" |> Effects.map MyWrapper)
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
-            |> assertEqual (Just <| MyWrapper "responseBody")
+            |> assertEqual (Just <| MyWrapper <| Ok "responseBody")
             |> test "mapping the result"
         , EffectsLog.empty
             |> EffectsLog.insert (Http.getString "https://example.com/")

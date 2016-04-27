@@ -52,7 +52,7 @@ update action context =
 
 assertHttpRequest : Http.Request -> TestContext action model -> Assertion
 assertHttpRequest request testContext =
-  case EffectsLog.httpAction request "" testContext.effects of
+  case EffectsLog.httpAction request (Http.ok "") testContext.effects of
     Just _ ->
       Test.pass
 
@@ -66,7 +66,7 @@ assertHttpRequest request testContext =
         )
 
 
-resolveHttpRequest : Http.Request -> String -> TestContext action model -> TestContext action model
+resolveHttpRequest : Http.Request -> Result Http.RawError Http.Response -> TestContext action model -> TestContext action model
 resolveHttpRequest request response context =
   case
     EffectsLog.httpAction request response context.effects
