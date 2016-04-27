@@ -45,24 +45,19 @@ loadingComponent =
 
 loadingComponentWithMultipleEffects : TestContext.Component LoadingAction (Maybe String)
 loadingComponentWithMultipleEffects =
-  let
-    multipleEffects =
-      List.map
-        (Effects.map NewData)
-        [ Effects.http "https://example.com/"
-        , Effects.http "https://secondexample.com/"
-        ]
-  in
-    { init =
-        ( Nothing
-        , Effects.batch multipleEffects
-        )
-    , update =
-        \action model ->
-          case action of
-            NewData data ->
-              ( Just data, Effects.none )
-    }
+  { init =
+      ( Nothing
+      , Effects.batch
+          [ Effects.http "https://example.com/" |> Effects.map NewData
+          , Effects.http "https://secondexample.com/" |> Effects.map NewData
+          ]
+      )
+  , update =
+      \action model ->
+        case action of
+          NewData data ->
+            ( Just data, Effects.none )
+  }
 
 
 all : Test
@@ -89,7 +84,7 @@ all =
         |> TestContext.startForTest
         |> TestContext.stubHttpRequest "https://example.com/" "myData-1"
         |> TestContext.currentModel
-        |> assertEqual (Ok (Just "myData-1"))
+        |> assertEqual (Ok <| Just "myData-1")
         |> test "records initial effects"
     , loadingComponent
         |> TestContext.startForTest
@@ -109,6 +104,6 @@ all =
         |> TestContext.stubHttpRequest "https://example.com/" "myData-1"
         |> TestContext.stubHttpRequest "https://secondexample.com/" "myData-2"
         |> TestContext.currentModel
-        |> assertEqual (Ok (Just "myData-2"))
+        |> assertEqual (Ok <| Just "myData-2")
         |> test "multiple initial effects should be resolvable"
     ]
