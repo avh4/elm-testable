@@ -1,4 +1,4 @@
-module Testable.Task (Task, map, toResult) where
+module Testable.Task (Task, map, toMaybe, toResult) where
 
 import Testable.Internal as Internal
 
@@ -12,6 +12,13 @@ map f source =
   case source of
     Internal.HttpTask request mapResponse ->
       Internal.HttpTask request (mapResponse >> Result.map f)
+
+
+toMaybe : Task x a -> Task never (Maybe a)
+toMaybe source =
+  case source of
+    Internal.HttpTask request mapResponse ->
+      Internal.HttpTask request (mapResponse >> Result.toMaybe >> Ok)
 
 
 toResult : Task x a -> Task never (Result x a)
