@@ -90,3 +90,10 @@ currentModel context =
 
     errors ->
       Err errors
+
+
+assertCurrentModel : model -> TestContext action model -> Assertion
+assertCurrentModel expectedModel context =
+  context
+    |> currentModel
+    |> Test.assertEqual (Ok expectedModel)

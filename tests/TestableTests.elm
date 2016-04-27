@@ -51,15 +51,13 @@ all =
     "Testable"
     [ counterComponent
         |> TestContext.startForTest
-        |> TestContext.currentModel
-        |> assertEqual (Ok 0)
+        |> TestContext.assertCurrentModel 0
         |> test "initialized with initial model"
     , counterComponent
         |> TestContext.startForTest
         |> TestContext.update Inc
         |> TestContext.update Inc
-        |> TestContext.currentModel
-        |> assertEqual (Ok 2)
+        |> TestContext.assertCurrentModel 2
         |> test "sending an action"
     , loadingComponent
         |> TestContext.startForTest
@@ -71,8 +69,7 @@ all =
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://example.com/")
             "myData-1"
-        |> TestContext.currentModel
-        |> assertEqual (Ok <| Just "myData-1")
+        |> TestContext.assertCurrentModel (Just "myData-1")
         |> test "records initial effects"
     , loadingComponent
         |> TestContext.startForTest
@@ -109,8 +106,7 @@ all =
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://secondexample.com/")
             "myData-2"
-        |> TestContext.currentModel
-        |> assertEqual (Ok <| Just "myData-2")
+        |> TestContext.assertCurrentModel (Just "myData-2")
         |> test "multiple initial effects should be resolvable"
     , { init =
           ( Ok 0
@@ -126,7 +122,6 @@ all =
             , body = Http.string "requestBody"
             }
             "99.1"
-        |> TestContext.currentModel
-        |> assertEqual (Ok <| Ok 99.1)
+        |> TestContext.assertCurrentModel (Ok 99.1)
         |> test "Http.post effect"
     ]
