@@ -1,0 +1,11 @@
+sudo: false
+ 
+install:
+  - node --version
+  - npm --version
+  - npm install -f elm@0.16.0 elm-test
+  - (cd test; elm-package install)
+
+script:
+  - elm-make
+  - elm-test
