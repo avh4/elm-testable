@@ -9,7 +9,7 @@ import Testable
 
 app =
   StartApp.start
-    { init = Testable.init <| init "funny cats"
+    { init = Testable.init <| init "dc6zaTOxFJmzC" "funny cats"
     , update = Testable.update update
     , view = view
     , inputs = []

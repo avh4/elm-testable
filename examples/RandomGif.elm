@@ -15,15 +15,16 @@ import Testable.Task as Task
 
 
 type alias Model =
-  { topic : String
+  { apiKey : String
+  , topic : String
   , gifUrl : String
   }
 
 
-init : String -> ( Model, Effects Action )
-init topic =
-  ( Model topic "/favicon.ico"
-  , getRandomGif topic
+init : String -> String -> ( Model, Effects Action )
+init apiKey topic =
+  ( Model apiKey topic "/favicon.ico"
+  , getRandomGif apiKey topic
   )
 
 
@@ -40,10 +41,10 @@ update : Action -> Model -> ( Model, Effects Action )
 update action model =
   case action of
     RequestMore ->
-      ( model, getRandomGif model.topic )
+      ( model, getRandomGif model.apiKey model.topic )
 
     NewGif maybeUrl ->
-      ( Model model.topic (Maybe.withDefault model.gifUrl maybeUrl)
+      ( Model model.apiKey model.topic (Maybe.withDefault model.gifUrl maybeUrl)
       , Effects.none
       )
 
@@ -90,19 +91,19 @@ imgStyle url =
 -- EFFECTS
 
 
-getRandomGif : String -> Effects Action
-getRandomGif topic =
-  Http.get decodeUrl (randomUrl topic)
+getRandomGif : String -> String -> Effects Action
+getRandomGif apiKey topic =
+  Http.get decodeUrl (randomUrl apiKey topic)
     |> Task.toMaybe
     |> Task.map NewGif
     |> Effects.task
 
 
-randomUrl : String -> String
-randomUrl topic =
+randomUrl : String -> String -> String
+randomUrl apiKey topic =
   Http.url
     "https://api.giphy.com/v1/gifs/random"
-    [ "api_key" => "dc6zaTOxFJmzC"
+    [ "api_key" => apiKey
     , "tag" => topic
     ]
 
