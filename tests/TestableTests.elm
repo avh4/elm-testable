@@ -45,23 +45,6 @@ loadingComponent =
   }
 
 
-loadingComponentWithMultipleEffects : TestContext.Component LoadingAction (Maybe String)
-loadingComponentWithMultipleEffects =
-  { init =
-      ( Nothing
-      , Effects.batch
-          [ Http.getString "https://example.com/" |> Effects.map NewData
-          , Http.getString "https://secondexample.com/" |> Effects.map NewData
-          ]
-      )
-  , update =
-      \action model ->
-        case action of
-          NewData data ->
-            ( Just data, Effects.none )
-  }
-
-
 all : Test
 all =
   suite
@@ -110,7 +93,15 @@ all =
         |> TestContext.currentModel
         |> assertEqual (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://example.com/\", body = Empty }" ])
         |> test "effects should be removed after they are run"
-    , loadingComponentWithMultipleEffects
+    , { init =
+          ( Nothing
+          , Effects.batch
+              [ Http.getString "https://example.com/"
+              , Http.getString "https://secondexample.com/"
+              ]
+          )
+      , update = \data model -> ( Just data, Effects.none )
+      }
         |> TestContext.startForTest
         |> TestContext.resolveHttpRequest
             (Http.getRequest "https://example.com/")
