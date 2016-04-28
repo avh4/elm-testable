@@ -85,6 +85,7 @@ getString url =
       (getRequest url)
       (Result.formatError rawErrorError
         >> (flip Result.andThen) decodeResponse
+        >> Internal.resultFromResult
       )
 
 
@@ -113,6 +114,7 @@ get decoder url =
       (getRequest url)
       (Result.formatError rawErrorError
         >> (flip Result.andThen) decodeResponse
+        >> Internal.resultFromResult
       )
 
 
@@ -147,6 +149,7 @@ post decoder url requestBody =
       }
       (Result.formatError rawErrorError
         >> (flip Result.andThen) decodeResponse
+        >> Internal.resultFromResult
       )
 
 

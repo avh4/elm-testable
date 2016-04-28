@@ -1,14 +1,14 @@
 module Testable.EffectsLog (EffectsLog, empty, insert, httpAction) where
 
 import FakeDict as Dict exposing (Dict)
-import Testable.Effects exposing (Never)
-import Testable.Internal as Internal exposing (Effects)
+import Testable.Effects as Effects exposing (Never)
+import Testable.Internal as Internal exposing (Effects, TaskResult(..))
 import Testable.Http as Http
 
 
 type EffectsResult action
   = Finished action
-  | Continue (Effects action)
+  | MoreEffects (Effects action)
 
 
 type EffectsLog action
@@ -26,14 +26,17 @@ empty =
     }
 
 
-unsafeFromResult : Result Never a -> EffectsResult a
+unsafeFromResult : TaskResult Never a -> EffectsResult a
 unsafeFromResult result =
   case result of
-    Ok a ->
+    Success a ->
       Finished a
 
-    Err never ->
+    Failure never ->
       Debug.crash ("Never had a value: " ++ toString never)
+
+    Continue next ->
+      MoreEffects (Effects.task next)
 
 
 {-| Returns the new EffectsLog and any actions that should be applied immediately
@@ -80,7 +83,7 @@ httpAction expectedRequest response (EffectsLog log) =
             , [ value ]
             )
 
-        Continue next ->
+        MoreEffects next ->
           EffectsLog log
             |> insert next
             |> Just

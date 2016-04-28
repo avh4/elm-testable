@@ -15,7 +15,7 @@ convert `Testable.Task` into a core `Task` with the `Testable` module.
 @docs toMaybe, toResult
 -}
 
-import Testable.Internal as Internal
+import Testable.Internal as Internal exposing (TaskResult(..))
 
 
 {-| Represents asynchronous effects that may fail. It is useful for stuff like
@@ -55,7 +55,7 @@ map : (a -> b) -> Task x a -> Task x b
 map f source =
   case source of
     Internal.HttpTask request mapResponse ->
-      Internal.HttpTask request (mapResponse >> Result.map f)
+      Internal.HttpTask request (mapResponse >> resultMap f)
 
     Internal.ImmediateTask result ->
       Internal.ImmediateTask (result |> Result.map f)
@@ -74,7 +74,7 @@ toMaybe : Task x a -> Task never (Maybe a)
 toMaybe source =
   case source of
     Internal.HttpTask request mapResponse ->
-      Internal.HttpTask request (mapResponse >> Result.toMaybe >> Ok)
+      Internal.HttpTask request (mapResponse >> resultToResult >> resultMap Result.toMaybe)
 
     Internal.ImmediateTask result ->
       Internal.ImmediateTask (result |> Result.toMaybe |> Ok)
@@ -93,7 +93,37 @@ toResult : Task x a -> Task never (Result x a)
 toResult source =
   case source of
     Internal.HttpTask request mapResponse ->
-      Internal.HttpTask request (mapResponse >> Ok)
+      Internal.HttpTask request (mapResponse >> resultToResult)
 
     Internal.ImmediateTask result ->
       Internal.ImmediateTask (result |> Ok)
+
+
+
+-- TaskResult
+
+
+resultMap : (a -> b) -> TaskResult x a -> TaskResult x b
+resultMap f source =
+  case source of
+    Success value ->
+      Success (f value)
+
+    Failure error ->
+      Failure error
+
+    Continue next ->
+      Continue (map f next)
+
+
+resultToResult : TaskResult x a -> TaskResult never (Result x a)
+resultToResult source =
+  case source of
+    Success value ->
+      Success (Ok value)
+
+    Failure error ->
+      Success (Err error)
+
+    Continue next ->
+      Continue (toResult next)
