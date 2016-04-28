@@ -1,4 +1,4 @@
-module Testable.EffectsLog (EffectsLog, empty, insert, containsHttpAction, httpAction, sleepAction) where
+module Testable.EffectsLog (EffectsLog, empty, insert, containsHttpAction, httpRequests, httpAction, sleepAction) where
 
 import FakeDict as Dict exposing (Dict)
 import PairingHeap exposing (PairingHeap)
@@ -91,6 +91,11 @@ containsHttpAction : Http.Request -> EffectsLog action -> Bool
 containsHttpAction request (EffectsLog log) =
   Dict.get request log.http
     |> (/=) Nothing
+
+
+httpRequests : EffectsLog action -> List Http.Request
+httpRequests (EffectsLog log) =
+  Dict.keys log.http
 
 
 httpAction : Http.Request -> Result Http.RawError Http.Response -> EffectsLog action -> Maybe ( EffectsLog action, List action )

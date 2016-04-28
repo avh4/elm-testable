@@ -1,4 +1,4 @@
-module Testable.TestContext (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, resolveHttpRequest, advanceTime) where
+module Testable.TestContext (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime) where
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -7,7 +7,7 @@ the entire lifecycle of your component.
 @docs Component, TestContext, startForTest, update
 
 # Inspecting
-@docs currentModel, assertCurrentModel, assertHttpRequest
+@docs currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests
 
 # Simulating Effects
 @docs resolveHttpRequest, advanceTime
@@ -161,6 +161,21 @@ resolveHttpRequest request response (TestContext context) =
 
         Err message ->
           TestContext { context | state = Err [ message ] }
+
+
+{-| Ensure that there are no pending HTTP requests
+-}
+assertNoPendingHttpRequests : TestContext action model -> Assertion
+assertNoPendingHttpRequests (TestContext context) =
+  case context.state of
+    Err errors ->
+      Test.fail
+        ("Expected no pending HTTP requests, but TextContext had previous errors:"
+          ++ String.join "\n    " ("" :: errors)
+        )
+
+    Ok { effectsLog } ->
+      Test.assertEqual (EffectsLog.httpRequests effectsLog) []
 
 
 {-| Simulate the passing of time
