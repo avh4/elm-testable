@@ -55,6 +55,10 @@ task testableTask =
     Internal.ImmediateTask result ->
       taskResult result
 
+    Internal.SleepTask milliseconds result ->
+      Task.sleep milliseconds
+        |> (flip Task.andThen) (\_ -> taskResult result)
+
 
 taskResult : Internal.TaskResult error success -> Task.Task error success
 taskResult result =
