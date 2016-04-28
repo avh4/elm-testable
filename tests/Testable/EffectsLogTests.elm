@@ -30,24 +30,28 @@ all =
         "resulting actions"
         [ EffectsLog.empty
             |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task)
+            |> fst
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
             |> assertEqual (Just <| Ok "responseBody")
             |> test "directly consuming the result"
         , EffectsLog.empty
             |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task |> Effects.map MyWrapper)
+            |> fst
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
             |> assertEqual (Just <| MyWrapper <| Ok "responseBody")
             |> test "mapping the result"
         , EffectsLog.empty
             |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task)
+            |> fst
             |> httpGetAction "https://XXXX/" "responseBody"
             |> Maybe.map snd
             |> assertEqual Nothing
             |> test "resolving a request that doesn't match gives Nothing"
         , EffectsLog.empty
             |> EffectsLog.insert (Effects.none |> Effects.map MyWrapper)
+            |> fst
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
             |> assertEqual Nothing

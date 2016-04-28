@@ -12,3 +12,4 @@ type Effects action
 
 type Task error success
   = HttpTask Http.Request (Result Http.RawError Http.Response -> Result error success)
+  | ImmediateTask (Result error success)

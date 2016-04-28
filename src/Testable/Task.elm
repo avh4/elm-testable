@@ -1,4 +1,4 @@
-module Testable.Task (Task, map, toMaybe, toResult) where
+module Testable.Task (Task, succeed, fail, map, toMaybe, toResult) where
 
 {-|
 `Testable.Task` is a replacement for the core `Task` module.  You can use it
@@ -6,7 +6,7 @@ to create components that can be tested with `Testable.TestContext`.  You can
 convert `Testable.Task` into a core `Task` with the `Testable` module.
 
 # Basics
-@docs Task
+@docs Task, succeed, fail
 
 # Mapping
 @docs map
@@ -29,6 +29,24 @@ type alias Task error success =
   Internal.Task error success
 
 
+{-| A task that succeeds immediately when run.
+
+    succeed 42    -- results in 42
+-}
+succeed : a -> Task x a
+succeed value =
+  Internal.ImmediateTask (Ok value)
+
+
+{-| A task that fails immediately when run.
+
+    fail "file not found" : Task String a
+-}
+fail : x -> Task x a
+fail error =
+  Internal.ImmediateTask (Err error)
+
+
 {-| Transform a task.
 
     map sqrt (succeed 9) == succeed 3
@@ -38,6 +56,9 @@ map f source =
   case source of
     Internal.HttpTask request mapResponse ->
       Internal.HttpTask request (mapResponse >> Result.map f)
+
+    Internal.ImmediateTask result ->
+      Internal.ImmediateTask (result |> Result.map f)
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -55,6 +76,9 @@ toMaybe source =
     Internal.HttpTask request mapResponse ->
       Internal.HttpTask request (mapResponse >> Result.toMaybe >> Ok)
 
+    Internal.ImmediateTask result ->
+      Internal.ImmediateTask (result |> Result.toMaybe |> Ok)
+
 
 {-| Helps with handling failure. Instead of having a task fail with some value
 of type `x` it promotes the failure to an `Err` and turns all successes into
@@ -70,3 +94,6 @@ toResult source =
   case source of
     Internal.HttpTask request mapResponse ->
       Internal.HttpTask request (mapResponse >> Ok)
+
+    Internal.ImmediateTask result ->
+      Internal.ImmediateTask (result |> Ok)

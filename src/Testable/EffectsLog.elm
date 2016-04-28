@@ -39,17 +39,33 @@ unsafeFromResult result =
       Debug.crash ("Never had a value: " ++ toString never)
 
 
-insert : Effects action -> EffectsLog action -> EffectsLog action
+{-| Returns the new EffectsLog and any actions that should be applied immediately
+-}
+insert : Effects action -> EffectsLog action -> ( EffectsLog action, List action )
 insert effects (EffectsLog log) =
   case effects of
     Internal.None ->
-      EffectsLog log
+      ( EffectsLog log, [] )
 
     Internal.TaskEffect (Internal.HttpTask request mapResponse) ->
-      EffectsLog (HttpEntry request (mapResponse >> unsafeFromResult) :: log)
+      ( EffectsLog (HttpEntry request (mapResponse >> unsafeFromResult) :: log)
+      , []
+      )
+
+    Internal.TaskEffect (Internal.ImmediateTask (Ok result)) ->
+      ( EffectsLog log, [ result ] )
+
+    Internal.TaskEffect (Internal.ImmediateTask (Err _)) ->
+      Debug.crash "A TaskEffect produced an error, but the task should have had type (Task Never action) -- please report this to https://github.com/avh4/elm-testable/issues"
 
     Internal.Batch list ->
-      List.foldl insert (EffectsLog log) list
+      let
+        step effect ( log', immediates ) =
+          case insert effect log' of
+            ( log'', immediates' ) ->
+              ( log'', immediates ++ immediates' )
+      in
+        List.foldl step ( EffectsLog log, [] ) list
 
 
 remove : Entry action -> EffectsLog action -> EffectsLog action

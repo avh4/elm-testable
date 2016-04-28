@@ -50,9 +50,9 @@ startForTest component =
     , state = initialState
     , effects =
         EffectsLog.empty
-          |> EffectsLog.insert initialEffects
     , errors = []
     }
+      |> applyEffects initialEffects
 
 
 {-| Apply an action to the component in a given TestContext
@@ -65,10 +65,15 @@ update action context =
   in
     { context
       | state = newModel
-      , effects =
-          context.effects
-            |> EffectsLog.insert newEffects
     }
+      |> applyEffects newEffects
+
+
+applyEffects : Effects action -> TestContext action model -> TestContext action model
+applyEffects newEffects context =
+  case EffectsLog.insert newEffects context.effects of
+    ( newEffectsLog, immediateActions ) ->
+      List.foldl update { context | effects = newEffectsLog } immediateActions
 
 
 {-| Assert that a given Http.Request has been made by the componet under test

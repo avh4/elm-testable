@@ -132,4 +132,16 @@ all =
             (Http.ok "99.1")
         |> TestContext.assertCurrentModel (Ok 99.1)
         |> test "Http.post effect"
+    , { init = ( "waiting", Task.succeed "ready" |> Effects.task )
+      , update = \value model -> ( value, Effects.none )
+      }
+        |> TestContext.startForTest
+        |> TestContext.assertCurrentModel "ready"
+        |> test "Task.succeed"
+    , { init = ( Ok "waiting", Task.fail "failed" |> Task.toResult |> Effects.task )
+      , update = \value model -> ( value, Effects.none )
+      }
+        |> TestContext.startForTest
+        |> TestContext.assertCurrentModel (Err "failed")
+        |> test "Task.fail"
     ]
