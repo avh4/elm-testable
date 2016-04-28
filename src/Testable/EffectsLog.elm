@@ -1,4 +1,4 @@
-module Testable.EffectsLog (EffectsLog, empty, insert, httpAction, sleepAction) where
+module Testable.EffectsLog (EffectsLog, empty, insert, containsHttpAction, httpAction, sleepAction) where
 
 import FakeDict as Dict exposing (Dict)
 import PairingHeap exposing (PairingHeap)
@@ -85,6 +85,12 @@ insert effects (EffectsLog log) =
               ( log'', immediates ++ immediates' )
       in
         List.foldl step ( EffectsLog log, [] ) list
+
+
+containsHttpAction : Http.Request -> EffectsLog action -> Bool
+containsHttpAction request (EffectsLog log) =
+  Dict.get request log.http
+    |> (/=) Nothing
 
 
 httpAction : Http.Request -> Result Http.RawError Http.Response -> EffectsLog action -> Maybe ( EffectsLog action, List action )
