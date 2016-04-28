@@ -53,11 +53,14 @@ insert effects (EffectsLog log) =
       , []
       )
 
-    Internal.TaskEffect (Internal.ImmediateTask (Ok result)) ->
-      ( EffectsLog log, [ result ] )
+    Internal.TaskEffect (Internal.ImmediateTask result) ->
+      case unsafeFromResult result of
+        Finished action ->
+          ( EffectsLog log, [ action ] )
 
-    Internal.TaskEffect (Internal.ImmediateTask (Err _)) ->
-      Debug.crash "A TaskEffect produced an error, but the task should have had type (Task Never action) -- please report this to https://github.com/avh4/elm-testable/issues"
+        MoreEffects next ->
+          EffectsLog log
+            |> insert next
 
     Internal.Batch list ->
       let
@@ -77,10 +80,10 @@ httpAction expectedRequest response (EffectsLog log) =
 
     Just mapResponse ->
       case mapResponse response of
-        Finished value ->
+        Finished action ->
           Just
             ( EffectsLog { log | http = Dict.remove expectedRequest log.http }
-            , [ value ]
+            , [ action ]
             )
 
         MoreEffects next ->

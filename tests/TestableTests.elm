@@ -144,4 +144,10 @@ all =
         |> TestContext.startForTest
         |> TestContext.assertCurrentModel (Err "failed")
         |> test "Task.fail"
+    , { init = ( 0, Task.succeed 100 |> Task.andThen ((+) 1 >> Task.succeed) |> Effects.task )
+      , update = \value model -> ( value, Effects.none )
+      }
+        |> TestContext.startForTest
+        |> TestContext.assertCurrentModel 101
+        |> test "Task.andThen"
     ]

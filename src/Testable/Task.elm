@@ -1,4 +1,4 @@
-module Testable.Task (Task, succeed, fail, map, toMaybe, toResult) where
+module Testable.Task (Task, succeed, fail, map, andThen, toMaybe, toResult) where
 
 {-|
 `Testable.Task` is a replacement for the core `Task` module.  You can use it
@@ -10,6 +10,9 @@ convert `Testable.Task` into a core `Task` with the `Testable` module.
 
 # Mapping
 @docs map
+
+# Chaining
+@docs andThen
 
 # Errors
 @docs toMaybe, toResult
@@ -35,7 +38,7 @@ type alias Task error success =
 -}
 succeed : a -> Task x a
 succeed value =
-  Internal.ImmediateTask (Ok value)
+  Internal.ImmediateTask (Success value)
 
 
 {-| A task that fails immediately when run.
@@ -44,7 +47,7 @@ succeed value =
 -}
 fail : x -> Task x a
 fail error =
-  Internal.ImmediateTask (Err error)
+  Internal.ImmediateTask (Failure error)
 
 
 {-| Transform a task.
@@ -58,7 +61,34 @@ map f source =
       Internal.HttpTask request (mapResponse >> resultMap f)
 
     Internal.ImmediateTask result ->
-      Internal.ImmediateTask (result |> Result.map f)
+      Internal.ImmediateTask (result |> resultMap f)
+
+
+
+-- Chaining
+
+
+{-| Chain together a task and a callback. The first task will run, and if it is
+successful, you give the result to the callback resulting in another task. This
+task then gets run.
+
+    succeed 2 |> andThen (\n -> succeed (n + 2)) == succeed 4
+
+This is useful for chaining tasks together. Maybe you need to get a user from
+your servers *and then* lookup their picture once you know their name.
+-}
+andThen : (a -> Task x b) -> Task x a -> Task x b
+andThen next source =
+  case source of
+    Internal.HttpTask request mapResponse ->
+      Internal.HttpTask request (mapResponse >> resultAndThen next)
+
+    Internal.ImmediateTask result ->
+      Internal.ImmediateTask (result |> resultAndThen next)
+
+
+
+-- Errors
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -77,7 +107,7 @@ toMaybe source =
       Internal.HttpTask request (mapResponse >> resultToResult >> resultMap Result.toMaybe)
 
     Internal.ImmediateTask result ->
-      Internal.ImmediateTask (result |> Result.toMaybe |> Ok)
+      Internal.ImmediateTask (result |> resultToResult >> resultMap Result.toMaybe)
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -96,7 +126,7 @@ toResult source =
       Internal.HttpTask request (mapResponse >> resultToResult)
 
     Internal.ImmediateTask result ->
-      Internal.ImmediateTask (result |> Ok)
+      Internal.ImmediateTask (result |> resultToResult)
 
 
 
@@ -114,6 +144,19 @@ resultMap f source =
 
     Continue next ->
       Continue (map f next)
+
+
+resultAndThen : (a -> Task x b) -> TaskResult x a -> TaskResult x b
+resultAndThen f source =
+  case source of
+    Success value ->
+      Continue (f value)
+
+    Failure error ->
+      Failure error
+
+    Continue next ->
+      Continue (andThen f next)
 
 
 resultToResult : TaskResult x a -> TaskResult never (Result x a)
