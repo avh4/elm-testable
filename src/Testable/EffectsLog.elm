@@ -1,9 +1,11 @@
-module Testable.EffectsLog (EffectsLog, empty, insert, httpAction) where
+module Testable.EffectsLog (EffectsLog, empty, insert, httpAction, sleepAction) where
 
 import FakeDict as Dict exposing (Dict)
+import PairingHeap exposing (PairingHeap)
 import Testable.Effects as Effects exposing (Never)
 import Testable.Internal as Internal exposing (Effects, TaskResult(..))
 import Testable.Http as Http
+import Time exposing (Time)
 
 
 type EffectsResult action
@@ -16,6 +18,8 @@ type EffectsLog action
       { http :
           -- TODO: should be multidict
           Dict Http.Request (Result Http.RawError Http.Response -> EffectsResult action)
+      , now : Time
+      , sleep : PairingHeap Time (EffectsResult action)
       }
 
 
@@ -23,6 +27,8 @@ empty : EffectsLog action
 empty =
   EffectsLog
     { http = Dict.empty
+    , now = 0
+    , sleep = PairingHeap.empty
     }
 
 
@@ -62,6 +68,15 @@ insert effects (EffectsLog log) =
           EffectsLog log
             |> insert next
 
+    Internal.TaskEffect (Internal.SleepTask milliseconds result) ->
+      if milliseconds <= 0 then
+        insert (Internal.TaskEffect (Internal.ImmediateTask result)) (EffectsLog log)
+      else
+        ( EffectsLog
+            { log | sleep = PairingHeap.insert ( log.now + milliseconds, unsafeFromResult result ) log.sleep }
+        , []
+        )
+
     Internal.Batch list ->
       let
         step effect ( log', immediates ) =
@@ -90,3 +105,38 @@ httpAction expectedRequest response (EffectsLog log) =
           EffectsLog log
             |> insert next
             |> Just
+
+
+sleepAction : Time -> EffectsLog action -> ( EffectsLog action, List action )
+sleepAction milliseconds (EffectsLog log) =
+  case PairingHeap.findMin log.sleep of
+    Nothing ->
+      ( EffectsLog { log | now = log.now + milliseconds }
+      , []
+      )
+
+    Just ( time, result ) ->
+      if time <= log.now + milliseconds then
+        case result of
+          Finished action ->
+            -- TODO: recurse
+            ( EffectsLog
+                { log
+                  | sleep = PairingHeap.deleteMin log.sleep
+                  , now = log.now + milliseconds
+                }
+            , [ action ]
+            )
+
+          MoreEffects next ->
+            -- TODO: recurse
+            EffectsLog
+              { log
+                | sleep = PairingHeap.deleteMin log.sleep
+                , now = log.now + milliseconds
+              }
+              |> insert next
+      else
+        ( EffectsLog { log | now = log.now + milliseconds }
+        , []
+        )

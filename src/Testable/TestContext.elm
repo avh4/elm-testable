@@ -1,4 +1,4 @@
-module Testable.TestContext (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, resolveHttpRequest) where
+module Testable.TestContext (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, resolveHttpRequest, advanceTime) where
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -10,13 +10,14 @@ the entire lifecycle of your component.
 @docs currentModel, assertCurrentModel, assertHttpRequest
 
 # Simulating Effects
-@docs resolveHttpRequest
+@docs resolveHttpRequest, advanceTime
 -}
 
 import ElmTest as Test exposing (Assertion)
 import Testable.Effects as Effects exposing (Effects)
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
 import Testable.Http as Http
+import Time exposing (Time)
 
 
 {-| A component that can be used to create a `TestContext`
@@ -110,6 +111,20 @@ resolveHttpRequest request response context =
 
     Err message ->
       { context | errors = (message :: context.errors) }
+
+
+{-| Simulate the passing of time
+-}
+advanceTime : Time -> TestContext action model -> TestContext action model
+advanceTime milliseconds context =
+  case
+    EffectsLog.sleepAction milliseconds context.effects
+  of
+    ( newLog, actions ) ->
+      List.foldl
+        update
+        { context | effects = newLog }
+        actions
 
 
 {-| Get the current state of the component under test

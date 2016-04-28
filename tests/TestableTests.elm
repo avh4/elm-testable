@@ -6,6 +6,7 @@ import Testable.TestContext as TestContext
 import Testable.Effects as Effects
 import Testable.Http as Http
 import Testable.Task as Task
+import Time
 
 
 type CounterAction
@@ -150,4 +151,28 @@ all =
         |> TestContext.startForTest
         |> TestContext.assertCurrentModel 101
         |> test "Task.andThen"
+    , { init =
+          ( "waiting"
+          , Task.sleep (5 * Time.second)
+              |> Task.andThen (\_ -> Task.succeed "5 seconds passed")
+              |> Effects.task
+          )
+      , update = \value mode -> ( value, Effects.none )
+      }
+        |> TestContext.startForTest
+        |> TestContext.advanceTime (4 * Time.second)
+        |> TestContext.assertCurrentModel "waiting"
+        |> test "Task.sleep"
+    , { init =
+          ( "waiting"
+          , Task.sleep (5 * Time.second)
+              |> Task.andThen (\_ -> Task.succeed "5 seconds passed")
+              |> Effects.task
+          )
+      , update = \value mode -> ( value, Effects.none )
+      }
+        |> TestContext.startForTest
+        |> TestContext.advanceTime (5 * Time.second)
+        |> TestContext.assertCurrentModel "5 seconds passed"
+        |> test "Task.sleep"
     ]

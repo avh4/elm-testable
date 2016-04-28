@@ -1,4 +1,4 @@
-module Testable.Task (Task, succeed, fail, map, andThen, toMaybe, toResult) where
+module Testable.Task (Task, succeed, fail, map, andThen, toMaybe, toResult, sleep) where
 
 {-|
 `Testable.Task` is a replacement for the core `Task` module.  You can use it
@@ -16,9 +16,13 @@ convert `Testable.Task` into a core `Task` with the `Testable` module.
 
 # Errors
 @docs toMaybe, toResult
+
+# Threads
+@docs sleep
 -}
 
 import Testable.Internal as Internal exposing (TaskResult(..))
+import Time exposing (Time)
 
 
 {-| Represents asynchronous effects that may fail. It is useful for stuff like
@@ -56,12 +60,7 @@ fail error =
 -}
 map : (a -> b) -> Task x a -> Task x b
 map f source =
-  case source of
-    Internal.HttpTask request mapResponse ->
-      Internal.HttpTask request (mapResponse >> resultMap f)
-
-    Internal.ImmediateTask result ->
-      Internal.ImmediateTask (result |> resultMap f)
+  transform (resultMap f) source
 
 
 
@@ -79,12 +78,7 @@ your servers *and then* lookup their picture once you know their name.
 -}
 andThen : (a -> Task x b) -> Task x a -> Task x b
 andThen next source =
-  case source of
-    Internal.HttpTask request mapResponse ->
-      Internal.HttpTask request (mapResponse >> resultAndThen next)
-
-    Internal.ImmediateTask result ->
-      Internal.ImmediateTask (result |> resultAndThen next)
+  transform (resultAndThen next) source
 
 
 
@@ -102,12 +96,7 @@ This means you can handle the error with the `Maybe` module instead.
 -}
 toMaybe : Task x a -> Task never (Maybe a)
 toMaybe source =
-  case source of
-    Internal.HttpTask request mapResponse ->
-      Internal.HttpTask request (mapResponse >> resultToResult >> resultMap Result.toMaybe)
-
-    Internal.ImmediateTask result ->
-      Internal.ImmediateTask (result |> resultToResult >> resultMap Result.toMaybe)
+  transform (resultToResult >> resultMap Result.toMaybe) source
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -121,12 +110,34 @@ This means you can handle the error with the `Result` module instead.
 -}
 toResult : Task x a -> Task never (Result x a)
 toResult source =
+  transform resultToResult source
+
+
+transform : (TaskResult x a -> TaskResult y b) -> Task x a -> Task y b
+transform tx source =
   case source of
     Internal.HttpTask request mapResponse ->
-      Internal.HttpTask request (mapResponse >> resultToResult)
+      Internal.HttpTask request (mapResponse >> tx)
 
     Internal.ImmediateTask result ->
-      Internal.ImmediateTask (result |> resultToResult)
+      Internal.ImmediateTask (result |> tx)
+
+    Internal.SleepTask milliseconds result ->
+      Internal.SleepTask milliseconds (result |> tx)
+
+
+
+-- Threads
+
+
+{-| Make a thread sleep for a certain amount of time. The following example
+sleeps for 1 second and then succeeds with 42.
+
+    sleep 1000 |> andThen \_ -> succeed 42
+-}
+sleep : Time -> Task never ()
+sleep milliseconds =
+  Internal.SleepTask milliseconds (Success ())
 
 
 
