@@ -46,11 +46,27 @@ effects testableEffects =
 task : Testable.Task.Task error success -> Task.Task error success
 task testableTask =
   case testableTask of
-    Internal.HttpTask resuest mapResponse ->
-      Http.send Http.defaultSettings resuest
+    Internal.HttpTask request mapResponse ->
+      Http.send Http.defaultSettings request
         |> Task.toResult
         |> Task.map mapResponse
-        |> (flip Task.andThen) Task.fromResult
+        |> (flip Task.andThen) taskResult
+
+    Internal.ImmediateTask result ->
+      taskResult result
+
+
+taskResult : Internal.TaskResult error success -> Task.Task error success
+taskResult result =
+  case result of
+    Internal.Success action ->
+      Task.succeed action
+
+    Internal.Failure error ->
+      Task.fail error
+
+    Internal.Continue next ->
+      task next
 
 
 {-| Converts a testable StartApp-style init value into a standard StartApp init value
