@@ -1,5 +1,5 @@
 {
-    "version": "1.0.1",
+    "version": "1.1.0",
     "summary": "Makes Tasks and Effects testable",
     "repository": "https://github.com/avh4/elm-testable.git",
     "license": "BSD3",
