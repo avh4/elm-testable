@@ -102,11 +102,11 @@ resolveHttpRequest request response context =
     EffectsLog.httpAction request response context.effects
       |> Result.fromMaybe ("No pending HTTP request: " ++ toString request)
   of
-    Ok ( action, newLog ) ->
-      { context
-        | state = context.component.update action context.state |> fst
-        , effects = newLog
-      }
+    Ok ( newLog, actions ) ->
+      List.foldl
+        update
+        { context | effects = newLog }
+        actions
 
     Err message ->
       { context | errors = (message :: context.errors) }

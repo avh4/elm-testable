@@ -6,11 +6,16 @@ import Testable.Internal as Internal exposing (Effects)
 import Testable.Http as Http
 
 
+type EffectsResult action
+  = Finished action
+  | Continue (Effects action)
+
+
 type EffectsLog action
   = EffectsLog
       { http :
           -- TODO: should be multidict
-          Dict Http.Request (Result Http.RawError Http.Response -> action)
+          Dict Http.Request (Result Http.RawError Http.Response -> EffectsResult action)
       }
 
 
@@ -21,11 +26,11 @@ empty =
     }
 
 
-unsafeFromResult : Result Never a -> a
+unsafeFromResult : Result Never a -> EffectsResult a
 unsafeFromResult result =
   case result of
     Ok a ->
-      a
+      Finished a
 
     Err never ->
       Debug.crash ("Never had a value: " ++ toString never)
@@ -61,14 +66,21 @@ insert effects (EffectsLog log) =
         List.foldl step ( EffectsLog log, [] ) list
 
 
-httpAction : Http.Request -> Result Http.RawError Http.Response -> EffectsLog action -> Maybe ( action, EffectsLog action )
+httpAction : Http.Request -> Result Http.RawError Http.Response -> EffectsLog action -> Maybe ( EffectsLog action, List action )
 httpAction expectedRequest response (EffectsLog log) =
   case Dict.get expectedRequest log.http of
     Nothing ->
       Nothing
 
     Just mapResponse ->
-      Just
-        ( mapResponse response
-        , EffectsLog { log | http = Dict.remove expectedRequest log.http }
-        )
+      case mapResponse response of
+        Finished value ->
+          Just
+            ( EffectsLog { log | http = Dict.remove expectedRequest log.http }
+            , [ value ]
+            )
+
+        Continue next ->
+          EffectsLog log
+            |> insert next
+            |> Just
