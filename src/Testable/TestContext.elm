@@ -32,15 +32,16 @@ type alias Component action model =
 {-| The representation of the current state of a testable component, including
 a representaiton of any pending Effects.
 -}
-type alias TestContext action model =
-  { component : Component action model
-  , state :
-      Result
-        (List String)
-        { model : model
-        , effectsLog : EffectsLog action
-        }
-  }
+type TestContext action model
+  = TestContext
+      { component : Component action model
+      , state :
+          Result
+            (List String)
+            { model : model
+            , effectsLog : EffectsLog action
+            }
+      }
 
 
 {-| Create a `TestContext` for the given Component
@@ -51,62 +52,67 @@ startForTest component =
     ( initialState, initialEffects ) =
       component.init
   in
-    { component = component
-    , state =
-        Ok
-          { model = initialState
-          , effectsLog = EffectsLog.empty
-          }
-    }
+    TestContext
+      { component = component
+      , state =
+          Ok
+            { model = initialState
+            , effectsLog = EffectsLog.empty
+            }
+      }
       |> applyEffects initialEffects
 
 
 {-| Apply an action to the component in a given TestContext
 -}
 update : action -> TestContext action model -> TestContext action model
-update action context =
+update action (TestContext context) =
   case context.state of
     Ok state ->
       let
         ( newModel, newEffects ) =
           context.component.update action state.model
       in
-        { context
-          | state = Ok { state | model = newModel }
-        }
+        TestContext
+          { context
+            | state = Ok { state | model = newModel }
+          }
           |> applyEffects newEffects
 
     Err errors ->
-      { context
-        | state = Err (("update " ++ toString action ++ " applied to an TestContext with previous errors") :: errors)
-      }
+      TestContext
+        { context
+          | state = Err (("update " ++ toString action ++ " applied to an TestContext with previous errors") :: errors)
+        }
 
 
 applyEffects : Effects action -> TestContext action model -> TestContext action model
-applyEffects newEffects context =
+applyEffects newEffects (TestContext context) =
   case context.state of
     Err errors ->
-      context
+      TestContext context
 
     Ok { model, effectsLog } ->
       case EffectsLog.insert newEffects effectsLog of
         ( newEffectsLog, immediateActions ) ->
           List.foldl
             update
-            { context
-              | state =
-                  Ok
-                    { model = model
-                    , effectsLog = newEffectsLog
-                    }
-            }
+            (TestContext
+              { context
+                | state =
+                    Ok
+                      { model = model
+                      , effectsLog = newEffectsLog
+                      }
+              }
+            )
             immediateActions
 
 
 {-| Assert that a given Http.Request has been made by the componet under test
 -}
 assertHttpRequest : Http.Request -> TestContext action model -> Assertion
-assertHttpRequest request context =
+assertHttpRequest request (TestContext context) =
   case context.state of
     Err errors ->
       Test.fail
@@ -134,10 +140,13 @@ assertHttpRequest request context =
 {-| Simulate an HTTP response
 -}
 resolveHttpRequest : Http.Request -> Result Http.RawError Http.Response -> TestContext action model -> TestContext action model
-resolveHttpRequest request response context =
+resolveHttpRequest request response (TestContext context) =
   case context.state of
     Err errors ->
-      { context | state = Err (("resolveHttpRequest " ++ toString request ++ " applied to an TestContext with previous errors") :: errors) }
+      TestContext
+        { context
+          | state = Err (("resolveHttpRequest " ++ toString request ++ " applied to an TestContext with previous errors") :: errors)
+        }
 
     Ok { model, effectsLog } ->
       case
@@ -147,20 +156,23 @@ resolveHttpRequest request response context =
         Ok ( newLog, actions ) ->
           List.foldl
             update
-            { context | state = Ok { model = model, effectsLog = newLog } }
+            (TestContext { context | state = Ok { model = model, effectsLog = newLog } })
             actions
 
         Err message ->
-          { context | state = Err [ message ] }
+          TestContext { context | state = Err [ message ] }
 
 
 {-| Simulate the passing of time
 -}
 advanceTime : Time -> TestContext action model -> TestContext action model
-advanceTime milliseconds context =
+advanceTime milliseconds (TestContext context) =
   case context.state of
     Err errors ->
-      { context | state = Err (("advanceTime " ++ toString milliseconds ++ " applied to an TestContext with previous errors") :: errors) }
+      TestContext
+        { context
+          | state = Err (("advanceTime " ++ toString milliseconds ++ " applied to an TestContext with previous errors") :: errors)
+        }
 
     Ok { model, effectsLog } ->
       case
@@ -169,14 +181,14 @@ advanceTime milliseconds context =
         ( newLog, actions ) ->
           List.foldl
             update
-            { context | state = Ok { model = model, effectsLog = newLog } }
+            (TestContext { context | state = Ok { model = model, effectsLog = newLog } })
             actions
 
 
 {-| Get the current state of the component under test
 -}
 currentModel : TestContext action model -> Result (List String) model
-currentModel context =
+currentModel (TestContext context) =
   context.state |> Result.map .model
 
 
