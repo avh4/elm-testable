@@ -1,32 +1,24 @@
-module Testable.EffectsLog (EffectsLog, Entry, empty, insert, remove, httpAction) where
+module Testable.EffectsLog (EffectsLog, empty, insert, httpAction) where
 
+import FakeDict as Dict exposing (Dict)
 import Testable.Effects exposing (Never)
 import Testable.Internal as Internal exposing (Effects)
 import Testable.Http as Http
 
 
-type Entry action
-  = HttpEntry Http.Request (Result Http.RawError Http.Response -> action)
-
-
-matches : Entry action -> Entry action -> Bool
-matches a b =
-  let
-    toComparable entry =
-      case entry of
-        HttpEntry url _ ->
-          url
-  in
-    toComparable a == toComparable b
-
-
 type EffectsLog action
-  = EffectsLog (List (Entry action))
+  = EffectsLog
+      { http :
+          -- TODO: should be multidict
+          Dict Http.Request (Result Http.RawError Http.Response -> action)
+      }
 
 
 empty : EffectsLog action
 empty =
-  EffectsLog []
+  EffectsLog
+    { http = Dict.empty
+    }
 
 
 unsafeFromResult : Result Never a -> a
@@ -48,7 +40,8 @@ insert effects (EffectsLog log) =
       ( EffectsLog log, [] )
 
     Internal.TaskEffect (Internal.HttpTask request mapResponse) ->
-      ( EffectsLog (HttpEntry request (mapResponse >> unsafeFromResult) :: log)
+      ( EffectsLog
+          { log | http = Dict.insert request (mapResponse >> unsafeFromResult) log.http }
       , []
       )
 
@@ -68,33 +61,14 @@ insert effects (EffectsLog log) =
         List.foldl step ( EffectsLog log, [] ) list
 
 
-remove : Entry action -> EffectsLog action -> EffectsLog action
-remove entry (EffectsLog log) =
-  let
-    step checked remaining =
-      case remaining of
-        [] ->
-          List.reverse checked
-
-        next :: rest ->
-          if matches next entry then
-            (List.reverse checked ++ rest)
-          else
-            step (next :: checked) rest
-  in
-    EffectsLog (step [] log)
-
-
-httpAction : Http.Request -> Result Http.RawError Http.Response -> EffectsLog action -> Maybe ( Entry action, action )
+httpAction : Http.Request -> Result Http.RawError Http.Response -> EffectsLog action -> Maybe ( action, EffectsLog action )
 httpAction expectedRequest response (EffectsLog log) =
-  List.filterMap
-    (\effects ->
-      case effects of
-        HttpEntry request mapResponse ->
-          if request == expectedRequest then
-            Just ( effects, mapResponse response )
-          else
-            Nothing
-    )
-    log
-    |> List.head
+  case Dict.get expectedRequest log.http of
+    Nothing ->
+      Nothing
+
+    Just mapResponse ->
+      Just
+        ( mapResponse response
+        , EffectsLog { log | http = Dict.remove expectedRequest log.http }
+        )

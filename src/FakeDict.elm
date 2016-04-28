@@ -1,4 +1,4 @@
-module FakeDict (Dict, empty, insert, get, keys) where
+module FakeDict (Dict, empty, insert, get, remove, keys) where
 
 
 type Dict key value
@@ -31,6 +31,11 @@ get expectedKey (Dict dict) =
     )
     Nothing
     dict
+
+
+remove : key -> Dict key value -> Dict key value
+remove key (Dict dict) =
+  Dict (List.filter (fst >> (/=) key) dict)
 
 
 keys : Dict key value -> List key
