@@ -6,14 +6,9 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Json.Decode as Json
-
-
--- import Testable.Effects as Effects exposing (Effects, Never)
--- import Testable.Http as Http
--- import Testable.Task as Task
-
-import Http
-import Task
+import Testable.Cmd
+import Testable.Http as Http
+import Testable.Task as Task
 
 
 -- MODEL
@@ -26,7 +21,7 @@ type alias Model =
   }
 
 
-init : String -> String -> ( Model, Cmd Action )
+init : String -> String -> ( Model, Testable.Cmd.Cmd Action )
 init apiKey topic =
   ( Model apiKey topic "/favicon.ico"
   , getRandomGif apiKey topic
@@ -42,7 +37,7 @@ type Action
   | NewGif (Maybe String)
 
 
-update : Action -> Model -> ( Model, Cmd Action )
+update : Action -> Model -> ( Model, Testable.Cmd.Cmd Action )
 update action model =
   case action of
     RequestMore ->
@@ -50,7 +45,7 @@ update action model =
 
     NewGif maybeUrl ->
       ( Model model.apiKey model.topic (Maybe.withDefault model.gifUrl maybeUrl)
-      , Cmd.none
+      , Testable.Cmd.none
       )
 
 
@@ -96,7 +91,7 @@ imgStyle url =
 -- EFFECTS
 
 
-getRandomGif : String -> String -> Cmd Action
+getRandomGif : String -> String -> Testable.Cmd.Cmd Action
 getRandomGif apiKey topic =
   Http.get decodeUrl (randomUrl apiKey topic)
     |> Task.perform

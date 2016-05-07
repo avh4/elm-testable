@@ -1,8 +1,8 @@
-module RandomGifTests (..) where
+module RandomGifTests exposing (..)
 
 import ElmTest exposing (..)
 import Testable.TestContext exposing (..)
-import Testable.Effects as Effects
+import Testable.Cmd as Cmd
 import Testable.Http as Http
 import RandomGif
 

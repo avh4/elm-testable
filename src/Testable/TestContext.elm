@@ -1,4 +1,4 @@
-module Testable.TestContext (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime) where
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -15,7 +15,7 @@ the entire lifecycle of your component.
 
 import ElmTest as Test exposing (Assertion)
 import String
-import Testable.Effects as Effects exposing (Effects)
+import Testable.Cmd
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
 import Testable.Http as Http
 import Time exposing (Time)
@@ -24,8 +24,8 @@ import Time exposing (Time)
 {-| A component that can be used to create a `TestContext`
 -}
 type alias Component action model =
-  { init : ( model, Effects action )
-  , update : action -> model -> ( model, Effects action )
+  { init : ( model, Testable.Cmd.Cmd action )
+  , update : action -> model -> ( model, Testable.Cmd.Cmd action )
   }
 
 
@@ -86,7 +86,7 @@ update action (TestContext context) =
         }
 
 
-applyEffects : Effects action -> TestContext action model -> TestContext action model
+applyEffects : Testable.Cmd.Cmd action -> TestContext action model -> TestContext action model
 applyEffects newEffects (TestContext context) =
   case context.state of
     Err errors ->

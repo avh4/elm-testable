@@ -1,41 +1,41 @@
-module Testable (effects, task, init, update) where
+module Testable exposing (cmd, task, init, update)
 
 {-|
 
 This module converts Testable things into real things.
 
 # Basics
-@docs effects, task
+@docs cmd, task
 
 # StartApp helpers
 @docs init, update
 
 -}
 
-import Effects
 import Http
+import Process
 import Task
-import Testable.Effects
+import Testable.Cmd
 import Testable.Internal as Internal
 import Testable.Task
 
 
-{-| Converts a `Testable.Effects` into an `Effects`
+{-| Converts a `Testable.Cmd` into a `Cmd`
 
-    Testable.Effects.none |> Testable.effects
-        == Effects.none
+    Testable.Cmd.none |> Testable.cmd
+        == Cmd.none
 -}
-effects : Testable.Effects.Effects action -> Effects.Effects action
-effects testableEffects =
+cmd : Testable.Cmd.Cmd msg -> Cmd msg
+cmd testableEffects =
   case testableEffects of
     Internal.None ->
-      Effects.none
+      Cmd.none
 
-    Internal.TaskEffect testableTask ->
-      Effects.task (task testableTask)
+    Internal.TaskCmd testableTask ->
+      Task.perform identity identity (task testableTask)
 
     Internal.Batch list ->
-      Effects.batch (List.map effects list)
+      Cmd.batch (List.map cmd list)
 
 
 {-| Converts a `Testable.Task` into an `Task`
@@ -56,15 +56,15 @@ task testableTask =
       taskResult result
 
     Internal.SleepTask milliseconds result ->
-      Task.sleep milliseconds
+      Process.sleep milliseconds
         |> (flip Task.andThen) (\_ -> taskResult result)
 
 
 taskResult : Internal.TaskResult error success -> Task.Task error success
 taskResult result =
   case result of
-    Internal.Success action ->
-      Task.succeed action
+    Internal.Success msg ->
+      Task.succeed msg
 
     Internal.Failure error ->
       Task.fail error
@@ -75,14 +75,14 @@ taskResult result =
 
 {-| Converts a testable StartApp-style init value into a standard StartApp init value
 -}
-init : ( model, Testable.Effects.Effects action ) -> ( model, Effects.Effects action )
+init : ( model, Testable.Cmd.Cmd msg ) -> ( model, Cmd msg )
 init ( model, testableEffects ) =
-  ( model, effects testableEffects )
+  ( model, cmd testableEffects )
 
 
 {-| Converts a testable StartApp-style update function into a standard StartApp update function
 -}
-update : (action -> model -> ( model, Testable.Effects.Effects action )) -> (action -> model -> ( model, Effects.Effects action ))
-update fn action model =
-  fn action model
+update : (msg -> model -> ( model, Testable.Cmd.Cmd msg )) -> (msg -> model -> ( model, Cmd msg ))
+update fn msg model =
+  fn msg model
     |> init

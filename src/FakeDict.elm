@@ -1,4 +1,4 @@
-module FakeDict (Dict, empty, insert, get, remove, keys) where
+module FakeDict exposing (Dict, empty, insert, get, remove, keys)
 
 
 type Dict key value
