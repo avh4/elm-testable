@@ -1,25 +1,17 @@
-module Main (..) where
+module Main exposing (..)
 
-import Effects exposing (Never)
+import Html.App
 import RandomGif exposing (init, update, view)
-import StartApp
 import Task
-import Testable
 
 
-app =
-  StartApp.start
-    { init = Testable.init <| init "dc6zaTOxFJmzC" "funny cats"
-    , update = Testable.update update
-    , view = view
-    , inputs = []
-    }
+-- import Testable
 
 
 main =
-  app.html
-
-
-port tasks : Signal (Task.Task Never ())
-port tasks =
-  app.tasks
+  Html.App.program
+    { init = init "dc6zaTOxFJmzC" "funny cats"
+    , update = update
+    , view = view
+    , subscriptions = always Sub.none
+    }

@@ -1,14 +1,19 @@
-module RandomGif (..) where
+module RandomGif exposing (..)
 
 -- From section 5 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial#example-5-random-gif-viewer
 
-import Testable.Effects as Effects exposing (Effects, Never)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
-import Testable.Http as Http
 import Json.Decode as Json
-import Testable.Task as Task
+
+
+-- import Testable.Effects as Effects exposing (Effects, Never)
+-- import Testable.Http as Http
+-- import Testable.Task as Task
+
+import Http
+import Task
 
 
 -- MODEL
@@ -21,7 +26,7 @@ type alias Model =
   }
 
 
-init : String -> String -> ( Model, Effects Action )
+init : String -> String -> ( Model, Cmd Action )
 init apiKey topic =
   ( Model apiKey topic "/favicon.ico"
   , getRandomGif apiKey topic
@@ -37,7 +42,7 @@ type Action
   | NewGif (Maybe String)
 
 
-update : Action -> Model -> ( Model, Effects Action )
+update : Action -> Model -> ( Model, Cmd Action )
 update action model =
   case action of
     RequestMore ->
@@ -45,7 +50,7 @@ update action model =
 
     NewGif maybeUrl ->
       ( Model model.apiKey model.topic (Maybe.withDefault model.gifUrl maybeUrl)
-      , Effects.none
+      , Cmd.none
       )
 
 
@@ -57,17 +62,17 @@ update action model =
   (,)
 
 
-view : Signal.Address Action -> Model -> Html
-view address model =
+view : Model -> Html Action
+view model =
   div
     [ style [ "width" => "200px" ] ]
     [ h2 [ headerStyle ] [ text model.topic ]
     , div [ imgStyle model.gifUrl ] []
-    , button [ onClick address RequestMore ] [ text "More Please!" ]
+    , button [ onClick RequestMore ] [ text "More Please!" ]
     ]
 
 
-headerStyle : Attribute
+headerStyle : Attribute Action
 headerStyle =
   style
     [ "width" => "200px"
@@ -75,7 +80,7 @@ headerStyle =
     ]
 
 
-imgStyle : String -> Attribute
+imgStyle : String -> Attribute Action
 imgStyle url =
   style
     [ "display" => "inline-block"
@@ -91,12 +96,12 @@ imgStyle url =
 -- EFFECTS
 
 
-getRandomGif : String -> String -> Effects Action
+getRandomGif : String -> String -> Cmd Action
 getRandomGif apiKey topic =
   Http.get decodeUrl (randomUrl apiKey topic)
-    |> Task.toMaybe
-    |> Task.map NewGif
-    |> Effects.task
+    |> Task.perform
+        (always Nothing >> NewGif)
+        (Just >> NewGif)
 
 
 randomUrl : String -> String -> String
