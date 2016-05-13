@@ -1,4 +1,4 @@
-module Testable.Http (url, getString, get, post, Error, empty, string, Request, getRequest, Response, RawError, ok, serverError) where
+module Testable.Http exposing (url, getString, get, post, Error, empty, string, Request, getRequest, Response, RawError, ok, serverError)
 
 {-|
 `Testable.Http` is a replacement for the standard `Http` module.  You can use it

@@ -1,16 +1,16 @@
-module Testable.EffectsLog (EffectsLog, empty, insert, containsHttpAction, httpRequests, httpAction, sleepAction) where
+module Testable.EffectsLog exposing (EffectsLog, empty, insert, containsHttpAction, httpRequests, httpAction, sleepAction)
 
 import FakeDict as Dict exposing (Dict)
 import PairingHeap exposing (PairingHeap)
-import Testable.Effects as Effects exposing (Never)
-import Testable.Internal as Internal exposing (Effects, TaskResult(..))
+import Testable.Cmd
+import Testable.Internal as Internal exposing (Cmd, TaskResult(..))
 import Testable.Http as Http
 import Time exposing (Time)
 
 
 type EffectsResult action
   = Finished action
-  | MoreEffects (Effects action)
+  | MoreEffects (Testable.Cmd.Cmd action)
 
 
 type EffectsLog action
@@ -32,34 +32,34 @@ empty =
     }
 
 
-unsafeFromResult : TaskResult Never a -> EffectsResult a
+unsafeFromResult : TaskResult a a -> EffectsResult a
 unsafeFromResult result =
   case result of
     Success a ->
       Finished a
 
-    Failure never ->
-      Debug.crash ("Never had a value: " ++ toString never)
+    Failure a ->
+      Finished a
 
     Continue next ->
-      MoreEffects (Effects.task next)
+      MoreEffects (Internal.TaskCmd next)
 
 
 {-| Returns the new EffectsLog and any actions that should be applied immediately
 -}
-insert : Effects action -> EffectsLog action -> ( EffectsLog action, List action )
+insert : Testable.Cmd.Cmd action -> EffectsLog action -> ( EffectsLog action, List action )
 insert effects (EffectsLog log) =
   case effects of
     Internal.None ->
       ( EffectsLog log, [] )
 
-    Internal.TaskEffect (Internal.HttpTask request mapResponse) ->
+    Internal.TaskCmd (Internal.HttpTask request mapResponse) ->
       ( EffectsLog
           { log | http = Dict.insert request (mapResponse >> unsafeFromResult) log.http }
       , []
       )
 
-    Internal.TaskEffect (Internal.ImmediateTask result) ->
+    Internal.TaskCmd (Internal.ImmediateTask result) ->
       case unsafeFromResult result of
         Finished action ->
           ( EffectsLog log, [ action ] )
@@ -68,9 +68,9 @@ insert effects (EffectsLog log) =
           EffectsLog log
             |> insert next
 
-    Internal.TaskEffect (Internal.SleepTask milliseconds result) ->
+    Internal.TaskCmd (Internal.SleepTask milliseconds result) ->
       if milliseconds <= 0 then
-        insert (Internal.TaskEffect (Internal.ImmediateTask result)) (EffectsLog log)
+        insert (Internal.TaskCmd (Internal.ImmediateTask result)) (EffectsLog log)
       else
         ( EffectsLog
             { log | sleep = PairingHeap.insert ( log.now + milliseconds, unsafeFromResult result ) log.sleep }

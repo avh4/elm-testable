@@ -2,13 +2,13 @@ sudo: false
 
 language: node_js
 node_js: "5.1"
- 
+
 install:
-  - npm install -f elm@0.16.0 elm-test@0.16.1-alpha4
+  - npm install -f elm@0.17.0
   - export PATH="`pwd`/node_modules/.bin:$PATH"
   - (cd tests; elm-package install --yes)
 
 script:
   - elm-make --yes
   - rsync -a elm-stuff/build-artifacts/ tests/elm-stuff/build-artifacts/
-  - elm-test
+  - ./run-tests.sh

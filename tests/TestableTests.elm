@@ -1,9 +1,9 @@
-module TestableTests (..) where
+module TestableTests exposing (..)
 
 import ElmTest exposing (..)
 import Json.Decode as Decode
 import Testable.TestContext as TestContext
-import Testable.Effects as Effects
+import Testable.Cmd
 import Testable.Http as Http
 import Testable.Task as Task
 import Time
@@ -16,15 +16,15 @@ type CounterAction
 
 counterComponent : TestContext.Component CounterAction Int
 counterComponent =
-  { init = ( 0, Effects.none )
+  { init = ( 0, Testable.Cmd.none )
   , update =
       \action model ->
         case action of
           Inc ->
-            ( model + 1, Effects.none )
+            ( model + 1, Testable.Cmd.none )
 
           Dec ->
-            ( model - 1, Effects.none )
+            ( model - 1, Testable.Cmd.none )
   }
 
 
@@ -37,18 +37,17 @@ loadingComponent =
   { init =
       ( Nothing
       , Http.getString "https://example.com/"
-          |> Task.toResult
-          |> Task.map NewData
-          |> Effects.task
+          |> Task.perform Err Ok
+          |> Testable.Cmd.map NewData
       )
   , update =
       \action model ->
         case action of
           NewData (Ok data) ->
-            ( Just data, Effects.none )
+            ( Just data, Testable.Cmd.none )
 
           NewData (Err _) ->
-            ( model, Effects.none )
+            ( model, Testable.Cmd.none )
   }
 
 
@@ -99,12 +98,12 @@ all =
         |> test "effects should be removed after they are run"
     , { init =
           ( Nothing
-          , Effects.batch
-              [ Effects.task <| Task.toResult <| Http.getString "https://example.com/"
-              , Effects.task <| Task.toResult <| Http.getString "https://secondexample.com/"
+          , Testable.Cmd.batch
+              [ Task.perform Err Ok <| Http.getString "https://example.com/"
+              , Task.perform Err Ok <| Http.getString "https://secondexample.com/"
               ]
           )
-      , update = \data model -> ( Just data, Effects.none )
+      , update = \data model -> ( Just data, Testable.Cmd.none )
       }
         |> TestContext.startForTest
         |> TestContext.resolveHttpRequest
@@ -118,10 +117,9 @@ all =
     , { init =
           ( Ok 0
           , Http.post Decode.float "https://a" (Http.string "requestBody")
-              |> Task.toResult
-              |> Effects.task
+              |> Task.perform Err Ok
           )
-      , update = \value model -> ( value, Effects.none )
+      , update = \value model -> ( value, Testable.Cmd.none )
       }
         |> TestContext.startForTest
         |> TestContext.resolveHttpRequest
@@ -133,20 +131,20 @@ all =
             (Http.ok "99.1")
         |> TestContext.assertCurrentModel (Ok 99.1)
         |> test "Http.post effect"
-    , { init = ( "waiting", Task.succeed "ready" |> Effects.task )
-      , update = \value model -> ( value, Effects.none )
+    , { init = ( "waiting", Task.succeed "ready" |> Task.perform identity identity )
+      , update = \value model -> ( value, Testable.Cmd.none )
       }
         |> TestContext.startForTest
         |> TestContext.assertCurrentModel "ready"
         |> test "Task.succeed"
-    , { init = ( Ok "waiting", Task.fail "failed" |> Task.toResult |> Effects.task )
-      , update = \value model -> ( value, Effects.none )
+    , { init = ( Ok "waiting", Task.fail "failed" |> Task.perform Err Ok )
+      , update = \value model -> ( value, Testable.Cmd.none )
       }
         |> TestContext.startForTest
         |> TestContext.assertCurrentModel (Err "failed")
         |> test "Task.fail"
-    , { init = ( 0, Task.succeed 100 |> Task.andThen ((+) 1 >> Task.succeed) |> Effects.task )
-      , update = \value model -> ( value, Effects.none )
+    , { init = ( 0, Task.succeed 100 |> Task.andThen ((+) 1 >> Task.succeed) |> Task.perform identity identity )
+      , update = \value model -> ( value, Testable.Cmd.none )
       }
         |> TestContext.startForTest
         |> TestContext.assertCurrentModel 101
@@ -155,9 +153,9 @@ all =
           ( "waiting"
           , Task.sleep (5 * Time.second)
               |> Task.andThen (\_ -> Task.succeed "5 seconds passed")
-              |> Effects.task
+              |> Task.perform identity identity
           )
-      , update = \value mode -> ( value, Effects.none )
+      , update = \value mode -> ( value, Testable.Cmd.none )
       }
         |> TestContext.startForTest
         |> TestContext.advanceTime (4 * Time.second)
@@ -167,9 +165,9 @@ all =
           ( "waiting"
           , Task.sleep (5 * Time.second)
               |> Task.andThen (\_ -> Task.succeed "5 seconds passed")
-              |> Effects.task
+              |> Task.perform identity identity
           )
-      , update = \value mode -> ( value, Effects.none )
+      , update = \value mode -> ( value, Testable.Cmd.none )
       }
         |> TestContext.startForTest
         |> TestContext.advanceTime (5 * Time.second)

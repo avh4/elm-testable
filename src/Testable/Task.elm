@@ -1,4 +1,4 @@
-module Testable.Task (Task, succeed, fail, map, andThen, toMaybe, toResult, sleep) where
+module Testable.Task exposing (Task, succeed, fail, map, andThen, mapError, toMaybe, toResult, sleep, perform)
 
 {-|
 `Testable.Task` is a replacement for the core `Task` module.  You can use it
@@ -15,10 +15,13 @@ convert `Testable.Task` into a core `Task` with the `Testable` module.
 @docs andThen
 
 # Errors
-@docs toMaybe, toResult
+@docs mapError, toMaybe, toResult
 
 # Threads
 @docs sleep
+
+# Commands
+@docs perform
 -}
 
 import Testable.Internal as Internal exposing (TaskResult(..))
@@ -85,6 +88,32 @@ andThen next source =
 -- Errors
 
 
+{-| Transform the error value. This can be useful if you need a bunch of error
+types to match up.
+
+    type Error = Http Http.Error | WebGL WebGL.Error
+
+    getResources : Task Error Resource
+    getResources =
+      sequence [ mapError Http serverTask, mapError WebGL textureTask ]
+-}
+mapError : (x -> y) -> Task x a -> Task y a
+mapError f task =
+  transform
+    (\res ->
+      case res of
+        Success value ->
+          Success value
+
+        Failure error ->
+          Failure (f error)
+
+        Continue next ->
+          Continue (mapError f next)
+    )
+    task
+
+
 {-| Helps with handling failure. Instead of having a task fail with some value
 of type `x` it promotes the failure to a `Nothing` and turns all successes into
 `Just` something.
@@ -138,6 +167,32 @@ sleeps for 1 second and then succeeds with 42.
 sleep : Time -> Task never ()
 sleep milliseconds =
   Internal.SleepTask milliseconds (Success ())
+
+
+
+-- Commands
+
+
+{-| Command the runtime system to perform a task. The most important argument
+is the `Task` which describes what you want to happen. But you also need to
+provide functions to tag the two possible outcomes of the task. It can fail or
+succeed, but either way, you need to have a message to feed back into your
+application.
+-}
+perform : (x -> msg) -> (a -> msg) -> Task x a -> Internal.Cmd msg
+perform onFail onSuccess task =
+  task
+    |> toResult
+    |> map
+        (\res ->
+          case res of
+            Ok value ->
+              onSuccess value
+
+            Err error ->
+              onFail error
+        )
+    |> Internal.TaskCmd
 
 
 

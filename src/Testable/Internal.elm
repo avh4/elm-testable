@@ -1,14 +1,13 @@
-module Testable.Internal (..) where
+module Testable.Internal exposing (..)
 
 import Http
-import Effects exposing (Never)
 import Time exposing (Time)
 
 
-type Effects action
+type Cmd msg
   = None
-  | TaskEffect (Task Never action)
-  | Batch (List (Effects action))
+  | TaskCmd (Task msg msg)
+  | Batch (List (Cmd msg))
 
 
 type Task error success

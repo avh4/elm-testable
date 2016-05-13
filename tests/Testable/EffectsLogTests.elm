@@ -1,7 +1,7 @@
-module Testable.EffectsLogTests (..) where
+module Testable.EffectsLogTests exposing (..)
 
 import ElmTest exposing (..)
-import Testable.Effects as Effects
+import Testable.Cmd
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
 import Testable.Http as Http
 import Testable.Task as Task
@@ -29,28 +29,28 @@ all =
     [ suite
         "resulting actions"
         [ EffectsLog.empty
-            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task)
+            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.perform Err Ok)
             |> fst
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
             |> assertEqual (Just [ Ok "responseBody" ])
             |> test "directly consuming the result"
         , EffectsLog.empty
-            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task |> Effects.map MyWrapper)
+            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.perform (Err >> MyWrapper) (Ok >> MyWrapper))
             |> fst
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd
             |> assertEqual (Just [ MyWrapper <| Ok "responseBody" ])
             |> test "mapping the result"
         , EffectsLog.empty
-            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.toResult |> Effects.task)
+            |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.perform Err Ok)
             |> fst
             |> httpGetAction "https://XXXX/" "responseBody"
             |> Maybe.map snd
             |> assertEqual Nothing
             |> test "resolving a request that doesn't match gives Nothing"
         , EffectsLog.empty
-            |> EffectsLog.insert (Effects.none |> Effects.map MyWrapper)
+            |> EffectsLog.insert (Testable.Cmd.none |> Testable.Cmd.map MyWrapper)
             |> fst
             |> httpGetAction "https://example.com/" "responseBody"
             |> Maybe.map snd

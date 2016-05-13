@@ -1,4 +1,4 @@
-module FakeSet (Set, member, empty, singleton, union, remove, insert) where
+module FakeSet exposing (Set, member, empty, singleton, union, remove, insert)
 
 
 type Set a
