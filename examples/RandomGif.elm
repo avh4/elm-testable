@@ -53,13 +53,9 @@ update action model =
 -- VIEW
 
 
-(=>) =
-    (,)
-
-
 view : Model -> Html Action
 view model =
-    div [ style [ "width" => "200px" ] ]
+    div [ style [ ( "width", "200px" ) ] ]
         [ h2 [ headerStyle ] [ text model.topic ]
         , div [ imgStyle model.gifUrl ] []
         , button [ onClick RequestMore ] [ text "More Please!" ]
@@ -69,20 +65,20 @@ view model =
 headerStyle : Attribute Action
 headerStyle =
     style
-        [ "width" => "200px"
-        , "text-align" => "center"
+        [ ( "width", "200px" )
+        , ( "text-align", "center" )
         ]
 
 
 imgStyle : String -> Attribute Action
 imgStyle url =
     style
-        [ "display" => "inline-block"
-        , "width" => "200px"
-        , "height" => "200px"
-        , "background-position" => "center center"
-        , "background-size" => "cover"
-        , "background-image" => ("url('" ++ url ++ "')")
+        [ ( "display", "inline-block" )
+        , ( "width", "200px" )
+        , ( "height", "200px" )
+        , ( "background-position", "center center" )
+        , ( "background-size", "cover" )
+        , ( "background-image", ("url('" ++ url ++ "')") )
         ]
 
 
@@ -100,8 +96,8 @@ getRandomGif apiKey topic =
 randomUrl : String -> String -> String
 randomUrl apiKey topic =
     Http.url "https://api.giphy.com/v1/gifs/random"
-        [ "api_key" => apiKey
-        , "tag" => topic
+        [ ( "api_key", apiKey )
+        , ( "tag", topic )
         ]
 
 
