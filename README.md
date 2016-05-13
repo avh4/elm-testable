@@ -14,18 +14,6 @@ The only difference between a testable component and a standard component is the
 Here is the diff of converting `RandomGif.elm` into a testable component:
 
 ```diff
-diff --git b/examples/Main.elm a/examples/Main.elm
-@@ -3,12 +3,13 @@ module Main exposing (..)
- import Task
-+import Testable
- 
- main =
-     Html.App.program
--        { init = init "__API_KEY__" "funny cats"
--        , update = update
-+        { init = Testable.init <| init "__API_KEY__" "funny cats"
-+        , update = Testable.update update
-         , view = view
 diff --git b/examples/RandomGif.elm a/examples/RandomGif.elm
 @@ -6,8 +6,9 @@ import Html exposing (..)
  import Json.Decode as Json
@@ -57,6 +45,18 @@ diff --git b/examples/RandomGif.elm a/examples/RandomGif.elm
  getRandomGif apiKey topic =
      Http.get decodeUrl (randomUrl apiKey topic)
          |> Task.perform (always Nothing >> NewGif)
+diff --git b/examples/Main.elm a/examples/Main.elm
+@@ -3,12 +3,13 @@ module Main exposing (..)
+ import Task
++import Testable
+ 
+ main =
+     Html.App.program
+-        { init = init "__API_KEY__" "funny cats"
+-        , update = update
++        { init = Testable.init <| init "__API_KEY__" "funny cats"
++        , update = Testable.update update
+         , view = view
 ```
 
 
