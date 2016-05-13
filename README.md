@@ -9,9 +9,55 @@ as well as `Testable.TestContext` to test testable components and `Testable` to 
 
 ## Example testable component
 
-The only difference between a testable component and a standard component is the added `Testable.` in several imports.
+The only difference between a testable component and a standard component is the added `Testable.` in several imports.  (With the exception of `Cmd`, which conflicts with the default import of `Platform.Cmd` in Elm 0.17.)
 
-Here is the [diff of converting `RandomGif.elm` into a testable component](https://github.com/avh4/elm-testable/commit/a3198fd44d6631a3204ec6559a3498863550f1dc#diff-f40b8d64db53cbac61d7ab1b4f16419b).
+Here is the diff of converting `RandomGif.elm` into a testable component:
+
+```diff
+diff --git b/examples/Main.elm a/examples/Main.elm
+@@ -3,12 +3,13 @@ module Main exposing (..)
+ import Task
++import Testable
+ 
+ main =
+     Html.App.program
+-        { init = init "__API_KEY__" "funny cats"
+-        , update = update
++        { init = Testable.init <| init "__API_KEY__" "funny cats"
++        , update = Testable.update update
+         , view = view
+diff --git b/examples/RandomGif.elm a/examples/RandomGif.elm
+@@ -6,8 +6,9 @@ import Html exposing (..)
+ import Json.Decode as Json
+-import Http
+-import Task
++import Testable.Cmd
++import Testable.Http as Http
++import Testable.Task as Task
+ 
+ @ -20,7 +21,7 @@ type alias Model =
+
+-init : String -> String -> ( Model, Cmd Action )
++init : String -> String -> ( Model, Testable.Cmd.Cmd Action )
+ init apiKey topic =
+@@ -36,7 +37,7 @@ type Action
+ 
+-update : Action -> Model -> ( Model, Cmd Action )
++update : Action -> Model -> ( Model, Testable.Cmd.Cmd Action )
+ update action model =
+@@ -44,7 +45,7 @@ update action model =
+             ( Model model.apiKey model.topic (Maybe.withDefault model.gifUrl maybeUrl)
+-            , Cmd.none
++            , Testable.Cmd.none
+             )
+@@ -89,7 +90,7 @@ imgStyle url =
+ 
+-getRandomGif : String -> String -> Cmd Action
++getRandomGif : String -> String -> Testable.Cmd.Cmd Action
+ getRandomGif apiKey topic =
+     Http.get decodeUrl (randomUrl apiKey topic)
+         |> Task.perform (always Nothing >> NewGif)
+```
 
 
 ## Example tests
