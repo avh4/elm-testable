@@ -5,4 +5,4 @@ import Tests
 
 
 main =
-  Test.runSuite Tests.all
+    Test.runSuite Tests.all

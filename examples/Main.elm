@@ -7,9 +7,9 @@ import Testable
 
 
 main =
-  Html.App.program
-    { init = Testable.init <| init "dc6zaTOxFJmzC" "funny cats"
-    , update = Testable.update update
-    , view = view
-    , subscriptions = always Sub.none
-    }
+    Html.App.program
+        { init = Testable.init <| init "dc6zaTOxFJmzC" "funny cats"
+        , update = Testable.update update
+        , view = view
+        , subscriptions = always Sub.none
+        }

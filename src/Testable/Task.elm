@@ -36,7 +36,7 @@ succeed with a `User`. So this could represent a task that is asking a server
 for a certain user.
 -}
 type alias Task error success =
-  Internal.Task error success
+    Internal.Task error success
 
 
 {-| A task that succeeds immediately when run.
@@ -45,7 +45,7 @@ type alias Task error success =
 -}
 succeed : a -> Task x a
 succeed value =
-  Internal.ImmediateTask (Success value)
+    Internal.ImmediateTask (Success value)
 
 
 {-| A task that fails immediately when run.
@@ -54,7 +54,7 @@ succeed value =
 -}
 fail : x -> Task x a
 fail error =
-  Internal.ImmediateTask (Failure error)
+    Internal.ImmediateTask (Failure error)
 
 
 {-| Transform a task.
@@ -63,7 +63,7 @@ fail error =
 -}
 map : (a -> b) -> Task x a -> Task x b
 map f source =
-  transform (resultMap f) source
+    transform (resultMap f) source
 
 
 
@@ -81,7 +81,7 @@ your servers *and then* lookup their picture once you know their name.
 -}
 andThen : (a -> Task x b) -> Task x a -> Task x b
 andThen next source =
-  transform (resultAndThen next) source
+    transform (resultAndThen next) source
 
 
 
@@ -99,19 +99,19 @@ types to match up.
 -}
 mapError : (x -> y) -> Task x a -> Task y a
 mapError f task =
-  transform
-    (\res ->
-      case res of
-        Success value ->
-          Success value
+    transform
+        (\res ->
+            case res of
+                Success value ->
+                    Success value
 
-        Failure error ->
-          Failure (f error)
+                Failure error ->
+                    Failure (f error)
 
-        Continue next ->
-          Continue (mapError f next)
-    )
-    task
+                Continue next ->
+                    Continue (mapError f next)
+        )
+        task
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -125,7 +125,7 @@ This means you can handle the error with the `Maybe` module instead.
 -}
 toMaybe : Task x a -> Task never (Maybe a)
 toMaybe source =
-  transform (resultToResult >> resultMap Result.toMaybe) source
+    transform (resultToResult >> resultMap Result.toMaybe) source
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -139,20 +139,20 @@ This means you can handle the error with the `Result` module instead.
 -}
 toResult : Task x a -> Task never (Result x a)
 toResult source =
-  transform resultToResult source
+    transform resultToResult source
 
 
 transform : (TaskResult x a -> TaskResult y b) -> Task x a -> Task y b
 transform tx source =
-  case source of
-    Internal.HttpTask request mapResponse ->
-      Internal.HttpTask request (mapResponse >> tx)
+    case source of
+        Internal.HttpTask request mapResponse ->
+            Internal.HttpTask request (mapResponse >> tx)
 
-    Internal.ImmediateTask result ->
-      Internal.ImmediateTask (result |> tx)
+        Internal.ImmediateTask result ->
+            Internal.ImmediateTask (result |> tx)
 
-    Internal.SleepTask milliseconds result ->
-      Internal.SleepTask milliseconds (result |> tx)
+        Internal.SleepTask milliseconds result ->
+            Internal.SleepTask milliseconds (result |> tx)
 
 
 
@@ -166,7 +166,7 @@ sleeps for 1 second and then succeeds with 42.
 -}
 sleep : Time -> Task never ()
 sleep milliseconds =
-  Internal.SleepTask milliseconds (Success ())
+    Internal.SleepTask milliseconds (Success ())
 
 
 
@@ -181,18 +181,18 @@ application.
 -}
 perform : (x -> msg) -> (a -> msg) -> Task x a -> Internal.Cmd msg
 perform onFail onSuccess task =
-  task
-    |> toResult
-    |> map
-        (\res ->
-          case res of
-            Ok value ->
-              onSuccess value
+    task
+        |> toResult
+        |> map
+            (\res ->
+                case res of
+                    Ok value ->
+                        onSuccess value
 
-            Err error ->
-              onFail error
-        )
-    |> Internal.TaskCmd
+                    Err error ->
+                        onFail error
+            )
+        |> Internal.TaskCmd
 
 
 
@@ -201,38 +201,38 @@ perform onFail onSuccess task =
 
 resultMap : (a -> b) -> TaskResult x a -> TaskResult x b
 resultMap f source =
-  case source of
-    Success value ->
-      Success (f value)
+    case source of
+        Success value ->
+            Success (f value)
 
-    Failure error ->
-      Failure error
+        Failure error ->
+            Failure error
 
-    Continue next ->
-      Continue (map f next)
+        Continue next ->
+            Continue (map f next)
 
 
 resultAndThen : (a -> Task x b) -> TaskResult x a -> TaskResult x b
 resultAndThen f source =
-  case source of
-    Success value ->
-      Continue (f value)
+    case source of
+        Success value ->
+            Continue (f value)
 
-    Failure error ->
-      Failure error
+        Failure error ->
+            Failure error
 
-    Continue next ->
-      Continue (andThen f next)
+        Continue next ->
+            Continue (andThen f next)
 
 
 resultToResult : TaskResult x a -> TaskResult never (Result x a)
 resultToResult source =
-  case source of
-    Success value ->
-      Success (Ok value)
+    case source of
+        Success value ->
+            Success (Ok value)
 
-    Failure error ->
-      Success (Err error)
+        Failure error ->
+            Success (Err error)
 
-    Continue next ->
-      Continue (toResult next)
+        Continue next ->
+            Continue (toResult next)

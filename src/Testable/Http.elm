@@ -46,7 +46,7 @@ will be appropriately encoded, so they can contain spaces, ampersands, etc.
 -}
 url : String -> List ( String, String ) -> String
 url =
-  Http.url
+    Http.url
 
 
 
@@ -55,12 +55,12 @@ url =
 
 rawErrorError : RawError -> Error
 rawErrorError rawError =
-  case rawError of
-    Http.RawTimeout ->
-      Http.Timeout
+    case rawError of
+        Http.RawTimeout ->
+            Http.Timeout
 
-    Http.RawNetworkError ->
-      Http.NetworkError
+        Http.RawNetworkError ->
+            Http.NetworkError
 
 
 {-| Send a GET request to the given URL. You will get the entire response as a
@@ -72,21 +72,20 @@ string.
 -}
 getString : String -> Task Error String
 getString url =
-  let
-    decodeResponse response =
-      case response.value of
-        Http.Text responseBody ->
-          Ok responseBody
+    let
+        decodeResponse response =
+            case response.value of
+                Http.Text responseBody ->
+                    Ok responseBody
 
-        Http.Blob _ ->
-          Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
-  in
-    Internal.HttpTask
-      (getRequest url)
-      (Result.formatError rawErrorError
-        >> (flip Result.andThen) decodeResponse
-        >> Internal.resultFromResult
-      )
+                Http.Blob _ ->
+                    Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
+    in
+        Internal.HttpTask (getRequest url)
+            (Result.formatError rawErrorError
+                >> (flip Result.andThen) decodeResponse
+                >> Internal.resultFromResult
+            )
 
 
 {-| Send a GET request to the given URL. You also specify how to decode the
@@ -100,22 +99,21 @@ response.
 -}
 get : Decoder value -> String -> Task Error value
 get decoder url =
-  let
-    decodeResponse response =
-      case response.value of
-        Http.Text responseBody ->
-          Decode.decodeString decoder responseBody
-            |> Result.formatError Http.UnexpectedPayload
+    let
+        decodeResponse response =
+            case response.value of
+                Http.Text responseBody ->
+                    Decode.decodeString decoder responseBody
+                        |> Result.formatError Http.UnexpectedPayload
 
-        Http.Blob _ ->
-          Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
-  in
-    Internal.HttpTask
-      (getRequest url)
-      (Result.formatError rawErrorError
-        >> (flip Result.andThen) decodeResponse
-        >> Internal.resultFromResult
-      )
+                Http.Blob _ ->
+                    Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
+    in
+        Internal.HttpTask (getRequest url)
+            (Result.formatError rawErrorError
+                >> (flip Result.andThen) decodeResponse
+                >> Internal.resultFromResult
+            )
 
 
 {-| Send a POST request to the given URL, carrying the given body. You also
@@ -131,26 +129,26 @@ specify how to decode the response with [a JSON decoder][json].
 -}
 post : Decoder value -> String -> Body -> Task Error value
 post decoder url requestBody =
-  let
-    decodeResponse response =
-      case response.value of
-        Http.Text responseBody ->
-          Decode.decodeString decoder responseBody
-            |> Result.formatError Http.UnexpectedPayload
+    let
+        decodeResponse response =
+            case response.value of
+                Http.Text responseBody ->
+                    Decode.decodeString decoder responseBody
+                        |> Result.formatError Http.UnexpectedPayload
 
-        Http.Blob _ ->
-          Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
-  in
-    Internal.HttpTask
-      { verb = "POST"
-      , headers = []
-      , url = url
-      , body = requestBody
-      }
-      (Result.formatError rawErrorError
-        >> (flip Result.andThen) decodeResponse
-        >> Internal.resultFromResult
-      )
+                Http.Blob _ ->
+                    Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
+    in
+        Internal.HttpTask
+            { verb = "POST"
+            , headers = []
+            , url = url
+            , body = requestBody
+            }
+            (Result.formatError rawErrorError
+                >> (flip Result.andThen) decodeResponse
+                >> Internal.resultFromResult
+            )
 
 
 {-| The kinds of errors you typically want in practice. When you get a
@@ -159,7 +157,7 @@ response but its status is not in the 200 range, it will trigger a
 you will get an `UnexpectedPayload`.
 -}
 type alias Error =
-  Http.Error
+    Http.Error
 
 
 
@@ -170,14 +168,14 @@ type alias Error =
 requests this is empty, but in other cases it may be a string or blob.
 -}
 type alias Body =
-  Http.Body
+    Http.Body
 
 
 {-| An empty request body, no value will be sent along.
 -}
 empty : Body
 empty =
-  Http.empty
+    Http.empty
 
 
 {-| Provide a string as the body of the request. Useful if you need to send
@@ -194,7 +192,7 @@ JSON data to a server that does not belong in the URL.
 -}
 string : String -> Body
 string =
-  Http.string
+    Http.string
 
 
 
@@ -218,18 +216,18 @@ headers manually.
         }
 -}
 type alias Request =
-  Http.Request
+    Http.Request
 
 
 {-| A convenient way to make a `Request` corresponding to the request made by `get`
 -}
 getRequest : String -> Request
 getRequest url =
-  { verb = "GET"
-  , headers = []
-  , url = url
-  , body = Http.empty
-  }
+    { verb = "GET"
+    , headers = []
+    , url = url
+    , body = Http.empty
+    }
 
 
 
@@ -252,7 +250,7 @@ goal of this library is to give a low-level enough API that others can build
 whatever helpful behavior they want on top of it.
 -}
 type alias Response =
-  Http.Response
+    Http.Response
 
 
 {-| The things that count as errors at the lowest level. Technically, getting
@@ -264,30 +262,30 @@ point of `RawError` is to allow you to define higher-level errors however you
 want.
 -}
 type alias RawError =
-  Http.RawError
+    Http.RawError
 
 
 {-| A convenient way to create a 200 OK repsonse
 -}
 ok : String -> Result RawError Response
 ok responseBody =
-  Ok
-    { status = 200
-    , statusText = "OK"
-    , headers = Dict.empty
-    , url = "<< Not Implemented >>"
-    , value = Http.Text responseBody
-    }
+    Ok
+        { status = 200
+        , statusText = "OK"
+        , headers = Dict.empty
+        , url = "<< Not Implemented >>"
+        , value = Http.Text responseBody
+        }
 
 
 {-| A convenient way to create a response representing a 500 error
 -}
 serverError : Result RawError Response
 serverError =
-  Ok
-    { status = 500
-    , statusText = "Internal Server Error"
-    , headers = Dict.empty
-    , url = "<< Not Implemented >>"
-    , value = Http.Text ""
-    }
+    Ok
+        { status = 500
+        , statusText = "Internal Server Error"
+        , headers = Dict.empty
+        , url = "<< Not Implemented >>"
+        , value = Http.Text ""
+        }

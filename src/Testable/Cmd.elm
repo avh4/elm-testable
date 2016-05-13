@@ -14,33 +14,33 @@ import Testable.Task as Task exposing (Task)
 
 {-| -}
 type alias Cmd msg =
-  Internal.Cmd msg
+    Internal.Cmd msg
 
 
 {-| -}
 none : Cmd never
 none =
-  Internal.None
+    Internal.None
 
 
 {-| -}
 batch : List (Cmd msg) -> Cmd msg
 batch effectsList =
-  Internal.Batch effectsList
+    Internal.Batch effectsList
 
 
 {-| -}
 map : (a -> b) -> Cmd a -> Cmd b
 map f source =
-  case source of
-    Internal.None ->
-      Internal.None
+    case source of
+        Internal.None ->
+            Internal.None
 
-    Internal.TaskCmd wrapped ->
-      wrapped
-        |> Task.map f
-        |> Task.mapError f
-        |> Internal.TaskCmd
+        Internal.TaskCmd wrapped ->
+            wrapped
+                |> Task.map f
+                |> Task.mapError f
+                |> Internal.TaskCmd
 
-    Internal.Batch list ->
-      Internal.Batch (List.map (map f) list)
+        Internal.Batch list ->
+            Internal.Batch (List.map (map f) list)

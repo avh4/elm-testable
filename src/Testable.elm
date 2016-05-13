@@ -27,15 +27,15 @@ import Testable.Task
 -}
 cmd : Testable.Cmd.Cmd msg -> Cmd msg
 cmd testableEffects =
-  case testableEffects of
-    Internal.None ->
-      Cmd.none
+    case testableEffects of
+        Internal.None ->
+            Cmd.none
 
-    Internal.TaskCmd testableTask ->
-      Task.perform identity identity (task testableTask)
+        Internal.TaskCmd testableTask ->
+            Task.perform identity identity (task testableTask)
 
-    Internal.Batch list ->
-      Cmd.batch (List.map cmd list)
+        Internal.Batch list ->
+            Cmd.batch (List.map cmd list)
 
 
 {-| Converts a `Testable.Task` into an `Task`
@@ -45,44 +45,44 @@ cmd testableEffects =
 -}
 task : Testable.Task.Task error success -> Task.Task error success
 task testableTask =
-  case testableTask of
-    Internal.HttpTask request mapResponse ->
-      Http.send Http.defaultSettings request
-        |> Task.toResult
-        |> Task.map mapResponse
-        |> (flip Task.andThen) taskResult
+    case testableTask of
+        Internal.HttpTask request mapResponse ->
+            Http.send Http.defaultSettings request
+                |> Task.toResult
+                |> Task.map mapResponse
+                |> (flip Task.andThen) taskResult
 
-    Internal.ImmediateTask result ->
-      taskResult result
+        Internal.ImmediateTask result ->
+            taskResult result
 
-    Internal.SleepTask milliseconds result ->
-      Process.sleep milliseconds
-        |> (flip Task.andThen) (\_ -> taskResult result)
+        Internal.SleepTask milliseconds result ->
+            Process.sleep milliseconds
+                |> (flip Task.andThen) (\_ -> taskResult result)
 
 
 taskResult : Internal.TaskResult error success -> Task.Task error success
 taskResult result =
-  case result of
-    Internal.Success msg ->
-      Task.succeed msg
+    case result of
+        Internal.Success msg ->
+            Task.succeed msg
 
-    Internal.Failure error ->
-      Task.fail error
+        Internal.Failure error ->
+            Task.fail error
 
-    Internal.Continue next ->
-      task next
+        Internal.Continue next ->
+            task next
 
 
 {-| Converts a testable StartApp-style init value into a standard StartApp init value
 -}
 init : ( model, Testable.Cmd.Cmd msg ) -> ( model, Cmd msg )
 init ( model, testableEffects ) =
-  ( model, cmd testableEffects )
+    ( model, cmd testableEffects )
 
 
 {-| Converts a testable StartApp-style update function into a standard StartApp update function
 -}
 update : (msg -> model -> ( model, Testable.Cmd.Cmd msg )) -> (msg -> model -> ( model, Cmd msg ))
 update fn msg model =
-  fn msg model
-    |> init
+    fn msg model
+        |> init

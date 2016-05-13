@@ -7,8 +7,7 @@ import Testable.EffectsLogTests
 
 all : Test
 all =
-  suite
-    "avh4/elm-testable"
-    [ TestableTests.all
-    , Testable.EffectsLogTests.all
-    ]
+    suite "avh4/elm-testable"
+        [ TestableTests.all
+        , Testable.EffectsLogTests.all
+        ]
