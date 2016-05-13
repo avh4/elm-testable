@@ -175,7 +175,7 @@ assertNoPendingHttpRequests (TestContext context) =
         )
 
     Ok { effectsLog } ->
-      Test.assertEqual (EffectsLog.httpRequests effectsLog) []
+      Test.assertEqual [] (EffectsLog.httpRequests effectsLog)
 
 
 {-| Simulate the passing of time
