@@ -21,7 +21,7 @@ type alias Model =
     }
 
 
-init : String -> String -> ( Model, Testable.Cmd.Cmd Action )
+init : String -> String -> ( Model, Testable.Cmd.Cmd Msg )
 init apiKey topic =
     ( Model apiKey topic "/favicon.ico"
     , getRandomGif apiKey topic
@@ -32,14 +32,14 @@ init apiKey topic =
 -- UPDATE
 
 
-type Action
+type Msg
     = RequestMore
     | NewGif (Maybe String)
 
 
-update : Action -> Model -> ( Model, Testable.Cmd.Cmd Action )
-update action model =
-    case action of
+update : Msg -> Model -> ( Model, Testable.Cmd.Cmd Msg )
+update msg model =
+    case msg of
         RequestMore ->
             ( model, getRandomGif model.apiKey model.topic )
 
@@ -53,7 +53,7 @@ update action model =
 -- VIEW
 
 
-view : Model -> Html Action
+view : Model -> Html Msg
 view model =
     div [ style [ ( "width", "200px" ) ] ]
         [ h2 [ headerStyle ] [ text model.topic ]
@@ -62,7 +62,7 @@ view model =
         ]
 
 
-headerStyle : Attribute Action
+headerStyle : Attribute Msg
 headerStyle =
     style
         [ ( "width", "200px" )
@@ -70,7 +70,7 @@ headerStyle =
         ]
 
 
-imgStyle : String -> Attribute Action
+imgStyle : String -> Attribute Msg
 imgStyle url =
     style
         [ ( "display", "inline-block" )
@@ -86,7 +86,7 @@ imgStyle url =
 -- EFFECTS
 
 
-getRandomGif : String -> String -> Testable.Cmd.Cmd Action
+getRandomGif : String -> String -> Testable.Cmd.Cmd Msg
 getRandomGif apiKey topic =
     Http.get decodeUrl (randomUrl apiKey topic)
         |> Task.perform (always Nothing >> NewGif)

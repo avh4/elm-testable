@@ -25,23 +25,23 @@ diff --git b/examples/RandomGif.elm a/examples/RandomGif.elm
  
  @ -20,7 +21,7 @@ type alias Model =
 
--init : String -> String -> ( Model, Cmd Action )
-+init : String -> String -> ( Model, Testable.Cmd.Cmd Action )
+-init : String -> String -> ( Model, Cmd Msg )
++init : String -> String -> ( Model, Testable.Cmd.Cmd Msg )
  init apiKey topic =
-@@ -36,7 +37,7 @@ type Action
+@@ -36,7 +37,7 @@ type Msg
  
--update : Action -> Model -> ( Model, Cmd Action )
-+update : Action -> Model -> ( Model, Testable.Cmd.Cmd Action )
- update action model =
-@@ -44,7 +45,7 @@ update action model =
+-update : Msg -> Model -> ( Model, Cmd Msg )
++update : Msg -> Model -> ( Model, Testable.Cmd.Cmd Msg )
+ update msg model =
+@@ -44,7 +45,7 @@ update msg model =
              ( Model model.apiKey model.topic (Maybe.withDefault model.gifUrl maybeUrl)
 -            , Cmd.none
 +            , Testable.Cmd.none
              )
 @@ -89,7 +90,7 @@ imgStyle url =
  
--getRandomGif : String -> String -> Cmd Action
-+getRandomGif : String -> String -> Testable.Cmd.Cmd Action
+-getRandomGif : String -> String -> Cmd Msg
++getRandomGif : String -> String -> Testable.Cmd.Cmd Msg
  getRandomGif apiKey topic =
      Http.get decodeUrl (randomUrl apiKey topic)
          |> Task.perform (always Nothing >> NewGif)

@@ -9,17 +9,17 @@ import Testable.Task as Task
 import Time
 
 
-type CounterAction
+type CounterMsg
     = Inc
     | Dec
 
 
-counterComponent : TestContext.Component CounterAction Int
+counterComponent : TestContext.Component CounterMsg Int
 counterComponent =
     { init = ( 0, Testable.Cmd.none )
     , update =
-        \action model ->
-            case action of
+        \msg model ->
+            case msg of
                 Inc ->
                     ( model + 1, Testable.Cmd.none )
 
@@ -28,11 +28,11 @@ counterComponent =
     }
 
 
-type LoadingAction
+type LoadingMsg
     = NewData (Result Http.Error String)
 
 
-loadingComponent : TestContext.Component LoadingAction (Maybe String)
+loadingComponent : TestContext.Component LoadingMsg (Maybe String)
 loadingComponent =
     { init =
         ( Nothing
@@ -41,8 +41,8 @@ loadingComponent =
             |> Testable.Cmd.map NewData
         )
     , update =
-        \action model ->
-            case action of
+        \msg model ->
+            case msg of
                 NewData (Ok data) ->
                     ( Just data, Testable.Cmd.none )
 
@@ -63,7 +63,7 @@ all =
             |> TestContext.update Inc
             |> TestContext.update Inc
             |> TestContext.assertCurrentModel 2
-            |> test "sending an action"
+            |> test "sending an msg"
         , loadingComponent
             |> TestContext.startForTest
             |> TestContext.assertHttpRequest (Http.getRequest "https://example.com/")

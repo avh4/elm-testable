@@ -1,4 +1,4 @@
-module Testable.EffectsLog exposing (EffectsLog, empty, insert, containsHttpAction, httpRequests, httpAction, sleepAction)
+module Testable.EffectsLog exposing (EffectsLog, empty, insert, containsHttpMsg, httpRequests, httpMsg, sleepMsg)
 
 import FakeDict as Dict exposing (Dict)
 import PairingHeap exposing (PairingHeap)
@@ -8,22 +8,22 @@ import Testable.Http as Http
 import Time exposing (Time)
 
 
-type EffectsResult action
-    = Finished action
-    | MoreEffects (Testable.Cmd.Cmd action)
+type EffectsResult msg
+    = Finished msg
+    | MoreEffects (Testable.Cmd.Cmd msg)
 
 
-type EffectsLog action
+type EffectsLog msg
     = EffectsLog
         { http :
             -- TODO: should be multidict
-            Dict Http.Request (Result Http.RawError Http.Response -> EffectsResult action)
+            Dict Http.Request (Result Http.RawError Http.Response -> EffectsResult msg)
         , now : Time
-        , sleep : PairingHeap Time (EffectsResult action)
+        , sleep : PairingHeap Time (EffectsResult msg)
         }
 
 
-empty : EffectsLog action
+empty : EffectsLog msg
 empty =
     EffectsLog
         { http = Dict.empty
@@ -45,9 +45,9 @@ unsafeFromResult result =
             MoreEffects (Internal.TaskCmd next)
 
 
-{-| Returns the new EffectsLog and any actions that should be applied immediately
+{-| Returns the new EffectsLog and any msgs that should be applied immediately
 -}
-insert : Testable.Cmd.Cmd action -> EffectsLog action -> ( EffectsLog action, List action )
+insert : Testable.Cmd.Cmd msg -> EffectsLog msg -> ( EffectsLog msg, List msg )
 insert effects (EffectsLog log) =
     case effects of
         Internal.None ->
@@ -60,8 +60,8 @@ insert effects (EffectsLog log) =
 
         Internal.TaskCmd (Internal.ImmediateTask result) ->
             case unsafeFromResult result of
-                Finished action ->
-                    ( EffectsLog log, [ action ] )
+                Finished msg ->
+                    ( EffectsLog log, [ msg ] )
 
                 MoreEffects next ->
                     EffectsLog log
@@ -85,29 +85,29 @@ insert effects (EffectsLog log) =
                 List.foldl step ( EffectsLog log, [] ) list
 
 
-containsHttpAction : Http.Request -> EffectsLog action -> Bool
-containsHttpAction request (EffectsLog log) =
+containsHttpMsg : Http.Request -> EffectsLog msg -> Bool
+containsHttpMsg request (EffectsLog log) =
     Dict.get request log.http
         |> (/=) Nothing
 
 
-httpRequests : EffectsLog action -> List Http.Request
+httpRequests : EffectsLog msg -> List Http.Request
 httpRequests (EffectsLog log) =
     Dict.keys log.http
 
 
-httpAction : Http.Request -> Result Http.RawError Http.Response -> EffectsLog action -> Maybe ( EffectsLog action, List action )
-httpAction expectedRequest response (EffectsLog log) =
+httpMsg : Http.Request -> Result Http.RawError Http.Response -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
+httpMsg expectedRequest response (EffectsLog log) =
     case Dict.get expectedRequest log.http of
         Nothing ->
             Nothing
 
         Just mapResponse ->
             case mapResponse response of
-                Finished action ->
+                Finished msg ->
                     Just
                         ( EffectsLog { log | http = Dict.remove expectedRequest log.http }
-                        , [ action ]
+                        , [ msg ]
                         )
 
                 MoreEffects next ->
@@ -116,8 +116,8 @@ httpAction expectedRequest response (EffectsLog log) =
                         |> Just
 
 
-sleepAction : Time -> EffectsLog action -> ( EffectsLog action, List action )
-sleepAction milliseconds (EffectsLog log) =
+sleepMsg : Time -> EffectsLog msg -> ( EffectsLog msg, List msg )
+sleepMsg milliseconds (EffectsLog log) =
     case PairingHeap.findMin log.sleep of
         Nothing ->
             ( EffectsLog { log | now = log.now + milliseconds }
@@ -127,14 +127,14 @@ sleepAction milliseconds (EffectsLog log) =
         Just ( time, result ) ->
             if time <= log.now + milliseconds then
                 case result of
-                    Finished action ->
+                    Finished msg ->
                         -- TODO: recurse
                         ( EffectsLog
                             { log
                                 | sleep = PairingHeap.deleteMin log.sleep
                                 , now = log.now + milliseconds
                             }
-                        , [ action ]
+                        , [ msg ]
                         )
 
                     MoreEffects next ->
