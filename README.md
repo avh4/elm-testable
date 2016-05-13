@@ -26,37 +26,35 @@ import Testable.Http as Http
 
 
 myComponent =
-  { init = MyComponent.init
-  , update = MyComponent.update
-  }
+    { init = MyComponent.init
+    , update = MyComponent.update
+    }
 
 
 all : Test
 all =
-  suite
-    "MyComponent"
-    [ myComponent
-        |> startForTest
-        |> currentModel
-        |> assertEqual (Ok expectedModelValue)
-        |> test "sets initial state"
-    , myComponent
-        |> startForTest
-        |> assertHttpRequest (Http.getRequest "https://example.com/myResource")
-        |> test "makes initial HTTP request"
-    , myComponent
-        |> startForTest
-        |> resolveHttpRequest
-            (Http.getRequest "https://example.com/myResource")
-            (Http.ok """{"data":"example JSON response"}""")
-        |> assertEqual (Ok expectedModelValue)
-        |> test "updated the model on HTTP success"
-    , myComponent
-        |> startForTest
-        |> update (MyComponent.LoadDetails 1234)
-        |> assertHttpRequest (Http.getRequest "https://example.com/myResource/1234")
-        |> test "pressing the button makes a new HTTP request"
-    ]
+    suite "MyComponent"
+        [ myComponent
+            |> startForTest
+            |> currentModel
+            |> assertEqual (Ok expectedModelValue)
+            |> test "sets initial state"
+        , myComponent
+            |> startForTest
+            |> assertHttpRequest (Http.getRequest "https://example.com/myResource")
+            |> test "makes initial HTTP request"
+        , myComponent
+            |> startForTest
+            |> resolveHttpRequest (Http.getRequest "https://example.com/myResource")
+                (Http.ok """{"data":"example JSON response"}""")
+            |> assertEqual (Ok expectedModelValue)
+            |> test "updated the model on HTTP success"
+        , myComponent
+            |> startForTest
+            |> update (MyComponent.LoadDetails 1234)
+            |> assertHttpRequest (Http.getRequest "https://example.com/myResource/1234")
+            |> test "pressing the button makes a new HTTP request"
+        ]
 ```
 
 Here are [complete tests for the RandomGif example](https://github.com/avh4/elm-testable/blob/master/examples/tests/RandomGifTests.elm).
@@ -68,10 +66,10 @@ To convert your testable `view` and `update` functions into functions that work 
 
 ```elm
 app =
-  StartApp.start
-    { init = Testable.init MyComponent.init
-    , update = Testable.update MyComponent.update
-    , view = view
-    , inputs = []
-    }
+    StartApp.start
+        { init = Testable.init MyComponent.init
+        , update = Testable.update MyComponent.update
+        , view = view
+        , inputs = []
+        }
 ```

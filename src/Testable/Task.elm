@@ -95,7 +95,7 @@ types to match up.
 
     getResources : Task Error Resource
     getResources =
-      sequence [ mapError Http serverTask, mapError WebGL textureTask ]
+        sequence [ mapError Http serverTask, mapError WebGL textureTask ]
 -}
 mapError : (x -> y) -> Task x a -> Task y a
 mapError f task =

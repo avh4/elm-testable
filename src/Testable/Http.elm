@@ -186,9 +186,9 @@ JSON data to a server that does not belong in the URL.
     coolestHats : Task Error (List String)
     coolestHats =
         post
-          (JS.list JS.string)
-          "http://example.com/hats"
-          (string """{ "sortBy": "coolness", "take": 10 }""")
+            (JS.list JS.string)
+            "http://example.com/hats"
+            (string """{ "sortBy": "coolness", "take": 10 }""")
 -}
 string : String -> Body
 string =
