@@ -5,8 +5,6 @@ import Html exposing (Html)
 import String
 import Dict exposing (Dict)
 import Json.Decode
-
-import Constants exposing (..)
 import Helpers exposing (..)
 import InternalTypes exposing (..)
 
@@ -111,5 +109,55 @@ nodeTypeToString nodeType =
 Useful for tests
 -}
 htmlToString : Html msg -> String
-htmlToString  =
+htmlToString =
     nodeTypeFromHtml >> nodeTypeToString
+
+
+first : (a -> Maybe b) -> List a -> Maybe b
+first fn list =
+    case list of
+        [] ->
+            Nothing
+
+        next :: rest ->
+            case fn next of
+                Just result ->
+                    Just result
+
+                Nothing ->
+                    first fn rest
+
+
+matches : String -> NodeType -> Bool
+matches selector node =
+    case node of
+        NodeEntry node' ->
+            selector == node'.tag
+
+        TextTag _ ->
+            False
+
+        NoOp ->
+            False
+
+
+triggerEvent : String -> Json.Decode.Value -> NodeType -> Result String msg
+triggerEvent =
+    Native.Helpers.triggerEvent
+
+
+findOne : String -> NodeType -> Result String NodeType
+findOne selector node =
+    if matches selector node then
+        Ok node
+    else
+        case node of
+            NodeEntry node' ->
+                first (findOne selector >> Result.toMaybe) node'.children
+                    |> Result.fromMaybe ("No matches found for " ++ selector)
+
+            TextTag _ ->
+                Err ("No matches found for " ++ selector)
+
+            NoOp ->
+                Err ("No matches found for " ++ selector)

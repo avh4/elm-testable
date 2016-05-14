@@ -1,6 +1,7 @@
 module Tests exposing (..)
 
 import ElmTest exposing (..)
+import HtmlEventsTest
 import TestableTests
 import Testable.EffectsLogTests
 
@@ -8,6 +9,7 @@ import Testable.EffectsLogTests
 all : Test
 all =
     suite "avh4/elm-testable"
-        [ TestableTests.all
+        [ HtmlEventsTest.all
+        , TestableTests.all
         , Testable.EffectsLogTests.all
         ]

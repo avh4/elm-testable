@@ -4,9 +4,6 @@ import String
 import Regex
 import Constants exposing (..)
 import Dict exposing (Dict)
-
-import Result
-import Json.Decode
 import Html
 import Native.Helpers
 
@@ -20,10 +17,6 @@ nativeAddThings =
 addAttribute : Html.Attribute msg -> Html.Html msg -> Html.Html msg
 addAttribute attribute htmlThing =
     nativeAddThings attribute htmlThing
-
-triggerEvent : String -> Json.Decode.Value -> Html.Html msg -> Result String msg
-triggerEvent =
-    Native.Helpers.triggerEvent
 
 
 stringify : a -> String

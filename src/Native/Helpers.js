@@ -1,4 +1,4 @@
-var _eeue56$elm_server_side_renderer$Native_Helpers = function() {
+var _avh4$elm_testable$Native_Helpers = function() {
 
 var STYLE_KEY = 'STYLE';
 var EVENT_KEY = 'EVENT';
@@ -85,8 +85,8 @@ function replaceChildren(nodeString){
 }
 
 function triggerEvent(eventName, value, node){
-    var facts = node.facts;
-    var events = facts['EVENT'];
+    var facts = node._0.facts;
+    var events = facts.events._0;
 
     if (typeof events === "undefined" || events === null
         || typeof events[eventName] === "undefined" || events[eventName] === null){

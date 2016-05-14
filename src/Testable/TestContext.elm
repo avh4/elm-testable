@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, click)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -10,10 +10,13 @@ the entire lifecycle of your component.
 @docs currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests
 
 # Simulating Effects
-@docs resolveHttpRequest, advanceTime
+@docs resolveHttpRequest, advanceTime, click
 -}
 
 import ElmTest as Test exposing (Assertion)
+import Html exposing (Html)
+import HtmlToString
+import Json.Encode as Json
 import String
 import Testable.Cmd
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
@@ -26,6 +29,7 @@ import Time exposing (Time)
 type alias Component msg model =
     { init : ( model, Testable.Cmd.Cmd msg )
     , update : msg -> model -> ( model, Testable.Cmd.Cmd msg )
+    , view : model -> Html msg
     }
 
 
@@ -210,3 +214,25 @@ assertCurrentModel expectedModel context =
     context
         |> currentModel
         |> Test.assertEqual (Ok expectedModel)
+
+
+{-| -}
+click : TestContext msg model -> TestContext msg model
+click (TestContext context) =
+    let
+        f =
+            ()
+    in
+        case
+            currentModel (TestContext context)
+                |> Result.map context.component.view
+                |> Result.map HtmlToString.nodeTypeFromHtml
+                |> Result.formatError (toString)
+                |> flip Result.andThen (HtmlToString.findOne "button")
+                |> flip Result.andThen (HtmlToString.triggerEvent "click" Json.null)
+        of
+            Ok msg ->
+                update msg (TestContext context)
+
+            Err message ->
+                TestContext { context | state = Err [ message ] }
