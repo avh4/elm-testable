@@ -10,6 +10,7 @@ import RandomGif
 catsComponent =
     { init = RandomGif.init "__API_KEY__" "cats"
     , update = RandomGif.update
+    , view = RandomGif.view
     }
 
 
