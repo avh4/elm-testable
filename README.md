@@ -106,16 +106,17 @@ all =
 Here are [complete tests for the RandomGif example](https://github.com/avh4/elm-testable/blob/master/examples/tests/RandomGifTests.elm).
 
 
-## Example integration with `StartApp`
+## Example integration with `Main`
 
 To convert your testable `view` and `update` functions into functions that work with `StartApp`, use the `Testable` module:
 
 ```elm
-app =
-    StartApp.start
+main : Program Never
+main =
+    Html.App.program
         { init = Testable.init MyComponent.init
         , update = Testable.update MyComponent.update
-        , view = view
-        , inputs = []
+        , view = MyComponent.view
+        , subscriptions = MyComponent.subscriptions
         }
 ```
