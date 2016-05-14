@@ -11,7 +11,7 @@ type Cmd msg
 
 
 type Task error success
-    = HttpTask Http.Request (Result Http.RawError Http.Response -> TaskResult error success)
+    = HttpTask Http.Request Http.Settings (Result Http.RawError Http.Response -> TaskResult error success)
     | ImmediateTask (TaskResult error success)
     | SleepTask Time (TaskResult error success)
 

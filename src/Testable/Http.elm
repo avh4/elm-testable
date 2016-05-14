@@ -1,4 +1,4 @@
-module Testable.Http exposing (url, getString, get, post, Error, empty, string, Request, getRequest, Response, RawError, ok, serverError)
+module Testable.Http exposing (url, getString, get, post, Error, empty, string, Request, Settings, send, defaultSettings, getRequest, Response, RawError, ok, serverError)
 
 {-|
 `Testable.Http` is a replacement for the standard `Http` module.  You can use it
@@ -17,7 +17,7 @@ to create components that can be tested with `Testable.TestContext`.
 @docs empty, string
 
 # Arbitrary Requests
-@docs Request
+@docs Request, Settings, send, defaultSettings
 
 # Responses
 @docs Response, RawError
@@ -81,7 +81,9 @@ getString url =
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
-        Internal.HttpTask (getRequest url)
+        Internal.HttpTask
+            (getRequest url)
+            (Http.defaultSettings)
             (Result.formatError rawErrorError
                 >> (flip Result.andThen) decodeResponse
                 >> Internal.resultFromResult
@@ -109,7 +111,9 @@ get decoder url =
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
-        Internal.HttpTask (getRequest url)
+        Internal.HttpTask
+            (getRequest url)
+            (Http.defaultSettings)
             (Result.formatError rawErrorError
                 >> (flip Result.andThen) decodeResponse
                 >> Internal.resultFromResult
@@ -145,10 +149,20 @@ post decoder url requestBody =
             , url = url
             , body = requestBody
             }
+            (Http.defaultSettings)
             (Result.formatError rawErrorError
                 >> (flip Result.andThen) decodeResponse
                 >> Internal.resultFromResult
             )
+
+
+{-| Send a request exactly how you want it. The Settings argument lets you
+configure things like timeouts and progress monitoring. The Request argument
+defines all the information that will actually be sent along to a server.
+-}
+send : Settings -> Request -> Task RawError Response
+send settings request =
+    Internal.HttpTask request settings Internal.resultFromResult
 
 
 {-| The kinds of errors you typically want in practice. When you get a
@@ -217,6 +231,32 @@ headers manually.
 -}
 type alias Request =
     Http.Request
+
+
+{-| Configure your request if you need specific behavior.
+  * `timeout` lets you specify how long you are willing to wait for a response
+    before giving up. By default it is 0 which means &ldquo;never give
+    up!&rdquo;
+  * `onStart` and `onProgress` allow you to monitor progress. This is useful
+    if you want to show a progress bar when uploading a large amount of data.
+  * `desiredResponseType` lets you override the MIME type of the response, so
+    you can influence what kind of `Value` you get in the `Response`.
+-}
+type alias Settings =
+    Http.Settings
+
+
+{-| The default settings used by `get` and `post`.
+    { timeout = 0
+    , onStart = Nothing
+    , onProgress = Nothing
+    , desiredResponseType = Nothing
+    , withCredentials = False
+    }
+-}
+defaultSettings : Settings
+defaultSettings =
+    Http.defaultSettings
 
 
 {-| A convenient way to make a `Request` corresponding to the request made by `get`

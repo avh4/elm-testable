@@ -5,6 +5,7 @@ import Json.Decode as Decode
 import Testable.TestContext as TestContext
 import Testable.Cmd
 import Testable.Http as Http
+import Http as ElmHttp
 import Testable.Task as Task
 import Time
 
@@ -51,6 +52,45 @@ loadingComponent =
     }
 
 
+type RawLoadingMsg
+    = RawNewData (Result Http.RawError String)
+
+
+loadingComponentWithSend : TestContext.Component RawLoadingMsg (Maybe String)
+loadingComponentWithSend =
+    let
+        initRequest =
+            { url = "https://example.com/"
+            , verb = "GET"
+            , headers = []
+            , body = Http.empty
+            }
+
+        parseResponseValue response =
+            case response.value of
+                ElmHttp.Text str ->
+                    str
+                _ ->
+                    "Unsupported body type"
+    in
+        { init =
+            ( Nothing
+            , Http.send Http.defaultSettings initRequest
+                |> Task.perform Err Ok
+                |> Testable.Cmd.map ((Result.map parseResponseValue) >> RawNewData)
+            )
+        , update =
+            \msg model ->
+                case msg of
+                    RawNewData (Ok data) ->
+                        ( Just data, Testable.Cmd.none )
+
+                    RawNewData (Err _) ->
+                        ( model, Testable.Cmd.none )
+        }
+
+
+
 all : Test
 all =
     suite "Testable"
@@ -90,6 +130,16 @@ all =
             |> TestContext.currentModel
             |> assertEqual (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://example.com/\", body = Empty }" ])
             |> test "effects should be removed after they are run"
+        , loadingComponentWithSend
+            |> TestContext.startForTest
+            |> TestContext.assertHttpRequest (Http.getRequest "https://example.com/")
+            |> test "records initial effects successfully when sending an arbitrary request"
+        , loadingComponentWithSend
+            |> TestContext.startForTest
+            |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
+                (Http.ok "myData-1")
+            |> TestContext.assertCurrentModel (Just "myData-1")
+            |> test "updates with successful response when sending an arbitrary request"
         , { init =
                 ( Nothing
                 , Testable.Cmd.batch

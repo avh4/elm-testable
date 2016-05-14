@@ -53,7 +53,7 @@ insert effects (EffectsLog log) =
         Internal.None ->
             ( EffectsLog log, [] )
 
-        Internal.TaskCmd (Internal.HttpTask request mapResponse) ->
+        Internal.TaskCmd (Internal.HttpTask request settings mapResponse) ->
             ( EffectsLog { log | http = Dict.insert request (mapResponse >> unsafeFromResult) log.http }
             , []
             )
