@@ -1,4 +1,4 @@
-module Testable.EffectsLog exposing (EffectsLog, empty, insert, containsHttpMsg, httpRequests, httpMsg, sleepMsg)
+module Testable.EffectsLog exposing (EffectsLog, empty, insert, containsHttpMsg, httpRequests, portCmds, containsPortCmd, httpMsg, sleepMsg)
 
 import FakeDict as Dict exposing (Dict)
 import PairingHeap exposing (PairingHeap)
@@ -6,6 +6,7 @@ import Testable.Cmd
 import Testable.Internal as Internal exposing (Cmd, TaskResult(..))
 import Testable.Http as Http
 import Time exposing (Time)
+import Platform.Cmd
 
 
 type EffectsResult msg
@@ -20,6 +21,7 @@ type EffectsLog msg
             Dict ( Http.Settings, Http.Request ) (Result Http.RawError Http.Response -> EffectsResult msg)
         , now : Time
         , sleep : PairingHeap Time (EffectsResult msg)
+        , ports : List (Platform.Cmd.Cmd msg)
         }
 
 
@@ -29,6 +31,7 @@ empty =
         { http = Dict.empty
         , now = 0
         , sleep = PairingHeap.empty
+        , ports = []
         }
 
 
@@ -84,6 +87,9 @@ insert effects (EffectsLog log) =
             in
                 List.foldl step ( EffectsLog log, [] ) list
 
+        Internal.PortCmd cmd ->
+            ( EffectsLog { log | ports = cmd :: log.ports }, [] )
+
 
 containsHttpMsg : Http.Settings -> Http.Request -> EffectsLog msg -> Bool
 containsHttpMsg settings request (EffectsLog log) =
@@ -95,6 +101,16 @@ httpRequests : EffectsLog msg -> List Http.Request
 httpRequests (EffectsLog log) =
     Dict.keys log.http
         |> List.map snd
+
+
+containsPortCmd : Platform.Cmd.Cmd msg -> EffectsLog msg -> Bool
+containsPortCmd cmd =
+    List.member cmd << portCmds
+
+
+portCmds : EffectsLog msg -> List (Platform.Cmd.Cmd msg)
+portCmds (EffectsLog log) =
+    log.ports
 
 
 httpMsg : Http.Settings -> Http.Request -> Result Http.RawError Http.Response -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )

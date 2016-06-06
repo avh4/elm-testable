@@ -1,4 +1,4 @@
-module TestableTests exposing (..)
+port module TestableTests exposing (..)
 
 import Expect
 import Json.Decode as Decode
@@ -8,7 +8,9 @@ import Testable.Http as Http
 import Http as ElmHttp
 import Test exposing (..)
 import Testable.Task as Task
+import Testable.Port as Port
 import Time
+import Platform.Cmd
 
 
 type CounterMsg
@@ -100,6 +102,9 @@ loadingComponentWithSend =
                     RawNewData (Err _) ->
                         ( model, Testable.Cmd.none )
         }
+
+
+port outgoingPort : String -> Platform.Cmd.Cmd msg
 
 
 all : Test
@@ -243,4 +248,15 @@ all =
                     |> TestContext.startForTest
                     |> TestContext.advanceTime (5 * Time.second)
                     |> TestContext.assertCurrentModel "5 seconds passed"
+        , test "sending a value through a port" <|
+            \() ->
+                { init =
+                    ( Nothing
+                    , Testable.Cmd.none
+                    )
+                , update = \_ _ -> ( Nothing, Port.wrap <| outgoingPort "foo" )
+                }
+                    |> TestContext.startForTest
+                    |> TestContext.update Inc
+                    |> TestContext.assertPortCalled (outgoingPort "foo")
         ]

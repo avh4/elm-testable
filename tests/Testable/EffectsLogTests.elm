@@ -1,15 +1,20 @@
-module Testable.EffectsLogTests exposing (..)
+port module Testable.EffectsLogTests exposing (..)
 
 import Expect
 import Test exposing (..)
 import Testable.Cmd
-import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
+import Testable.EffectsLog as EffectsLog exposing (EffectsLog, portCmds)
 import Testable.Http as Http
 import Testable.Task as Task
+import Testable.Port as Port
+import Platform.Cmd
 
 
 type MyWrapper a
     = MyWrapper a
+
+
+port myPort : String -> Platform.Cmd.Cmd msg
 
 
 httpGetMsg : String -> String -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
@@ -59,5 +64,11 @@ all =
                         |> httpGetMsg "https://example.com/" "responseBody"
                         |> Maybe.map snd
                         |> Expect.equal Nothing
+            , test "inserting a port inserts the port cmd" <|
+                \() ->
+                    EffectsLog.insert (Port.wrap <| myPort "foo") EffectsLog.empty
+                        |> fst
+                        |> portCmds
+                        |> Expect.equal [ myPort "foo" ]
             ]
         ]

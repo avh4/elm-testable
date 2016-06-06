@@ -10,6 +10,7 @@ convert `Testable.Cmd` into a core `Cmd` with the `Testable` module.
 
 import Testable.Internal as Internal
 import Testable.Task as Task exposing (Task)
+import Platform.Cmd
 
 
 {-| -}
@@ -44,3 +45,8 @@ map f source =
 
         Internal.Batch list ->
             Internal.Batch (List.map (map f) list)
+
+        Internal.PortCmd wrapped ->
+            wrapped
+                |> Platform.Cmd.map f
+                |> Internal.PortCmd
