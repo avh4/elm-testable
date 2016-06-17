@@ -4,9 +4,6 @@ module Testable.Http exposing (url, getString, get, post, Error, empty, string, 
 `Testable.Http` is a replacement for the standard `Http` module.  You can use it
 to create components that can be tested with `Testable.TestContext`.
 
-# Helpers
-@docs getRequest, ok, serverError
-
 # Encoding and Decoding
 @docs url
 
@@ -17,10 +14,13 @@ to create components that can be tested with `Testable.TestContext`.
 @docs empty, string
 
 # Arbitrary Requests
-@docs Request, Settings, send, defaultSettings
+@docs send, Request, Settings, defaultSettings
 
 # Responses
 @docs Response, RawError
+
+# Helpers
+@docs getRequest, ok, serverError
 -}
 
 import Dict
@@ -153,15 +153,6 @@ post decoder url requestBody =
             )
 
 
-{-| Send a request exactly how you want it. The Settings argument lets you
-configure things like timeouts and progress monitoring. The Request argument
-defines all the information that will actually be sent along to a server.
--}
-send : Settings -> Request -> Task RawError Response
-send settings request =
-    Internal.HttpTask settings request Internal.resultFromResult
-
-
 {-| The kinds of errors you typically want in practice. When you get a
 response but its status is not in the 200 range, it will trigger a
 `BadResponse`. When you try to decode JSON but something goes wrong,
@@ -210,6 +201,15 @@ string =
 -- Arbitrary Requests
 
 
+{-| Send a request exactly how you want it. The Settings argument lets you
+configure things like timeouts and progress monitoring. The Request argument
+defines all the information that will actually be sent along to a server.
+-}
+send : Settings -> Request -> Task RawError Response
+send settings request =
+    Internal.HttpTask settings request Internal.resultFromResult
+
+
 {-| Fully specify the request you want to send. For example, if you want to
 send a request between domains (CORS request) you will need to specify some
 headers manually.
@@ -256,17 +256,6 @@ defaultSettings =
     Http.defaultSettings
 
 
-{-| A convenient way to make a `Request` corresponding to the request made by `get`
--}
-getRequest : String -> Request
-getRequest url =
-    { verb = "GET"
-    , headers = []
-    , url = url
-    , body = Http.empty
-    }
-
-
 
 -- Responses
 
@@ -300,6 +289,21 @@ want.
 -}
 type alias RawError =
     Http.RawError
+
+
+
+-- Helpers
+
+
+{-| A convenient way to make a `Request` corresponding to the request made by `get`
+-}
+getRequest : String -> Request
+getRequest url =
+    { verb = "GET"
+    , headers = []
+    , url = url
+    , body = Http.empty
+    }
 
 
 {-| A convenient way to create a 200 OK repsonse
