@@ -46,7 +46,7 @@ cmd testableEffects =
 task : Testable.Task.Task error success -> Task.Task error success
 task testableTask =
     case testableTask of
-        Internal.HttpTask request settings mapResponse ->
+        Internal.HttpTask settings request mapResponse ->
             Http.send settings request
                 |> Task.toResult
                 |> Task.map mapResponse

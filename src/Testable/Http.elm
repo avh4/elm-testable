@@ -81,9 +81,8 @@ getString url =
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
-        Internal.HttpTask
+        Internal.HttpTask (Http.defaultSettings)
             (getRequest url)
-            (Http.defaultSettings)
             (Result.formatError rawErrorError
                 >> (flip Result.andThen) decodeResponse
                 >> Internal.resultFromResult
@@ -111,9 +110,8 @@ get decoder url =
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
-        Internal.HttpTask
+        Internal.HttpTask (Http.defaultSettings)
             (getRequest url)
-            (Http.defaultSettings)
             (Result.formatError rawErrorError
                 >> (flip Result.andThen) decodeResponse
                 >> Internal.resultFromResult
@@ -143,13 +141,12 @@ post decoder url requestBody =
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
-        Internal.HttpTask
+        Internal.HttpTask (Http.defaultSettings)
             { verb = "POST"
             , headers = []
             , url = url
             , body = requestBody
             }
-            (Http.defaultSettings)
             (Result.formatError rawErrorError
                 >> (flip Result.andThen) decodeResponse
                 >> Internal.resultFromResult
@@ -162,7 +159,7 @@ defines all the information that will actually be sent along to a server.
 -}
 send : Settings -> Request -> Task RawError Response
 send settings request =
-    Internal.HttpTask request settings Internal.resultFromResult
+    Internal.HttpTask settings request Internal.resultFromResult
 
 
 {-| The kinds of errors you typically want in practice. When you get a
