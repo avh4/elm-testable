@@ -47,10 +47,17 @@ task : Testable.Task.Task error success -> Task.Task error success
 task testableTask =
     case testableTask of
         Internal.HttpTask settings request mapResponse ->
-            Http.send settings request
-                |> Task.toResult
-                |> Task.map mapResponse
-                |> (flip Task.andThen) taskResult
+            let
+                httpSettings =
+                    { settings
+                        | onStart = Maybe.map task settings.onStart
+                        , onProgress = Maybe.map ((<<) task) settings.onProgress
+                    }
+            in
+                Http.send httpSettings request
+                    |> Task.toResult
+                    |> Task.map mapResponse
+                    |> (flip Task.andThen) taskResult
 
         Internal.ImmediateTask result ->
             taskResult result

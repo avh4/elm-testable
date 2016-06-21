@@ -7,7 +7,6 @@ import Testable.Cmd
 import Testable.Http as Http
 import Http as ElmHttp
 import Testable.Task as Task
-import Task as ElmTask
 import Time
 
 
@@ -60,7 +59,7 @@ type RawLoadingMsg
 componentWithSendSettings : Http.Settings
 componentWithSendSettings =
     { timeout = 500
-    , onStart = Just <| ElmTask.succeed ()
+    , onStart = Just <| Task.succeed ()
     , onProgress = Nothing
     , desiredResponseType = Just "text/plain"
     , withCredentials = True

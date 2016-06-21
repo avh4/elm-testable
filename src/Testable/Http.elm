@@ -28,6 +28,7 @@ import Http
 import Json.Decode as Decode exposing (Decoder)
 import Testable.Task as Task exposing (Task)
 import Testable.Internal as Internal
+import Time exposing (Time)
 
 
 -- Encoding and Decoding
@@ -81,7 +82,7 @@ getString url =
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
-        Internal.HttpTask (Http.defaultSettings)
+        Internal.HttpTask defaultSettings
             (getRequest url)
             (Result.formatError rawErrorError
                 >> (flip Result.andThen) decodeResponse
@@ -110,7 +111,7 @@ get decoder url =
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
-        Internal.HttpTask (Http.defaultSettings)
+        Internal.HttpTask defaultSettings
             (getRequest url)
             (Result.formatError rawErrorError
                 >> (flip Result.andThen) decodeResponse
@@ -141,7 +142,7 @@ post decoder url requestBody =
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
-        Internal.HttpTask (Http.defaultSettings)
+        Internal.HttpTask defaultSettings
             { verb = "POST"
             , headers = []
             , url = url
@@ -240,7 +241,7 @@ type alias Request =
     you can influence what kind of `Value` you get in the `Response`.
 -}
 type alias Settings =
-    Http.Settings
+    Internal.Settings
 
 
 {-| The default settings used by `get` and `post`.
@@ -253,7 +254,12 @@ type alias Settings =
 -}
 defaultSettings : Settings
 defaultSettings =
-    Http.defaultSettings
+    { timeout = 0
+    , onStart = Nothing
+    , onProgress = Nothing
+    , desiredResponseType = Nothing
+    , withCredentials = False
+    }
 
 
 
