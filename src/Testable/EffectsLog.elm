@@ -17,7 +17,7 @@ type EffectsLog msg
     = EffectsLog
         { http :
             -- TODO: should be multidict
-            Dict Http.Request (Result Http.RawError Http.Response -> EffectsResult msg)
+            Dict ( Http.Settings, Http.Request ) (Result Http.RawError Http.Response -> EffectsResult msg)
         , now : Time
         , sleep : PairingHeap Time (EffectsResult msg)
         }
@@ -54,7 +54,7 @@ insert effects (EffectsLog log) =
             ( EffectsLog log, [] )
 
         Internal.TaskCmd (Internal.HttpTask settings request mapResponse) ->
-            ( EffectsLog { log | http = Dict.insert request (mapResponse >> unsafeFromResult) log.http }
+            ( EffectsLog { log | http = Dict.insert ( settings, request ) (mapResponse >> unsafeFromResult) log.http }
             , []
             )
 
@@ -85,20 +85,21 @@ insert effects (EffectsLog log) =
                 List.foldl step ( EffectsLog log, [] ) list
 
 
-containsHttpMsg : Http.Request -> EffectsLog msg -> Bool
-containsHttpMsg request (EffectsLog log) =
-    Dict.get request log.http
+containsHttpMsg : Http.Settings -> Http.Request -> EffectsLog msg -> Bool
+containsHttpMsg settings request (EffectsLog log) =
+    Dict.get ( settings, request ) log.http
         |> (/=) Nothing
 
 
 httpRequests : EffectsLog msg -> List Http.Request
 httpRequests (EffectsLog log) =
     Dict.keys log.http
+        |> List.map snd
 
 
-httpMsg : Http.Request -> Result Http.RawError Http.Response -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
-httpMsg expectedRequest response (EffectsLog log) =
-    case Dict.get expectedRequest log.http of
+httpMsg : Http.Settings -> Http.Request -> Result Http.RawError Http.Response -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
+httpMsg expectedSettings expectedRequest response (EffectsLog log) =
+    case Dict.get ( expectedSettings, expectedRequest ) log.http of
         Nothing ->
             Nothing
 
@@ -106,7 +107,7 @@ httpMsg expectedRequest response (EffectsLog log) =
             case mapResponse response of
                 Finished msg ->
                     Just
-                        ( EffectsLog { log | http = Dict.remove expectedRequest log.http }
+                        ( EffectsLog { log | http = Dict.remove ( expectedSettings, expectedRequest ) log.http }
                         , [ msg ]
                         )
 

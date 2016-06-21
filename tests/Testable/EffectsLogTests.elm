@@ -13,7 +13,7 @@ type MyWrapper a
 
 httpGetMsg : String -> String -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
 httpGetMsg url responseBody =
-    EffectsLog.httpMsg
+    EffectsLog.httpMsg Http.defaultSettings
         { verb = "GET"
         , headers = []
         , url = url

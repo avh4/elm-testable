@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -7,10 +7,10 @@ the entire lifecycle of your component.
 @docs Component, TestContext, startForTest, update
 
 # Inspecting
-@docs currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests
+@docs currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests
 
 # Simulating Effects
-@docs resolveHttpRequest, advanceTime
+@docs resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime
 -}
 
 import ElmTest as Test exposing (Assertion)
@@ -107,7 +107,8 @@ applyEffects newEffects (TestContext context) =
                         immediateMsgs
 
 
-{-| Assert that a given Http.Request has been made by the componet under test
+{-| Assert that a given Http.Request has been made by the component under test
+with the Http.defaultSettings
 -}
 assertHttpRequest : Http.Request -> TestContext msg model -> Assertion
 assertHttpRequest request (TestContext context) =
@@ -123,7 +124,7 @@ assertHttpRequest request (TestContext context) =
                 )
 
         Ok { model, effectsLog } ->
-            if EffectsLog.containsHttpMsg request effectsLog then
+            if EffectsLog.containsHttpMsg Http.defaultSettings request effectsLog then
                 Test.pass
             else
                 Test.fail
@@ -135,7 +136,40 @@ assertHttpRequest request (TestContext context) =
                     )
 
 
-{-| Simulate an HTTP response
+{-| Assert that a given Http.Request has been made by the component under test
+with the given Http settings
+-}
+assertHttpRequestWithSettings : Http.Settings -> Http.Request -> TestContext msg model -> Assertion
+assertHttpRequestWithSettings settings request (TestContext context) =
+    case context.state of
+        Err errors ->
+            Test.fail
+                ("Expected an HTTP request to have been made:"
+                    ++ "\n    Expected: "
+                    ++ toString request
+                    ++ " with settings "
+                    ++ toString settings
+                    ++ "\n    Actual:"
+                    ++ "\n      TextContext had previous errors:"
+                    ++ String.join "\n        " ("" :: errors)
+                )
+
+        Ok { model, effectsLog } ->
+            if EffectsLog.containsHttpMsg settings request effectsLog then
+                Test.pass
+            else
+                Test.fail
+                    ("Expected an HTTP request to have been made:"
+                        ++ "\n    Expected: "
+                        ++ toString request
+                        ++ " with settings "
+                        ++ toString settings
+                        ++ "\n    Actual: "
+                        ++ toString effectsLog
+                    )
+
+
+{-| Simulate an HTTP response to a request made with the Http.defaultSettings
 -}
 resolveHttpRequest : Http.Request -> Result Http.RawError Http.Response -> TestContext msg model -> TestContext msg model
 resolveHttpRequest request response (TestContext context) =
@@ -148,8 +182,33 @@ resolveHttpRequest request response (TestContext context) =
 
         Ok { model, effectsLog } ->
             case
-                EffectsLog.httpMsg request response effectsLog
+                EffectsLog.httpMsg Http.defaultSettings request response effectsLog
                     |> Result.fromMaybe ("No pending HTTP request: " ++ toString request)
+            of
+                Ok ( newLog, msgs ) ->
+                    List.foldl update
+                        (TestContext { context | state = Ok { model = model, effectsLog = newLog } })
+                        msgs
+
+                Err message ->
+                    TestContext { context | state = Err [ message ] }
+
+
+{-| Simulate an HTTP response to a request made with the given Http settings
+-}
+resolveHttpRequestWithSettings : Http.Settings -> Http.Request -> Result Http.RawError Http.Response -> TestContext msg model -> TestContext msg model
+resolveHttpRequestWithSettings settings request response (TestContext context) =
+    case context.state of
+        Err errors ->
+            TestContext
+                { context
+                    | state = Err (("resolveHttpRequest " ++ toString request ++ " with settings " ++ toString settings ++ " applied to an TestContext with previous errors") :: errors)
+                }
+
+        Ok { model, effectsLog } ->
+            case
+                EffectsLog.httpMsg settings request response effectsLog
+                    |> Result.fromMaybe ("No pending HTTP request: " ++ toString request ++ " with settings " ++ toString settings)
             of
                 Ok ( newLog, msgs ) ->
                     List.foldl update

@@ -7,6 +7,7 @@ import Testable.Cmd
 import Testable.Http as Http
 import Http as ElmHttp
 import Testable.Task as Task
+import Task as ElmTask
 import Time
 
 
@@ -56,6 +57,16 @@ type RawLoadingMsg
     = RawNewData (Result Http.RawError String)
 
 
+componentWithSendSettings : Http.Settings
+componentWithSendSettings =
+    { timeout = 500
+    , onStart = Just <| ElmTask.succeed ()
+    , onProgress = Nothing
+    , desiredResponseType = Just "text/plain"
+    , withCredentials = True
+    }
+
+
 loadingComponentWithSend : TestContext.Component RawLoadingMsg (Maybe String)
 loadingComponentWithSend =
     let
@@ -70,12 +81,13 @@ loadingComponentWithSend =
             case response.value of
                 ElmHttp.Text str ->
                     str
+
                 _ ->
                     "Unsupported body type"
     in
         { init =
             ( Nothing
-            , Http.send Http.defaultSettings initRequest
+            , Http.send componentWithSendSettings initRequest
                 |> Task.perform Err Ok
                 |> Testable.Cmd.map ((Result.map parseResponseValue) >> RawNewData)
             )
@@ -88,7 +100,6 @@ loadingComponentWithSend =
                     RawNewData (Err _) ->
                         ( model, Testable.Cmd.none )
         }
-
 
 
 all : Test
@@ -132,11 +143,13 @@ all =
             |> test "effects should be removed after they are run"
         , loadingComponentWithSend
             |> TestContext.startForTest
-            |> TestContext.assertHttpRequest (Http.getRequest "https://example.com/")
+            |> TestContext.assertHttpRequestWithSettings componentWithSendSettings
+                (Http.getRequest "https://example.com/")
             |> test "records initial effects successfully when sending an arbitrary request"
         , loadingComponentWithSend
             |> TestContext.startForTest
-            |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
+            |> TestContext.resolveHttpRequestWithSettings componentWithSendSettings
+                (Http.getRequest "https://example.com/")
                 (Http.ok "myData-1")
             |> TestContext.assertCurrentModel (Just "myData-1")
             |> test "updates with successful response when sending an arbitrary request"
