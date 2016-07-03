@@ -9,7 +9,7 @@ type Cmd msg
     = None
     | TaskCmd (Task msg msg)
     | Batch (List (Cmd msg))
-    | PortCmd (Platform.Cmd.Cmd msg)
+    | WrappedCmd (Platform.Cmd.Cmd msg)
 
 
 type alias Settings =

@@ -6,7 +6,6 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import String
 import Testable.Cmd
-import Testable.Port as Port
 
 
 -- MODEL
@@ -43,7 +42,7 @@ update action model =
             ( Model newWord [], Testable.Cmd.none )
 
         Check ->
-            ( model, Port.wrap <| check model.word )
+            ( model, Testable.Cmd.wrap <| check model.word )
 
         Suggest newSuggestions ->
             ( Model model.word newSuggestions, Testable.Cmd.none )

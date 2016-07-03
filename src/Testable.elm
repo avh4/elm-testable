@@ -37,7 +37,7 @@ cmd testableEffects =
         Internal.Batch list ->
             Cmd.batch (List.map cmd list)
 
-        Internal.PortCmd cmd ->
+        Internal.WrappedCmd cmd ->
             cmd
 
 

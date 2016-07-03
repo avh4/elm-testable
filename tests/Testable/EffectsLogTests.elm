@@ -3,10 +3,9 @@ port module Testable.EffectsLogTests exposing (..)
 import Expect
 import Test exposing (..)
 import Testable.Cmd
-import Testable.EffectsLog as EffectsLog exposing (EffectsLog, portCmds)
+import Testable.EffectsLog as EffectsLog exposing (EffectsLog, wrappedCmds)
 import Testable.Http as Http
 import Testable.Task as Task
-import Testable.Port as Port
 import Platform.Cmd
 
 
@@ -66,9 +65,9 @@ all =
                         |> Expect.equal Nothing
             , test "inserting a port inserts the port cmd" <|
                 \() ->
-                    EffectsLog.insert (Port.wrap <| myPort "foo") EffectsLog.empty
+                    EffectsLog.insert (Testable.Cmd.wrap <| myPort "foo") EffectsLog.empty
                         |> fst
-                        |> portCmds
+                        |> wrappedCmds
                         |> Expect.equal [ myPort "foo" ]
             ]
         ]

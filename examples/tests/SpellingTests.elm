@@ -1,6 +1,6 @@
 module SpellingTests exposing (..)
 
-import ElmTest exposing (..)
+import Test exposing (..)
 import Testable.TestContext exposing (..)
 import Spelling
 
@@ -14,11 +14,12 @@ spellingComponent =
 
 all : Test
 all =
-    suite "Spelling"
-        [ spellingComponent
-            |> startForTest
-            |> update (Spelling.Change "cats")
-            |> update Spelling.Check
-            |> assertPortCalled (Spelling.check "cats")
-            |> test "call suggestions check port when requested"
+    describe "Spelling"
+        [ test "call suggestions check port when requested" <|
+            \() ->
+                spellingComponent
+                    |> startForTest
+                    |> update (Spelling.Change "cats")
+                    |> update Spelling.Check
+                    |> assertCmdCalled (Spelling.check "cats")
         ]

@@ -8,7 +8,6 @@ import Testable.Http as Http
 import Http as ElmHttp
 import Test exposing (..)
 import Testable.Task as Task
-import Testable.Port as Port
 import Time
 import Platform.Cmd
 
@@ -254,9 +253,9 @@ all =
                     ( Nothing
                     , Testable.Cmd.none
                     )
-                , update = \_ _ -> ( Nothing, Port.wrap <| outgoingPort "foo" )
+                , update = \_ _ -> ( Nothing, Testable.Cmd.wrap <| outgoingPort "foo" )
                 }
                     |> TestContext.startForTest
                     |> TestContext.update Inc
-                    |> TestContext.assertPortCalled (outgoingPort "foo")
+                    |> TestContext.assertCmdCalled (outgoingPort "foo")
         ]

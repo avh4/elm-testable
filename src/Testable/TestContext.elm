@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, assertPortCalled, resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime, assertCmdCalled)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -7,7 +7,7 @@ the entire lifecycle of your component.
 @docs Component, TestContext, startForTest, update
 
 # Inspecting
-@docs currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, assertPortCalled
+@docs currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, assertCmdCalled
 
 # Simulating Effects
 @docs resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime
@@ -16,7 +16,7 @@ the entire lifecycle of your component.
 import Expect exposing (Expectation)
 import String
 import Testable.Cmd
-import Testable.EffectsLog as EffectsLog exposing (EffectsLog, containsPortCmd)
+import Testable.EffectsLog as EffectsLog exposing (EffectsLog, containsCmd)
 import Testable.Http as Http
 import Time exposing (Time)
 import Platform.Cmd
@@ -272,19 +272,19 @@ assertCurrentModel expectedModel context =
         |> Expect.equal (Ok expectedModel)
 
 
-{-| Assert that an outgoing port was called
+{-| Assert that a cmd was called
 -}
-assertPortCalled : Platform.Cmd.Cmd msg -> TestContext msg model -> Expectation
-assertPortCalled expectedPort (TestContext context) =
+assertCmdCalled : Platform.Cmd.Cmd msg -> TestContext msg model -> Expectation
+assertCmdCalled expectedCmd (TestContext context) =
     case context.state of
         Err errors ->
             Expect.fail
-                ("Expected that a port was called, but TextContext had previous errors:"
+                ("Expected that a cmd was called, but TextContext had previous errors:"
                     ++ String.join "\n    " ("" :: errors)
                 )
 
         Ok { effectsLog } ->
-            if containsPortCmd expectedPort effectsLog then
+            if containsCmd expectedCmd effectsLog then
                 Expect.pass
             else
-                Expect.equal [ expectedPort ] (EffectsLog.portCmds effectsLog)
+                Expect.equal [ expectedCmd ] (EffectsLog.wrappedCmds effectsLog)

@@ -111,7 +111,7 @@ Here are [complete tests for the RandomGif example](https://github.com/avh4/elm-
 
 ## Testing Ports
 
-You can also test that an outgoing port was called, by wrapping your ports using `Testable.Ports.wrap`, like this:
+You can also test that an outgoing port was called, by wrapping your ports with `Testable.Cmd.wrap`, like this:
 
 ```diff
 diff --git b/examples/Spelling.elm a/examples/Spelling.elm
@@ -123,7 +123,6 @@ index 4ff685f..62e2154 100644
  import Html.Events exposing (..)
  import String
 +import Testable.Cmd
-+import Testable.Port as Port
 
 
  -- MODEL
@@ -153,7 +152,7 @@ index 4ff685f..62e2154 100644
 
          Check ->
 -            ( model, check model.word )
-+            ( model, Port.wrap <| check model.word )
++            ( model, Testable.Cmd.wrap <| check model.word )
 
          Suggest newSuggestions ->
 -            ( Model model.word newSuggestions, Cmd.none )
@@ -185,7 +184,7 @@ all =
             |> startForTest
             |> update (Spelling.Change "cats")
             |> update Spelling.Check
-            |> assertPortCalled (Spelling.check "cats")
+            |> assertCmdCalled (Spelling.check "cats")
             |> test "call suggestions check port when requested"
         ]
 ```
