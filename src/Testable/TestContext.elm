@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime, assertCmdCalled)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime, assertCalled)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -7,7 +7,7 @@ the entire lifecycle of your component.
 @docs Component, TestContext, startForTest, update
 
 # Inspecting
-@docs currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, assertCmdCalled
+@docs currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, assertCalled
 
 # Simulating Effects
 @docs resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime
@@ -274,8 +274,8 @@ assertCurrentModel expectedModel context =
 
 {-| Assert that a cmd was called
 -}
-assertCmdCalled : Platform.Cmd.Cmd msg -> TestContext msg model -> Expectation
-assertCmdCalled expectedCmd (TestContext context) =
+assertCalled : Platform.Cmd.Cmd msg -> TestContext msg model -> Expectation
+assertCalled expectedCmd (TestContext context) =
     case context.state of
         Err errors ->
             Expect.fail

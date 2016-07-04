@@ -257,5 +257,5 @@ all =
                 }
                     |> TestContext.startForTest
                     |> TestContext.update Inc
-                    |> TestContext.assertCmdCalled (outgoingPort "foo")
+                    |> TestContext.assertCalled (outgoingPort "foo")
         ]

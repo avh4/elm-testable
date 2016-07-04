@@ -184,7 +184,7 @@ all =
             |> startForTest
             |> update (Spelling.Change "cats")
             |> update Spelling.Check
-            |> assertCmdCalled (Spelling.check "cats")
+            |> assertCalled (Spelling.check "cats")
             |> test "call suggestions check port when requested"
         ]
 ```
