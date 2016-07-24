@@ -69,5 +69,11 @@ all =
                         |> fst
                         |> wrappedCmds
                         |> Expect.equal [ myPort "foo" ]
+            , test "does not treat ports with different values as equal" <|
+                \() ->
+                    EffectsLog.insert (Testable.Cmd.wrap <| myPort "foo") EffectsLog.empty
+                        |> fst
+                        |> wrappedCmds
+                        |> Expect.notEqual [ myPort "bar" ]
             ]
         ]
