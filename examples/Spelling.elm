@@ -6,6 +6,19 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import String
 import Testable.Cmd
+import Html.App
+import Testable
+
+
+main : Program Never
+main =
+    Html.App.program
+        { init = Testable.init init
+        , update = Testable.update update
+        , view = view
+        , subscriptions = subscriptions
+        }
+
 
 
 -- MODEL

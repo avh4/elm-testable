@@ -9,6 +9,19 @@ import Json.Decode as Json
 import Testable.Cmd
 import Testable.Http as Http
 import Testable.Task as Task
+import Html.App
+import Testable
+
+
+main : Program Never
+main =
+    Html.App.program
+        { init = Testable.init <| init "dc6zaTOxFJmzC" "funny cats"
+        , update = Testable.update update
+        , view = view
+        , subscriptions = always Sub.none
+        }
+
 
 
 -- MODEL
