@@ -1,13 +1,13 @@
 module Tests exposing (..)
 
-import ElmTest exposing (..)
+import Test exposing (..)
 import TestableTests
 import Testable.EffectsLogTests
 
 
 all : Test
 all =
-    suite "avh4/elm-testable"
+    describe "avh4/elm-testable"
         [ TestableTests.all
         , Testable.EffectsLogTests.all
         ]

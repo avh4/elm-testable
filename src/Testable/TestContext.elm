@@ -13,7 +13,7 @@ the entire lifecycle of your component.
 @docs resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime
 -}
 
-import ElmTest as Test exposing (Assertion)
+import Expect exposing (Expectation)
 import String
 import Testable.Cmd
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
@@ -110,11 +110,11 @@ applyEffects newEffects (TestContext context) =
 {-| Assert that a given Http.Request has been made by the component under test
 with the Http.defaultSettings
 -}
-assertHttpRequest : Http.Request -> TestContext msg model -> Assertion
+assertHttpRequest : Http.Request -> TestContext msg model -> Expectation
 assertHttpRequest request (TestContext context) =
     case context.state of
         Err errors ->
-            Test.fail
+            Expect.fail
                 ("Expected an HTTP request to have been made:"
                     ++ "\n    Expected: "
                     ++ toString request
@@ -125,9 +125,9 @@ assertHttpRequest request (TestContext context) =
 
         Ok { model, effectsLog } ->
             if EffectsLog.containsHttpMsg Http.defaultSettings request effectsLog then
-                Test.pass
+                Expect.pass
             else
-                Test.fail
+                Expect.fail
                     ("Expected an HTTP request to have been made:"
                         ++ "\n    Expected: "
                         ++ toString request
@@ -139,11 +139,11 @@ assertHttpRequest request (TestContext context) =
 {-| Assert that a given Http.Request has been made by the component under test
 with the given Http settings
 -}
-assertHttpRequestWithSettings : Http.Settings -> Http.Request -> TestContext msg model -> Assertion
+assertHttpRequestWithSettings : Http.Settings -> Http.Request -> TestContext msg model -> Expectation
 assertHttpRequestWithSettings settings request (TestContext context) =
     case context.state of
         Err errors ->
-            Test.fail
+            Expect.fail
                 ("Expected an HTTP request to have been made:"
                     ++ "\n    Expected: "
                     ++ toString request
@@ -156,9 +156,9 @@ assertHttpRequestWithSettings settings request (TestContext context) =
 
         Ok { model, effectsLog } ->
             if EffectsLog.containsHttpMsg settings request effectsLog then
-                Test.pass
+                Expect.pass
             else
-                Test.fail
+                Expect.fail
                     ("Expected an HTTP request to have been made:"
                         ++ "\n    Expected: "
                         ++ toString request
@@ -221,17 +221,17 @@ resolveHttpRequestWithSettings settings request response (TestContext context) =
 
 {-| Ensure that there are no pending HTTP requests
 -}
-assertNoPendingHttpRequests : TestContext msg model -> Assertion
+assertNoPendingHttpRequests : TestContext msg model -> Expectation
 assertNoPendingHttpRequests (TestContext context) =
     case context.state of
         Err errors ->
-            Test.fail
+            Expect.fail
                 ("Expected no pending HTTP requests, but TextContext had previous errors:"
                     ++ String.join "\n    " ("" :: errors)
                 )
 
         Ok { effectsLog } ->
-            Test.assertEqual [] (EffectsLog.httpRequests effectsLog)
+            Expect.equal [] (EffectsLog.httpRequests effectsLog)
 
 
 {-| Simulate the passing of time
@@ -264,8 +264,8 @@ currentModel (TestContext context) =
 
 {-| A convenient way to assert about the current state of the component under test
 -}
-assertCurrentModel : model -> TestContext msg model -> Assertion
+assertCurrentModel : model -> TestContext msg model -> Expectation
 assertCurrentModel expectedModel context =
     context
         |> currentModel
-        |> Test.assertEqual (Ok expectedModel)
+        |> Expect.equal (Ok expectedModel)
