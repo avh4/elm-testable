@@ -11,4 +11,4 @@ install:
 script:
   - elm-make --yes
   - rsync -a elm-stuff/build-artifacts/ tests/elm-stuff/build-artifacts/
-  - ./run-tests.sh
+  - ./check_all.sh

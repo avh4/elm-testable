@@ -12,5 +12,5 @@ elm-make --yes
 
 cd examples
 ./run-tests.sh
-elm-make Main.elm
-open index.html
+elm-make --yes Main.elm
+open index.html || true
