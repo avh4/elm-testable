@@ -12,7 +12,6 @@ This module converts Testable things into real things.
 
 -}
 
-import Http
 import Process
 import Task
 import Testable.Cmd
@@ -32,10 +31,20 @@ cmd testableEffects =
             Cmd.none
 
         Internal.TaskCmd testableTask ->
-            Task.perform identity identity (task testableTask)
+            Task.attempt fromResult (task testableTask)
 
         Internal.Batch list ->
             Cmd.batch (List.map cmd list)
+
+
+fromResult : Result a a -> a
+fromResult result =
+    case result of
+        Ok a ->
+            a
+
+        Err a ->
+            a
 
 
 {-| Converts a `Testable.Task` into an `Task`
@@ -46,25 +55,12 @@ cmd testableEffects =
 task : Testable.Task.Task error success -> Task.Task error success
 task testableTask =
     case testableTask of
-        Internal.HttpTask settings request mapResponse ->
-            let
-                httpSettings =
-                    { settings
-                        | onStart = Maybe.map task settings.onStart
-                        , onProgress = Maybe.map ((<<) task) settings.onProgress
-                    }
-            in
-                Http.send httpSettings request
-                    |> Task.toResult
-                    |> Task.map mapResponse
-                    |> (flip Task.andThen) taskResult
-
         Internal.ImmediateTask result ->
             taskResult result
 
         Internal.SleepTask milliseconds result ->
             Process.sleep milliseconds
-                |> (flip Task.andThen) (\_ -> taskResult result)
+                |> Task.andThen (\_ -> taskResult result)
 
 
 taskResult : Internal.TaskResult error success -> Task.Task error success

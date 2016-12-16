@@ -145,9 +145,6 @@ toResult source =
 transform : (TaskResult x a -> TaskResult y b) -> Task x a -> Task y b
 transform tx source =
     case source of
-        Internal.HttpTask request settings mapResponse ->
-            Internal.HttpTask request settings (mapResponse >> tx)
-
         Internal.ImmediateTask result ->
             Internal.ImmediateTask (result |> tx)
 

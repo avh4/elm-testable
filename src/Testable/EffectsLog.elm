@@ -1,10 +1,9 @@
-module Testable.EffectsLog exposing (EffectsLog, empty, insert, containsHttpMsg, httpRequests, httpMsg, sleepMsg)
+module Testable.EffectsLog exposing (EffectsLog, empty, insert, sleepMsg)
 
 import FakeDict as Dict exposing (Dict)
 import PairingHeap exposing (PairingHeap)
 import Testable.Cmd
 import Testable.Internal as Internal exposing (Cmd, TaskResult(..))
-import Testable.Http as Http
 import Time exposing (Time)
 
 
@@ -15,10 +14,7 @@ type EffectsResult msg
 
 type EffectsLog msg
     = EffectsLog
-        { http :
-            -- TODO: should be multidict
-            Dict ( Http.Settings, Http.Request ) (Result Http.RawError Http.Response -> EffectsResult msg)
-        , now : Time
+        { now : Time
         , sleep : PairingHeap Time (EffectsResult msg)
         }
 
@@ -26,8 +22,7 @@ type EffectsLog msg
 empty : EffectsLog msg
 empty =
     EffectsLog
-        { http = Dict.empty
-        , now = 0
+        { now = 0
         , sleep = PairingHeap.empty
         }
 
@@ -53,11 +48,6 @@ insert effects (EffectsLog log) =
         Internal.None ->
             ( EffectsLog log, [] )
 
-        Internal.TaskCmd (Internal.HttpTask settings request mapResponse) ->
-            ( EffectsLog { log | http = Dict.insert ( settings, request ) (mapResponse >> unsafeFromResult) log.http }
-            , []
-            )
-
         Internal.TaskCmd (Internal.ImmediateTask result) ->
             case unsafeFromResult result of
                 Finished msg ->
@@ -77,44 +67,12 @@ insert effects (EffectsLog log) =
 
         Internal.Batch list ->
             let
-                step effect ( log', immediates ) =
-                    case insert effect log' of
-                        ( log'', immediates' ) ->
-                            ( log'', immediates ++ immediates' )
+                step effect ( log_, immediates ) =
+                    case insert effect log_ of
+                        ( log__, immediates_ ) ->
+                            ( log__, immediates ++ immediates_ )
             in
                 List.foldl step ( EffectsLog log, [] ) list
-
-
-containsHttpMsg : Http.Settings -> Http.Request -> EffectsLog msg -> Bool
-containsHttpMsg settings request (EffectsLog log) =
-    Dict.get ( settings, request ) log.http
-        |> (/=) Nothing
-
-
-httpRequests : EffectsLog msg -> List Http.Request
-httpRequests (EffectsLog log) =
-    Dict.keys log.http
-        |> List.map snd
-
-
-httpMsg : Http.Settings -> Http.Request -> Result Http.RawError Http.Response -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
-httpMsg expectedSettings expectedRequest response (EffectsLog log) =
-    case Dict.get ( expectedSettings, expectedRequest ) log.http of
-        Nothing ->
-            Nothing
-
-        Just mapResponse ->
-            case mapResponse response of
-                Finished msg ->
-                    Just
-                        ( EffectsLog { log | http = Dict.remove ( expectedSettings, expectedRequest ) log.http }
-                        , [ msg ]
-                        )
-
-                MoreEffects next ->
-                    EffectsLog log
-                        |> insert next
-                        |> Just
 
 
 sleepMsg : Time -> EffectsLog msg -> ( EffectsLog msg, List msg )

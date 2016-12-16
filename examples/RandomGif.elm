@@ -6,9 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Json.Decode as Json
-import Testable.Cmd
-import Testable.Http as Http
-import Testable.Task as Task
+import Http
 
 
 -- MODEL
@@ -21,7 +19,7 @@ type alias Model =
     }
 
 
-init : String -> String -> ( Model, Testable.Cmd.Cmd Msg )
+init : String -> String -> ( Model, Cmd Msg )
 init apiKey topic =
     ( Model apiKey topic "/favicon.ico"
     , getRandomGif apiKey topic
@@ -37,7 +35,7 @@ type Msg
     | NewGif (Maybe String)
 
 
-update : Msg -> Model -> ( Model, Testable.Cmd.Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         RequestMore ->
@@ -45,7 +43,7 @@ update msg model =
 
         NewGif maybeUrl ->
             ( Model model.apiKey model.topic (Maybe.withDefault model.gifUrl maybeUrl)
-            , Testable.Cmd.none
+            , Cmd.none
             )
 
 
@@ -86,19 +84,19 @@ imgStyle url =
 -- EFFECTS
 
 
-getRandomGif : String -> String -> Testable.Cmd.Cmd Msg
+getRandomGif : String -> String -> Cmd Msg
 getRandomGif apiKey topic =
-    Http.get decodeUrl (randomUrl apiKey topic)
-        |> Task.perform (always Nothing >> NewGif)
-            (Just >> NewGif)
+    Http.get (randomUrl apiKey topic) decodeUrl
+        |> Http.send (Result.toMaybe >> NewGif)
 
 
 randomUrl : String -> String -> String
 randomUrl apiKey topic =
-    Http.url "https://api.giphy.com/v1/gifs/random"
-        [ ( "api_key", apiKey )
-        , ( "tag", topic )
-        ]
+    "https://api.giphy.com/v1/gifs/random?"
+        ++ String.join "&"
+            [ "api_key=" ++ apiKey
+            , "tag=" ++ topic
+            ]
 
 
 decodeUrl : Json.Decoder String

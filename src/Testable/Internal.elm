@@ -1,6 +1,5 @@
 module Testable.Internal exposing (..)
 
-import Http
 import Time exposing (Time)
 
 
@@ -20,8 +19,7 @@ type alias Settings =
 
 
 type Task error success
-    = HttpTask Settings Http.Request (Result Http.RawError Http.Response -> TaskResult error success)
-    | ImmediateTask (TaskResult error success)
+    = ImmediateTask (TaskResult error success)
     | SleepTask Time (TaskResult error success)
 
 
