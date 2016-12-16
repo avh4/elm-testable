@@ -2,36 +2,27 @@ module Tests exposing (..)
 
 import Test exposing (..)
 import Expect
-import Fuzz exposing (list, int, tuple, string)
-import String
+import Html
+import TestContext exposing (TestContext)
 
 
 all : Test
 all =
-    describe "Sample Test Suite"
-        [ describe "Unit test examples"
-            [ test "Addition" <|
+    describe "Testable"
+        [ describe "Model"
+            [ test "verifying an initial model" <|
                 \() ->
-                    Expect.equal (3 + 7) 10
-            , test "String.left" <|
-                \() ->
-                    Expect.equal "a" (String.left 1 "abcdefg")
-            , test "This test should fail - you should remove it" <|
-                \() ->
-                    Expect.fail "Failed as expected!"
+                    { model = "Alpha"
+                    , update = \_ _ -> "Beta"
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.beginnerProgram
+                        |> TestContext.start
+                        |> TestContext.model
+                        |> Expect.equal (Ok "Alpha")
             ]
-        , describe "Fuzz test examples, using randomly generated input"
-            [ fuzz (list int) "Lists always have positive length" <|
-                \aList ->
-                    List.length aList |> Expect.atLeast 0
-            , fuzz (list int) "Sorting a list does not change its length" <|
-                \aList ->
-                    List.sort aList |> List.length |> Expect.equal (List.length aList)
-            , fuzzWith { runs = 1000 } int "List.member will find an integer in a list containing it" <|
-                \i ->
-                    List.member i [ i ] |> Expect.true "If you see this, List.member returned False!"
-            , fuzz2 string string "The length of a string equals the sum of its substrings' lengths" <|
-                \s1 s2 ->
-                    s1 ++ s2 |> String.length |> Expect.equal (String.length s1 + String.length s2)
-            ]
+          -- , describe "Cmds" []
+          -- , describe "Http" []
+          -- , describe "Tasks" []
+          -- , describe "Subscriptions" []
         ]
