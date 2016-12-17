@@ -28,7 +28,7 @@ var _user$project$Native_TestContext = (function() {
         break;
 
       default:
-        throw 'Unknown internal Cmd type: ' + bag.type;
+        throw new Error('Unknown internal Cmd type: ' + bag.type);
     }
   }
 
@@ -60,7 +60,7 @@ var _user$project$Native_TestContext = (function() {
         break;
 
       default:
-        throw 'Unknown internal Cmd type: ' + bag.type;
+        throw new Error('Unknown internal Cmd type: ' + bag.type);
     }
   }
 
@@ -77,7 +77,7 @@ var _user$project$Native_TestContext = (function() {
         return task.value;
 
       default:
-        throw "Unknown task type: " + task.ctor;
+        throw new Error("Unknown task type: " + task.ctor);
     }
   }
 
@@ -85,15 +85,31 @@ var _user$project$Native_TestContext = (function() {
   function updateContext(msg, testContext) {
     var updateResult = testContext.update(msg)(testContext.model);
     // assert(updateResult.ctor == 'Tuple2');
-    return {
+
+    var newTasks = [];
+    var newCmds = [];
+    forEachCmd(updateResult._1, function(cmd) {
+      if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
+        newTasks.push(cmd.value._0);
+      } else {
+        newCmds.push(cmd);
+      }
+    });
+
+    var context = {
       ctor: 'TestContextNativeValue',
       model: updateResult._0,
       update: testContext.update,
-      pendingCmds: _elm_lang$core$Platform_Cmd$batch(
-        _elm_lang$core$Native_List.fromArray([testContext.pendingCmds, updateResult._1])
-      ),
+      pendingCmds: testContext.pendingCmds.concat(newCmds),
       errors: []
     };
+
+    newTasks.forEach(function(task) {
+      var msg = performTask(task);
+      context = updateContext(msg, context);
+    });
+
+    return context;
   }
 
 
@@ -108,19 +124,27 @@ var _user$project$Native_TestContext = (function() {
 
       // assert(app.init.ctor == 'Tuple2');
 
+      var newTasks = [];
+      var newCmds = [];
+      forEachCmd(app.init._1, function(cmd) {
+        if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
+          newTasks.push(cmd.value._0);
+        } else {
+          newCmds.push(cmd);
+        }
+      });
+
       var context = {
         ctor: 'TestContextNativeValue',
         model: app.init._0,
         update: app.update,
-        pendingCmds: app.init._1,
+        pendingCmds: newCmds,
         errors: []
       };
 
-      forEachCmd(app.init._1, function(cmd) {
-        if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
-          var msg = performTask(cmd.value._0);
-          context = updateContext(msg, context);
-        }
+      newTasks.forEach(function(task) {
+        var msg = performTask(task);
+        context = updateContext(msg, context);
       });
 
       return context;
@@ -140,7 +164,10 @@ var _user$project$Native_TestContext = (function() {
       if (expectedCmd.type !== 'leaf') {
         throw 'Unhandled case: expected Cmd is a Cmd.batch';
       }
-      return hasCmd(testContext.pendingCmds, expectedCmd);
+      return testContext.pendingCmds.some(function(cmd) {
+        return cmd.home === expectedCmd.home
+          && cmd.value === expectedCmd.value;
+      })
     })
   };
 })();
