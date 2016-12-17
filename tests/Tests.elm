@@ -5,6 +5,7 @@ import Expect
 import Html
 import TestContext exposing (TestContext)
 import TestPorts
+import Task
 
 
 testEqual : Gen a -> String -> (a -> a -> Expect.Expectation) -> Test
@@ -91,7 +92,22 @@ all =
                         |> TestContext.update ()
                         |> TestContext.expectCmd (TestPorts.string expected)
             ]
+        , describe "Tasks"
+            [ testEqual string "tasks in initial commands should immediately be processed" <|
+                \actual expected ->
+                    { init =
+                        ( "Start"
+                        , Task.succeed actual |> Task.perform identity
+                        )
+                    , update = \msg _ -> ( msg, Cmd.none )
+                    , subscriptions = \_ -> Sub.none
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.program
+                        |> TestContext.start
+                        |> TestContext.model
+                        |> Expect.equal (Ok expected)
+            ]
           -- , describe "Http" []
-          -- , describe "Tasks" []
           -- , describe "Subscriptions" []
         ]
