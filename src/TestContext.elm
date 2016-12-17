@@ -35,9 +35,9 @@ type Error
     = NothingYet__
 
 
-extractProgram : Program flags model msg -> TestableProgram model msg
-extractProgram =
-    Native.TestContext.extractProgram
+extractProgram : String -> Program flags model msg -> TestableProgram model msg
+extractProgram moduleName =
+    Native.TestContext.extractProgram moduleName
 
 
 extractCmds : Cmd msg -> List (TestableCmd msg)
@@ -51,17 +51,17 @@ performTask =
 
 
 start : Program flags model msg -> TestContext model msg
-start program =
+start realProgram =
     let
-        p =
-            extractProgram program
+        program =
+            extractProgram "<TestContext fake module>" realProgram
     in
         TestContext
-            { program = extractProgram program
-            , model = Tuple.first p.init
+            { program = program
+            , model = Tuple.first program.init
             , pendingCmds = []
             }
-            |> processCmds (Tuple.second p.init)
+            |> processCmds (Tuple.second program.init)
 
 
 processCmds : Cmd msg -> TestContext model msg -> TestContext model msg

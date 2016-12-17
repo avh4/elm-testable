@@ -69,15 +69,18 @@ var _user$project$Native_TestContext = (function() {
 
 
   return {
-    extractProgram: function(program) {
+    extractProgram: F2(function(moduleName, program) {
       var containerModule = {};
-      var moduleName = "<TestContext fake module>"
       var p = program()(containerModule, moduleName);
       var embedRoot = {};
       var flags = undefined;
+
+      // This gets the return value from the modified
+      // _elm_lang$core$Native_Platform.initialize above
       var app = containerModule.embed(embedRoot, flags);
+
       return app;
-    },
+    }),
     extractCmds: function(cmd) {
       var cmds = [];
       forEachCmd(cmd, function(c) {
