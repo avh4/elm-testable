@@ -5,14 +5,15 @@ if (_elm_lang$core$Native_Platform.initialize === undefined) {
 _elm_lang$core$Native_Platform.initialize = function(init, update, subscriptions, renderer) {
   return {
     init: init,
-    update: update
+    update: update,
+    subscriptions: subscriptions
   }
 }
 
 var _user$project$Native_TestContext = (function() {
 
-  // forEachCmd : Cmd msg -> (LeafCmd -> IO ()) -> IO ()
-  function forEachCmd(bag, f) {
+  // forEachLeaf : Cmd msg -> (LeafCmd -> IO ()) -> IO ()
+  function forEachLeaf(bag, f) {
     switch (bag.type) {
       case 'leaf':
         f(bag);
@@ -22,13 +23,13 @@ var _user$project$Native_TestContext = (function() {
         var rest = bag.branches;
         while (rest.ctor !== '[]') {
           // assert(rest.ctor === '::');
-          forEachCmd(rest._0, f);
+          forEachLeaf(rest._0, f);
           rest = rest._1;
         }
         break;
 
       default:
-        throw new Error('Unknown internal Cmd type: ' + bag.type);
+        throw new Error('Unknown internal bag node type: ' + bag.type);
     }
   }
 
@@ -83,7 +84,7 @@ var _user$project$Native_TestContext = (function() {
     }),
     extractCmds: function(cmd) {
       var cmds = [];
-      forEachCmd(cmd, function(c) {
+      forEachLeaf(cmd, function(c) {
         if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
           cmds.push({ ctor: 'Task', _0: cmd.value._0 });
         } else {
@@ -92,6 +93,22 @@ var _user$project$Native_TestContext = (function() {
       });
       return _elm_lang$core$Native_List.fromArray(cmds);
     },
-    performTask: performTask
+    extractSubs: function(sub) {
+      var subs = [];
+      forEachLeaf(sub, function(s) {
+        subs.push({ ctor: 'PortSub', _0: s.home, _1: s.value });
+      });
+      return _elm_lang$core$Native_List.fromArray(subs);
+    },
+    extractSubPortName: function(subPort) {
+      var fakeMapper = function() {};
+      var sub = subPort(fakeMapper);
+      // assert(sub.type === 'leaf');
+      return sub.home;
+    },
+    performTask: performTask,
+    applyMapper: F2(function(mapper, value) {
+      return { ctor: 'Ok', _0: mapper(value) };
+    })
   };
 })();

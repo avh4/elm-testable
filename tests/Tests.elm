@@ -152,7 +152,32 @@ all =
                         |> TestContext.model
                         |> Expect.equal (Ok <| Err expected)
             ]
+          -- , describe "Process.sleep" []
           -- , describe "Http" []
-          -- , describe "Subscriptions" []
+        , describe "Subscriptions"
+            [ testEqual string "send triggers an update with the correct Msg" <|
+                \actual expected ->
+                    { init = ( Nothing, Cmd.none )
+                    , update = \msg model -> ( msg, Cmd.none )
+                    , subscriptions = \_ -> TestPorts.stringSub Just
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.program
+                        |> TestContext.start
+                        |> TestContext.send TestPorts.stringSub actual
+                        |> Result.andThen TestContext.model
+                        |> Expect.equal (Ok <| Just expected)
+            , test "gives an error when not subscribed" <|
+                \() ->
+                    { init = ( Nothing, Cmd.none )
+                    , update = \msg model -> ( msg, Cmd.none )
+                    , subscriptions = \_ -> Sub.none
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.program
+                        |> TestContext.start
+                        |> TestContext.send TestPorts.stringSub "VALUE"
+                        |> Expect.equal (Err "Not subscribed to port: stringSub")
+            ]
           -- , describe "Flags" []
         ]
