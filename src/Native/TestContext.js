@@ -99,8 +99,7 @@ var _user$project$Native_TestContext = (function() {
   }
 
 
-  function updateContext(msg, testContext) {
-    var updateResult = testContext.update(msg)(testContext.model);
+  function applyUpdateResult(updateResult, testContext) {
     // assert(updateResult.ctor == 'Tuple2');
 
     var newTasks = [];
@@ -134,6 +133,12 @@ var _user$project$Native_TestContext = (function() {
   }
 
 
+  function updateContext(msg, testContext) {
+    var updateResult = testContext.update(msg)(testContext.model);
+    return applyUpdateResult(updateResult, testContext);
+  }
+
+
   return {
     start: function(program) {
       var containerModule = {};
@@ -143,36 +148,15 @@ var _user$project$Native_TestContext = (function() {
       var flags = undefined;
       var app = containerModule.embed(embedRoot, flags);
 
-      // assert(app.init.ctor == 'Tuple2');
-
-      var newTasks = [];
-      var newCmds = [];
-      forEachCmd(app.init._1, function(cmd) {
-        if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
-          newTasks.push(cmd.value._0);
-        } else {
-          newCmds.push(cmd);
-        }
-      });
-
       var context = {
         ctor: 'TestContextNativeValue',
-        model: app.init._0,
+        model: undefined,
         update: app.update,
-        pendingCmds: newCmds,
+        pendingCmds: [],
         errors: []
       };
 
-      newTasks.forEach(function(task) {
-        var result = performTask(task);
-        if (result.ctor === 'Ok') {
-          context = updateContext(result._0, context);
-        } else {
-          console.log("Task failed: " + result);
-        }
-      });
-
-      return context;
+      return applyUpdateResult(app.init, context);
     },
     model: function(testContext) {
       if (testContext.errors.length > 0) {
