@@ -6,6 +6,7 @@ import Html
 import TestContext exposing (TestContext)
 import TestPorts
 import Task
+import ModelTests
 
 
 testEqual : Gen a -> String -> (a -> a -> Expect.Expectation) -> Test
@@ -45,19 +46,7 @@ stringProgram init =
 all : Test
 all =
     describe "Testable"
-        [ describe "Model"
-            [ test "verifying an initial model" <|
-                \() ->
-                    stringProgram "Start"
-                        |> TestContext.model
-                        |> Expect.equal "Start"
-            , test "verifying an updated model" <|
-                \() ->
-                    stringProgram "Start"
-                        |> TestContext.update "1"
-                        |> TestContext.model
-                        |> Expect.equal "Start;1"
-            ]
+        [ ModelTests.all
         , describe "Cmds"
             [ testEqual string "verifying an initial Cmd" <|
                 \actual expected ->
