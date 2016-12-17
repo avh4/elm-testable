@@ -45,7 +45,7 @@ all =
                         |> Html.beginnerProgram
                         |> TestContext.start
                         |> TestContext.model
-                        |> Expect.equal (Ok expected)
+                        |> Expect.equal expected
             , testEqual string "verifying an updated model" <|
                 \actual expected ->
                     { model = "Start"
@@ -56,7 +56,7 @@ all =
                         |> TestContext.start
                         |> TestContext.update actual
                         |> TestContext.model
-                        |> Expect.equal (Ok expected)
+                        |> Expect.equal expected
             ]
         , describe "Cmds"
             [ testEqual string "verifying an initial Cmd" <|
@@ -106,7 +106,7 @@ all =
                         |> Html.program
                         |> TestContext.start
                         |> TestContext.model
-                        |> Expect.equal (Ok expected)
+                        |> Expect.equal expected
             , testEqual string "tasks in update commands should immediately be processed" <|
                 \actual expected ->
                     { init = ( "Start", Cmd.none )
@@ -125,7 +125,7 @@ all =
                         |> TestContext.start
                         |> TestContext.update (Err actual)
                         |> TestContext.model
-                        |> Expect.equal (Ok expected)
+                        |> Expect.equal expected
             , test "tasks should only be processed once" <|
                 \() ->
                     { init = ( 0, Task.succeed 1 |> Task.perform identity )
@@ -138,7 +138,7 @@ all =
                         |> TestContext.update 20
                         |> TestContext.update 300
                         |> TestContext.model
-                        |> Expect.equal (Ok 321)
+                        |> Expect.equal 321
               -- TODO: ensure correct ordering of interleaved Cmds and Tasks
             , testEqual string "Task.fail" <|
                 \actual expected ->
@@ -150,7 +150,7 @@ all =
                         |> Html.program
                         |> TestContext.start
                         |> TestContext.model
-                        |> Expect.equal (Ok <| Err expected)
+                        |> Expect.equal (Err expected)
             ]
           -- , describe "Process.sleep" []
           -- , describe "Http" []
@@ -165,7 +165,7 @@ all =
                         |> Html.program
                         |> TestContext.start
                         |> TestContext.send TestPorts.stringSub actual
-                        |> Result.andThen TestContext.model
+                        |> Result.map TestContext.model
                         |> Expect.equal (Ok <| Just expected)
             , test "gives an error when not subscribed" <|
                 \() ->

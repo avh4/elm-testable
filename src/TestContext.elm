@@ -42,10 +42,6 @@ type TestContext model msg
         }
 
 
-type Error
-    = NothingYet__
-
-
 extractProgram : String -> Program flags model msg -> TestableProgram model msg
 extractProgram moduleName =
     Native.TestContext.extractProgram moduleName
@@ -111,9 +107,9 @@ processCmd cmd (TestContext context) =
                     Debug.crash ("Got a Never value from a task: " ++ toString never)
 
 
-model : TestContext model msg -> Result String model
+model : TestContext model msg -> model
 model (TestContext context) =
-    Ok context.model
+    context.model
 
 
 update : msg -> TestContext model msg -> TestContext model msg
