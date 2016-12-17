@@ -37,13 +37,24 @@ all =
             [ testEqual string "verifying an initial model" <|
                 \actual expected ->
                     { model = actual
-                    , update = \_ _ -> "Beta"
-                    , view = \_ -> Html.text ""
+                    , update = \msg _ -> msg
+                    , view = Html.text
                     }
                         |> Html.beginnerProgram
                         |> TestContext.start
                         |> TestContext.model
-                        |> Expect.notEqual (Ok expected)
+                        |> Expect.equal (Ok expected)
+            , testEqual string "verifying an updated model" <|
+                \actual expected ->
+                    { model = "Start"
+                    , update = \msg _ -> msg
+                    , view = Html.text
+                    }
+                        |> Html.beginnerProgram
+                        |> TestContext.start
+                        |> TestContext.update actual
+                        |> TestContext.model
+                        |> Expect.equal (Ok expected)
             ]
           -- , describe "Cmds" []
           -- , describe "Http" []

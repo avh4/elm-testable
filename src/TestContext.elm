@@ -3,6 +3,7 @@ module TestContext
         ( TestContext
         , start
         , model
+        , update
         )
 
 import Native.TestContext
@@ -24,3 +25,8 @@ start =
 model : TestContext model msg -> Result (List Error) model
 model =
     Native.TestContext.model
+
+
+update : msg -> TestContext model msg -> TestContext model msg
+update =
+    Native.TestContext.update

@@ -5,7 +5,8 @@ if (_elm_lang$core$Native_Platform.initialize === undefined) {
 _elm_lang$core$Native_Platform.initialize = function(init, update, subscriptions, renderer) {
   return {
     ctor: 'FakeApp',
-    init: init
+    init: init,
+    update: update
   }
 }
 
@@ -24,6 +25,7 @@ var _user$project$Native_TestContext = (function() {
       return {
         ctor: 'TestContextNativeValue',
         model: app.init._0,
+        update: app.update,
         errors: []
       };
     },
@@ -33,6 +35,16 @@ var _user$project$Native_TestContext = (function() {
       } else {
         return { ctor: 'Ok', _0: testContext.model };
       }
-    }
+    },
+    update: F2(function(msg, testContext) {
+      var updateResult = testContext.update(msg)(testContext.model);
+      // assert(updateResult.ctor == 'Tuple2');
+      return {
+        ctor: 'TestContextNativeValue',
+        model: updateResult._0,
+        update: testContext.update,
+        errors: []
+      };
+    })
   };
 })();
