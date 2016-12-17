@@ -140,6 +140,17 @@ all =
                         |> TestContext.model
                         |> Expect.equal (Ok 321)
               -- TODO: ensure correct ordering of interleaved Cmds and Tasks
+            , testEqual string "Task.fail" <|
+                \actual expected ->
+                    { init = ( Ok (), Task.fail actual |> Task.attempt identity )
+                    , update = \msg model -> ( msg, Cmd.none )
+                    , subscriptions = \_ -> Sub.none
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.program
+                        |> TestContext.start
+                        |> TestContext.model
+                        |> Expect.equal (Ok <| Err expected)
             ]
           -- , describe "Http" []
           -- , describe "Subscriptions" []

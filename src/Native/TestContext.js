@@ -67,14 +67,31 @@ var _user$project$Native_TestContext = (function() {
 
   function performTask(task) {
     switch (task.ctor) {
+      case '_Task_succeed':
+        return { ctor: 'Ok', _0: task.value };
+
+      case '_Task_fail':
+        return { ctor: 'Err', _0: task.value };
+
       case '_Task_andThen':
         var firstValue = performTask(task.task);
-        var next = task.callback(firstValue);
-        var finalValue = performTask(next);
-        return finalValue;
+        if (firstValue.ctor === 'Ok') {
+          var next = task.callback(firstValue._0);
+          var finalValue = performTask(next);
+          return finalValue;
+        } else {
+          return firstValue;
+        }
 
-      case '_Task_succeed':
-        return task.value;
+      case '_Task_onError':
+        var firstValue = performTask(task.task);
+        if (firstValue.ctor === 'Err') {
+          var next = task.callback(firstValue._0);
+          var finalValue = performTask(next);
+          return finalValue;
+        } else {
+          return firstValue;
+        }
 
       default:
         throw new Error("Unknown task type: " + task.ctor);
@@ -105,8 +122,12 @@ var _user$project$Native_TestContext = (function() {
     };
 
     newTasks.forEach(function(task) {
-      var msg = performTask(task);
-      context = updateContext(msg, context);
+      var result = performTask(task);
+      if (result.ctor === 'Ok') {
+        context = updateContext(result._0, context);
+      } else {
+        console.log("Task failed: " + result);
+      }
     });
 
     return context;
@@ -143,8 +164,12 @@ var _user$project$Native_TestContext = (function() {
       };
 
       newTasks.forEach(function(task) {
-        var msg = performTask(task);
-        context = updateContext(msg, context);
+        var result = performTask(task);
+        if (result.ctor === 'Ok') {
+          context = updateContext(result._0, context);
+        } else {
+          console.log("Task failed: " + result);
+        }
       });
 
       return context;
