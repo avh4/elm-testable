@@ -32,31 +32,31 @@ string =
     ( "Alpha", "Beta" )
 
 
+stringProgram : String -> TestContext String String
+stringProgram init =
+    { model = init
+    , update = \msg model -> model ++ ";" ++ msg
+    , view = Html.text
+    }
+        |> Html.beginnerProgram
+        |> TestContext.start
+
+
 all : Test
 all =
     describe "Testable"
         [ describe "Model"
-            [ testEqual string "verifying an initial model" <|
-                \actual expected ->
-                    { model = actual
-                    , update = \msg _ -> msg
-                    , view = Html.text
-                    }
-                        |> Html.beginnerProgram
-                        |> TestContext.start
+            [ test "verifying an initial model" <|
+                \() ->
+                    stringProgram "Start"
                         |> TestContext.model
-                        |> Expect.equal expected
-            , testEqual string "verifying an updated model" <|
-                \actual expected ->
-                    { model = "Start"
-                    , update = \msg _ -> msg
-                    , view = Html.text
-                    }
-                        |> Html.beginnerProgram
-                        |> TestContext.start
-                        |> TestContext.update actual
+                        |> Expect.equal "Start"
+            , test "verifying an updated model" <|
+                \() ->
+                    stringProgram "Start"
+                        |> TestContext.update "1"
                         |> TestContext.model
-                        |> Expect.equal expected
+                        |> Expect.equal "Start;1"
             ]
         , describe "Cmds"
             [ testEqual string "verifying an initial Cmd" <|
