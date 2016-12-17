@@ -12,6 +12,7 @@ _elm_lang$core$Native_Platform.initialize = function(init, update, subscriptions
 
 var _user$project$Native_TestContext = (function() {
 
+  // forEachCmd : Cmd msg -> (LeafCmd -> IO ()) -> IO ()
   function forEachCmd(bag, f) {
     switch (bag.type) {
       case 'leaf':
@@ -33,6 +34,7 @@ var _user$project$Native_TestContext = (function() {
   }
 
 
+  // performTask : Task x a -> Result x a
   function performTask(task) {
     switch (task.ctor) {
       case '_Task_succeed':
@@ -67,6 +69,7 @@ var _user$project$Native_TestContext = (function() {
   }
 
 
+  // applyUpdateResult : (model, Cmd msg) -> TestContext model msg -> TestContext model msg
   function applyUpdateResult(updateResult, testContext) {
     // assert(updateResult.ctor == 'Tuple2');
 
@@ -101,6 +104,7 @@ var _user$project$Native_TestContext = (function() {
   }
 
 
+  // updateContext : msg -> TestContext model msg -> TestContext model msg
   function updateContext(msg, testContext) {
     var updateResult = testContext.update(msg)(testContext.model);
     return applyUpdateResult(updateResult, testContext);
