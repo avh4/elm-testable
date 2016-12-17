@@ -4,6 +4,7 @@ import Test exposing (..)
 import Expect
 import Html
 import TestContext exposing (TestContext)
+import TestPorts
 
 
 testEqual : Gen a -> String -> (a -> a -> Expect.Expectation) -> Test
@@ -56,7 +57,18 @@ all =
                         |> TestContext.model
                         |> Expect.equal (Ok expected)
             ]
-          -- , describe "Cmds" []
+        , describe "Cmds"
+            [ testEqual string "verifying an initial Cmd" <|
+                \actual expected ->
+                    { init = ( (), TestPorts.string actual )
+                    , update = \msg _ -> ( msg, Cmd.none )
+                    , subscriptions = \_ -> Sub.none
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.program
+                        |> TestContext.start
+                        |> TestContext.expectCmd (TestPorts.string expected)
+            ]
           -- , describe "Http" []
           -- , describe "Tasks" []
           -- , describe "Subscriptions" []

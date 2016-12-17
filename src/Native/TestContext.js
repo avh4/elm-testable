@@ -26,6 +26,7 @@ var _user$project$Native_TestContext = (function() {
         ctor: 'TestContextNativeValue',
         model: app.init._0,
         update: app.update,
+        pendingCmds: app.init._1,
         errors: []
       };
     },
@@ -43,8 +44,27 @@ var _user$project$Native_TestContext = (function() {
         ctor: 'TestContextNativeValue',
         model: updateResult._0,
         update: testContext.update,
+        pendingCmds: testContext.pendingCmds,
         errors: []
       };
+    }),
+    pendingCmds: function(testContext) {
+      return {};
+    },
+    hasPendingCmd: F2(function(expectedCmd, testContext) {
+      if (expectedCmd.type !== 'leaf') {
+        throw 'Unhandled case: expected Cmd is a Cmd.batch';
+      }
+      if (testContext.pendingCmds.type === 'leaf') {
+        if (testContext.pendingCmds.home === expectedCmd.home
+          && testContext.pendingCmds.value === expectedCmd.value) {
+            return true;
+        } else {
+          return false;
+        }
+      } else {
+        throw 'Unhandled case: pending cmds is a Cmd.batch';
+      }
     })
   };
 })();
