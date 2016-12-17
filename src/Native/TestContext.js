@@ -11,6 +11,39 @@ _elm_lang$core$Native_Platform.initialize = function(init, update, subscriptions
 }
 
 var _user$project$Native_TestContext = (function() {
+
+  function hasCmd(bag, expected) {
+    switch (bag.type) {
+      case 'leaf':
+        if (bag.home === expected.home
+          && bag.value === expected.value) {
+            return true;
+        } else {
+          return false;
+        }
+        break;
+
+      case 'node':
+        var rest = bag.branches;
+        while (rest.ctor !== '[]') {
+          // assert(rest.ctor === '::');
+          var next = rest._0;
+
+          if (hasCmd(next, expected)) {
+            return true;
+          }
+
+          rest = rest._1;
+        }
+        return false;
+        break;
+
+      default:
+        throw 'Unknown internal Cmd type: ' + bag.type;
+    }
+  }
+
+
   return {
     start: function(program) {
       var containerModule = {};
@@ -44,7 +77,9 @@ var _user$project$Native_TestContext = (function() {
         ctor: 'TestContextNativeValue',
         model: updateResult._0,
         update: testContext.update,
-        pendingCmds: testContext.pendingCmds,
+        pendingCmds: _elm_lang$core$Platform_Cmd$batch(
+          _elm_lang$core$Native_List.fromArray([testContext.pendingCmds, updateResult._1])
+        ),
         errors: []
       };
     }),
@@ -55,16 +90,7 @@ var _user$project$Native_TestContext = (function() {
       if (expectedCmd.type !== 'leaf') {
         throw 'Unhandled case: expected Cmd is a Cmd.batch';
       }
-      if (testContext.pendingCmds.type === 'leaf') {
-        if (testContext.pendingCmds.home === expectedCmd.home
-          && testContext.pendingCmds.value === expectedCmd.value) {
-            return true;
-        } else {
-          return false;
-        }
-      } else {
-        throw 'Unhandled case: pending cmds is a Cmd.batch';
-      }
+      return hasCmd(testContext.pendingCmds, expectedCmd);
     })
   };
 })();

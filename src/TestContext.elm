@@ -49,4 +49,11 @@ expectCmd expected context =
     if hasPendingCmd expected context then
         Expect.pass
     else
-        Expect.fail ("Expected pending Cmd: " ++ toString expected)
+        [ "<pending commands>"
+        , "╷"
+        , "│ TestContext.expectCmd"
+        , "╵"
+        , toString expected
+        ]
+            |> String.join "\n"
+            |> Expect.fail
