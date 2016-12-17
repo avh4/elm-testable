@@ -1,3 +1,7 @@
+## Note:
+
+elm-testable does not support Elm 0.18.  A new package is currently in development that will allow testing of Cmds, Tasks, and Subs without the need for elm-testable's wrappers.  More details will be posted to elm-discuss when it is available.
+
 [![Build Status](https://travis-ci.org/avh4/elm-testable.svg?branch=master)](https://travis-ci.org/avh4/elm-testable)
 
 # avh4/elm-testable
