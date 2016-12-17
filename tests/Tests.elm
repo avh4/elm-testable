@@ -154,4 +154,5 @@ all =
             ]
           -- , describe "Http" []
           -- , describe "Subscriptions" []
+          -- , describe "Flags" []
         ]

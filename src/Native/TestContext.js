@@ -4,7 +4,6 @@ if (_elm_lang$core$Native_Platform.initialize === undefined) {
 
 _elm_lang$core$Native_Platform.initialize = function(init, update, subscriptions, renderer) {
   return {
-    ctor: 'FakeApp',
     init: init,
     update: update
   }
@@ -69,86 +68,27 @@ var _user$project$Native_TestContext = (function() {
   }
 
 
-  // applyUpdateResult : (model, Cmd msg) -> TestContext model msg -> TestContext model msg
-  function applyUpdateResult(updateResult, testContext) {
-    // assert(updateResult.ctor == 'Tuple2');
-
-    var newTasks = [];
-    var newCmds = [];
-    forEachCmd(updateResult._1, function(cmd) {
-      if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
-        newTasks.push(cmd.value._0);
-      } else {
-        newCmds.push(cmd);
-      }
-    });
-
-    var context = {
-      ctor: 'TestContextNativeValue',
-      model: updateResult._0,
-      update: testContext.update,
-      pendingCmds: testContext.pendingCmds.concat(newCmds),
-      errors: []
-    };
-
-    newTasks.forEach(function(task) {
-      var result = performTask(task);
-      if (result.ctor === 'Ok') {
-        context = updateContext(result._0, context);
-      } else {
-        console.log("Task failed: " + result);
-      }
-    });
-
-    return context;
-  }
-
-
-  // updateContext : msg -> TestContext model msg -> TestContext model msg
-  function updateContext(msg, testContext) {
-    var updateResult = testContext.update(msg)(testContext.model);
-    return applyUpdateResult(updateResult, testContext);
-  }
-
-
   return {
-    start: function(program) {
+    extractProgram: function(program) {
       var containerModule = {};
       var moduleName = "<TestContext fake module>"
       var p = program()(containerModule, moduleName);
       var embedRoot = {};
       var flags = undefined;
       var app = containerModule.embed(embedRoot, flags);
-
-      var context = {
-        ctor: 'TestContextNativeValue',
-        model: undefined,
-        update: app.update,
-        pendingCmds: [],
-        errors: []
-      };
-
-      return applyUpdateResult(app.init, context);
+      return app;
     },
-    model: function(testContext) {
-      if (testContext.errors.length > 0) {
-        return { ctor: 'Err', _0: testContext.errors };
-      } else {
-        return { ctor: 'Ok', _0: testContext.model };
-      }
+    extractCmds: function(cmd) {
+      var cmds = [];
+      forEachCmd(cmd, function(c) {
+        if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
+          cmds.push({ ctor: 'Task', _0: cmd.value._0 });
+        } else {
+          cmds.push({ ctor: 'Port', _0: cmd.home, _1: cmd.value });
+        }
+      });
+      return _elm_lang$core$Native_List.fromArray(cmds);
     },
-    update: F2(updateContext),
-    pendingCmds: function(testContext) {
-      return {};
-    },
-    hasPendingCmd: F2(function(expectedCmd, testContext) {
-      if (expectedCmd.type !== 'leaf') {
-        throw 'Unhandled case: expected Cmd is a Cmd.batch';
-      }
-      return testContext.pendingCmds.some(function(cmd) {
-        return cmd.home === expectedCmd.home
-          && cmd.value === expectedCmd.value;
-      })
-    })
+    performTask: performTask
   };
 })();
