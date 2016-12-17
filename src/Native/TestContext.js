@@ -33,38 +33,6 @@ var _user$project$Native_TestContext = (function() {
   }
 
 
-  function hasCmd(bag, expected) {
-    switch (bag.type) {
-      case 'leaf':
-        if (bag.home === expected.home
-          && bag.value === expected.value) {
-            return true;
-        } else {
-          return false;
-        }
-        break;
-
-      case 'node':
-        var rest = bag.branches;
-        while (rest.ctor !== '[]') {
-          // assert(rest.ctor === '::');
-          var next = rest._0;
-
-          if (hasCmd(next, expected)) {
-            return true;
-          }
-
-          rest = rest._1;
-        }
-        return false;
-        break;
-
-      default:
-        throw new Error('Unknown internal Cmd type: ' + bag.type);
-    }
-  }
-
-
   function performTask(task) {
     switch (task.ctor) {
       case '_Task_succeed':
