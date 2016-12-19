@@ -34,41 +34,6 @@ var _user$project$Native_TestContext = (function() {
   }
 
 
-  // performTask : Task x a -> Result x a
-  function performTask(task) {
-    switch (task.ctor) {
-      case '_Task_succeed':
-        return { ctor: 'Ok', _0: task.value };
-
-      case '_Task_fail':
-        return { ctor: 'Err', _0: task.value };
-
-      case '_Task_andThen':
-        var firstValue = performTask(task.task);
-        if (firstValue.ctor === 'Ok') {
-          var next = task.callback(firstValue._0);
-          var finalValue = performTask(next);
-          return finalValue;
-        } else {
-          return firstValue;
-        }
-
-      case '_Task_onError':
-        var firstValue = performTask(task.task);
-        if (firstValue.ctor === 'Err') {
-          var next = task.callback(firstValue._0);
-          var finalValue = performTask(next);
-          return finalValue;
-        } else {
-          return firstValue;
-        }
-
-      default:
-        throw new Error("Unknown task type: " + task.ctor);
-    }
-  }
-
-
   return {
     extractProgram: F2(function(moduleName, program) {
       var containerModule = {};
@@ -82,9 +47,9 @@ var _user$project$Native_TestContext = (function() {
 
       return app;
     }),
-    extractCmds: function(cmd) {
+    extractCmds: function(root) {
       var cmds = [];
-      forEachLeaf(cmd, function(c) {
+      forEachLeaf(root, function(cmd) {
         if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
           cmds.push({ ctor: 'Task', _0: cmd.value._0 });
         } else {
@@ -106,7 +71,6 @@ var _user$project$Native_TestContext = (function() {
       // assert(sub.type === 'leaf');
       return sub.home;
     },
-    performTask: performTask,
     applyMapper: F2(function(mapper, value) {
       return { ctor: 'Ok', _0: mapper(value) };
     })

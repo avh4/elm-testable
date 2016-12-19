@@ -6,12 +6,14 @@ module TestContext
         , update
         , send
         , expectCmd
+        , expectHttpRequest
         )
 
 import Native.TestContext
 import Expect
 import Json.Encode
 import Dict exposing (Dict)
+import Testable.Task exposing (fromPlatformTask, Task(..))
 
 
 type alias TestableProgram model msg =
@@ -22,7 +24,7 @@ type alias TestableProgram model msg =
 
 
 type TestableCmd msg
-    = Task (Platform.Task Never msg)
+    = Task (Platform.Task msg msg)
     | Port String Json.Encode.Value
 
 
@@ -39,6 +41,7 @@ type TestContext model msg
         { program : TestableProgram model msg
         , model : model
         , pendingCmds : List (TestableCmd msg)
+        , pendingHttpRequests : Dict ( String, String ) (Task msg msg)
         }
 
 
@@ -62,11 +65,6 @@ extractSubPortName =
     Native.TestContext.extractSubPortName
 
 
-performTask : Platform.Task x a -> Result x a
-performTask =
-    Native.TestContext.performTask
-
-
 applyMapper : Mapper msg -> value -> Result String msg
 applyMapper =
     Native.TestContext.applyMapper
@@ -82,6 +80,7 @@ start realProgram =
             { program = program
             , model = Tuple.first program.init
             , pendingCmds = []
+            , pendingHttpRequests = Dict.empty
             }
             |> processCmds (Tuple.second program.init)
 
@@ -98,13 +97,29 @@ processCmd cmd (TestContext context) =
             TestContext { context | pendingCmds = context.pendingCmds ++ [ cmd ] }
 
         Task task ->
-            case performTask task of
-                Ok msg ->
-                    (TestContext context)
+            case fromPlatformTask task of
+                Success msg ->
+                    TestContext context
                         |> update msg
 
-                Err never ->
-                    Debug.crash ("Got a Never value from a task: " ++ toString never)
+                Failure msg ->
+                    -- (TestContext context)
+                    --     |> update msg
+                    Debug.crash ("TODO: commented code above is not tested")
+
+                SleepTask time next ->
+                    -- TODO: track time
+                    TestContext context
+
+                HttpTask options next ->
+                    TestContext
+                        { context
+                            | pendingHttpRequests =
+                                context.pendingHttpRequests
+                                    |> Dict.insert
+                                        ( options.method, options.url )
+                                        (HttpTask options next)
+                        }
 
 
 model : TestContext model msg -> model
@@ -175,6 +190,28 @@ expectCmd expected (TestContext context) =
         , "│ TestContext.expectCmd"
         , "╵"
         , toString <| extractCmds expected
+        ]
+            |> String.join "\n"
+            |> Expect.fail
+
+
+expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation
+expectHttpRequest method url (TestContext context) =
+    if Dict.member ( method, url ) context.pendingHttpRequests then
+        Expect.pass
+    else
+        [ if Dict.isEmpty context.pendingHttpRequests then
+            "pending HTTP requests (none were made)"
+          else
+            Dict.keys context.pendingHttpRequests
+                |> List.sortBy (\( a, b ) -> ( b, a ))
+                |> List.map (\( a, b ) -> "    - " ++ a ++ " " ++ b)
+                |> String.join "\n"
+                |> ((++) "pending HTTP requests:\n")
+        , "╷"
+        , "│ to include"
+        , "╵"
+        , method ++ " " ++ url
         ]
             |> String.join "\n"
             |> Expect.fail

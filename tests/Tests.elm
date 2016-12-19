@@ -6,8 +6,10 @@ import Html
 import TestContext exposing (TestContext)
 import TestPorts
 import Task
+import HttpTests
 import ModelTests
 import SubTests
+import Testable.TaskTests
 
 
 testEqual : Gen a -> String -> (a -> a -> Expect.Expectation) -> Test
@@ -47,7 +49,8 @@ stringProgram init =
 all : Test
 all =
     describe "Testable"
-        [ ModelTests.all
+        [ Testable.TaskTests.all
+        , ModelTests.all
         , describe "Cmds"
             [ testEqual string "verifying an initial Cmd" <|
                 \actual expected ->
@@ -143,7 +146,7 @@ all =
                         |> Expect.equal (Err expected)
             ]
           -- , describe "Process.sleep" []
-          -- , describe "Http" []
+        , HttpTests.all
         , SubTests.all
           -- , describe "Flags" []
         ]
