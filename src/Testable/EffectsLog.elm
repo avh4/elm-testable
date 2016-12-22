@@ -80,10 +80,10 @@ insert effects (EffectsLog log) =
 
         Internal.Batch list ->
             let
-                step effect ( log', immediates ) =
-                    case insert effect log' of
-                        ( log'', immediates' ) ->
-                            ( log'', immediates ++ immediates' )
+                step effect ( log_, immediates ) =
+                    case insert effect log_ of
+                        ( log__, immediates_ ) ->
+                            ( log__, immediates ++ immediates_ )
             in
                 List.foldl step ( EffectsLog log, [] ) list
 
@@ -100,7 +100,7 @@ containsHttpMsg settings request (EffectsLog log) =
 httpRequests : EffectsLog msg -> List Http.Request
 httpRequests (EffectsLog log) =
     Dict.keys log.http
-        |> List.map snd
+        |> List.map Tuple.second
 
 
 containsCmd : Platform.Cmd.Cmd msg -> EffectsLog msg -> Bool
