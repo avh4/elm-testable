@@ -1,4 +1,4 @@
-module Testable.Task exposing (Task, succeed, fail, map, andThen, mapError, toMaybe, toResult, sleep, perform)
+module Testable.Task exposing (Task, succeed, fail, map, andThen, sequence, onError, mapError, perform, attempt)
 
 {-|
 `Testable.Task` is a replacement for the core `Task` module.  You can use it
@@ -12,20 +12,16 @@ convert `Testable.Task` into a core `Task` with the `Testable` module.
 @docs map
 
 # Chaining
-@docs andThen
+@docs andThen, sequence
 
 # Errors
-@docs mapError, toMaybe, toResult
-
-# Threads
-@docs sleep
+@docs onError, mapError
 
 # Commands
-@docs perform
+@docs perform, attempt
 -}
 
 import Testable.Internal as Internal exposing (TaskResult(..))
-import Time exposing (Time)
 
 
 {-| Represents asynchronous effects that may fail. It is useful for stuff like
@@ -84,8 +80,54 @@ andThen next source =
     transform (resultAndThen next) source
 
 
+{-| Start with a list of tasks, and turn them into a single task that returns a list. The tasks will be run in order one-by-one and if any task fails the whole sequence fails.
+
+    sequence [ succeed 1, succeed 2 ] -- succeed [ 1, 2 ]
+
+This can be useful if you need to make a bunch of HTTP requests one-by-one.}
+-}
+sequence : List (Task x a) -> Task x (List a)
+sequence list =
+    case list of
+        task :: nextTasks ->
+            task
+                |> andThen
+                    (\value ->
+                        (sequence nextTasks)
+                            |> andThen
+                                (\nextValue -> succeed (value :: nextValue))
+                    )
+
+        [] ->
+            succeed []
+
+
 
 -- Errors
+
+
+{-| Recover from a failure in a task. If the given task fails, we use the callback to recover.
+-}
+onError : (x -> Task y a) -> Task x a -> Task y a
+onError f task =
+    case task of
+        Internal.ImmediateTask (Failure error) ->
+            f error
+
+        Internal.SleepTask milliseconds (Failure error) ->
+            f error
+
+        Internal.ImmediateTask (Success value) ->
+            Internal.ImmediateTask (Success value)
+
+        Internal.SleepTask milliseconds (Success value) ->
+            Internal.SleepTask milliseconds (Success value)
+
+        Internal.ImmediateTask (Continue task) ->
+            Internal.ImmediateTask (Continue (onError f task))
+
+        Internal.SleepTask milliseconds (Continue task) ->
+            Internal.SleepTask milliseconds (Continue (onError f task))
 
 
 {-| Transform the error value. This can be useful if you need a bunch of error
@@ -114,29 +156,6 @@ mapError f task =
         task
 
 
-{-| Helps with handling failure. Instead of having a task fail with some value
-of type `x` it promotes the failure to a `Nothing` and turns all successes into
-`Just` something.
-
-    toMaybe (fail "file not found") == succeed Nothing
-    toMaybe (succeed 42)            == succeed (Just 42)
-
-This means you can handle the error with the `Maybe` module instead.
--}
-toMaybe : Task x a -> Task never (Maybe a)
-toMaybe source =
-    transform (resultToResult >> resultMap Result.toMaybe) source
-
-
-{-| Helps with handling failure. Instead of having a task fail with some value
-of type `x` it promotes the failure to an `Err` and turns all successes into
-`Ok` something.
-
-    toResult (fail "file not found") == succeed (Err "file not found")
-    toResult (succeed 42)            == succeed (Ok 42)
-
-This means you can handle the error with the `Result` module instead.
--}
 toResult : Task x a -> Task never (Result x a)
 toResult source =
     transform resultToResult source
@@ -145,9 +164,6 @@ toResult source =
 transform : (TaskResult x a -> TaskResult y b) -> Task x a -> Task y b
 transform tx source =
     case source of
-        Internal.HttpTask request settings mapResponse ->
-            Internal.HttpTask request settings (mapResponse >> tx)
-
         Internal.ImmediateTask result ->
             Internal.ImmediateTask (result |> tx)
 
@@ -156,31 +172,14 @@ transform tx source =
 
 
 
--- Threads
-
-
-{-| Make a thread sleep for a certain amount of time. The following example
-sleeps for 1 second and then succeeds with 42.
-
-    sleep 1000 |> andThen \_ -> succeed 42
--}
-sleep : Time -> Task never ()
-sleep milliseconds =
-    Internal.SleepTask milliseconds (Success ())
-
-
-
 -- Commands
 
 
-{-| Command the runtime system to perform a task. The most important argument
-is the `Task` which describes what you want to happen. But you also need to
-provide functions to tag the two possible outcomes of the task. It can fail or
-succeed, but either way, you need to have a message to feed back into your
-application.
+{-| The only way to do things in Elm is to give commands to the Elm runtime.
+So we describe some complex behavior with a Task and then command the runtime to perform that task.
 -}
-perform : (x -> msg) -> (a -> msg) -> Task x a -> Internal.Cmd msg
-perform onFail onSuccess task =
+perform : (a -> msg) -> Task Never a -> Internal.Cmd msg
+perform onSuccess task =
     task
         |> toResult
         |> map
@@ -190,13 +189,19 @@ perform onFail onSuccess task =
                         onSuccess value
 
                     Err error ->
-                        onFail error
+                        Debug.crash "Impossible to have an error on a Never Task"
             )
         |> Internal.TaskCmd
 
 
-
--- TaskResult
+{-| Command the Elm runtime to attempt a task that might fail!
+-}
+attempt : (Result x a -> msg) -> Task x a -> Internal.Cmd msg
+attempt f task =
+    task
+        |> toResult
+        |> map f
+        |> Internal.TaskCmd
 
 
 resultMap : (a -> b) -> TaskResult x a -> TaskResult x b
