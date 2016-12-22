@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime, assertCalled)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -7,7 +7,7 @@ the entire lifecycle of your component.
 @docs Component, TestContext, startForTest, update
 
 # Inspecting
-@docs currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests
+@docs currentModel, assertCurrentModel, assertHttpRequest, assertHttpRequestWithSettings, assertNoPendingHttpRequests, assertCalled
 
 # Simulating Effects
 @docs resolveHttpRequest, resolveHttpRequestWithSettings, advanceTime
@@ -16,9 +16,10 @@ the entire lifecycle of your component.
 import Expect exposing (Expectation)
 import String
 import Testable.Cmd
-import Testable.EffectsLog as EffectsLog exposing (EffectsLog)
+import Testable.EffectsLog as EffectsLog exposing (EffectsLog, containsCmd)
 import Testable.Http as Http
 import Time exposing (Time)
+import Platform.Cmd
 
 
 {-| A component that can be used to create a `TestContext`
@@ -269,3 +270,21 @@ assertCurrentModel expectedModel context =
     context
         |> currentModel
         |> Expect.equal (Ok expectedModel)
+
+
+{-| Assert that a cmd was called
+-}
+assertCalled : Platform.Cmd.Cmd msg -> TestContext msg model -> Expectation
+assertCalled expectedCmd (TestContext context) =
+    case context.state of
+        Err errors ->
+            Expect.fail
+                ("Expected that a cmd was called, but TextContext had previous errors:"
+                    ++ String.join "\n    " ("" :: errors)
+                )
+
+        Ok { effectsLog } ->
+            if containsCmd expectedCmd effectsLog then
+                Expect.pass
+            else
+                Expect.equal [ expectedCmd ] (EffectsLog.wrappedCmds effectsLog)

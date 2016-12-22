@@ -2,12 +2,14 @@ module Testable.Internal exposing (..)
 
 import Http
 import Time exposing (Time)
+import Platform.Cmd
 
 
 type Cmd msg
     = None
     | TaskCmd (Task msg msg)
     | Batch (List (Cmd msg))
+    | WrappedCmd (Platform.Cmd.Cmd msg)
 
 
 type alias Settings =

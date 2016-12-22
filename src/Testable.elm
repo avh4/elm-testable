@@ -37,6 +37,9 @@ cmd testableEffects =
         Internal.Batch list ->
             Cmd.batch (List.map cmd list)
 
+        Internal.WrappedCmd cmd ->
+            cmd
+
 
 {-| Converts a `Testable.Task` into an `Task`
 

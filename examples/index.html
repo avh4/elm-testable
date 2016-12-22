@@ -1,0 +1,33 @@
+<html>
+  <body>
+    <script src="./RandomGif.js"></script>
+    <script src="./Spelling.js"></script>
+    <script src="./WebSockets.js"></script>
+
+    <h1>RandomGif</h1>
+    <div id="random-gif"></div>
+
+    <h1>Spelling</h1>
+    <div id="spelling"></div>
+
+    <h1>WebSockets</h1>
+    <div id="web-sockets"></div>
+
+    <script>
+      var randomGif = Elm.RandomGif.embed(document.getElementById('random-gif'));
+
+      var webSockets = Elm.WebSockets.embed(document.getElementById('web-sockets'));
+
+      var spelling = Elm.Spelling.embed(document.getElementById('spelling'));
+
+      function spellCheck(word) {
+        return word.split('');
+      }
+
+      spelling.ports.check.subscribe(function(word) {
+        var suggestions = spellCheck(word);
+        spelling.ports.suggestions.send(suggestions);
+      });
+    </script>
+  </body>
+</html>

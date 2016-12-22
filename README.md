@@ -109,6 +109,87 @@ all =
 
 Here are [complete tests for the RandomGif example](https://github.com/avh4/elm-testable/blob/master/examples/tests/RandomGifTests.elm).
 
+## Testing Ports
+
+You can also test that an outgoing port was called, by wrapping your ports with `Testable.Cmd.wrap`, like this:
+
+```diff
+diff --git b/examples/Spelling.elm a/examples/Spelling.elm
+index 4ff685f..62e2154 100644
+--- b/examples/Spelling.elm
++++ a/examples/Spelling.elm
+@@ -5,6 +5,8 @@ port module Spelling exposing (..)
+ import Html exposing (..)
+ import Html.Events exposing (..)
+ import String
++import Testable.Cmd
+
+
+ -- MODEL
+@@ -16,9 +18,9 @@ type alias Model =
+     }
+
+
+-init : ( Model, Cmd Msg )
++init : ( Model, Testable.Cmd.Cmd Msg )
+ init =
+-    ( Model "" [], Cmd.none )
++    ( Model "" [], Testable.Cmd.none )
+
+
+
+@@ -34,17 +36,17 @@ type Msg
+ port check : String -> Cmd msg
+
+
+-update : Msg -> Model -> ( Model, Cmd Msg )
++update : Msg -> Model -> ( Model, Testable.Cmd.Cmd Msg )
+ update action model =
+     case action of
+         Change newWord ->
+-            ( Model newWord [], Cmd.none )
++            ( Model newWord [], Testable.Cmd.none )
+
+         Check ->
+-            ( model, check model.word )
++            ( model, Testable.Cmd.wrap <| check model.word )
+
+         Suggest newSuggestions ->
+-            ( Model model.word newSuggestions, Cmd.none )
++            ( Model model.word newSuggestions, Testable.Cmd.none )
+
+```
+
+And testing it like this:
+
+```elm
+module SpellingTests exposing (..)
+
+import ElmTest exposing (..)
+import Testable.TestContext exposing (..)
+import Spelling
+
+
+spellingComponent : Testable.TestContext.Component Spelling.Msg Spelling.Model
+spellingComponent =
+    { init = Spelling.init
+    , update = Spelling.update
+    }
+
+
+all : Test
+all =
+    suite "Spelling"
+        [ spellingComponent
+            |> startForTest
+            |> update (Spelling.Change "cats")
+            |> update Spelling.Check
+            |> assertCalled (Spelling.check "cats")
+            |> test "call suggestions check port when requested"
+        ]
+```
+
+Here are [complete tests for the Spelling example](https://github.com/avh4/elm-testable/blob/master/examples/tests/SpellingTests.elm).
 
 ## Example integration with `Main`
 
