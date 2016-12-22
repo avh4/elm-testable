@@ -1,4 +1,4 @@
-module Testable.Http exposing (url, getString, get, post, Error, empty, string, Request, Settings, send, defaultSettings, getRequest, Response, RawError, ok, serverError)
+module Testable.Http exposing (getString, get, post, Error, empty, string, Request, Settings, send, defaultSettings, getRequest, Response, ok, serverError)
 
 {-|
 `Testable.Http` is a replacement for the standard `Http` module.  You can use it
@@ -17,7 +17,7 @@ to create components that can be tested with `Testable.TestContext`.
 @docs send, Request, Settings, defaultSettings
 
 # Responses
-@docs Response, RawError
+@docs Response, Error
 
 # Helpers
 @docs getRequest, ok, serverError
@@ -26,35 +26,14 @@ to create components that can be tested with `Testable.TestContext`.
 import Dict
 import Http
 import Json.Decode as Decode exposing (Decoder)
-import Testable.Task as Task exposing (Task)
 import Testable.Internal as Internal
 import Time exposing (Time)
-
-
--- Encoding and Decoding
-
-
-{-| Create a properly encoded URL with a [query string][qs]. The first argument is
-the portion of the URL before the query string, which is assumed to be
-properly encoded already. The second argument is a list of all the
-key/value pairs needed for the query string. Both the keys and values
-will be appropriately encoded, so they can contain spaces, ampersands, etc.
-
-[qs]: http://en.wikipedia.org/wiki/Query_string
-
-    url "http://example.com/users" [ ("name", "john doe"), ("age", "30") ]
-    -- http://example.com/users?name=john+doe&age=30
--}
-url : String -> List ( String, String ) -> String
-url =
-    Http.url
-
 
 
 -- Fetch Strings and JSON
 
 
-rawErrorError : RawError -> Error
+rawErrorError : Error -> Error
 rawErrorError rawError =
     case rawError of
         Http.RawTimeout ->
@@ -84,8 +63,8 @@ getString url =
     in
         Internal.HttpTask defaultSettings
             (getRequest url)
-            (Result.formatError rawErrorError
-                >> (flip Result.andThen) decodeResponse
+            (Result.mapError rawErrorError
+                >> Result.andThen decodeResponse
                 >> Internal.resultFromResult
             )
 
@@ -99,21 +78,21 @@ response.
     hats =
         get (list string) "http://example.com/hat-categories.json"
 -}
-get : Decoder value -> String -> Task Error value
+get : String -> Decoder value -> Request value
 get decoder url =
     let
         decodeResponse response =
             case response.value of
                 Http.Text responseBody ->
                     Decode.decodeString decoder responseBody
-                        |> Result.formatError Http.UnexpectedPayload
+                        |> Result.mapError Http.UnexpectedPayload
 
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
     in
         Internal.HttpTask defaultSettings
             (getRequest url)
-            (Result.formatError rawErrorError
+            (Result.mapError rawErrorError
                 >> (flip Result.andThen) decodeResponse
                 >> Internal.resultFromResult
             )
@@ -137,7 +116,7 @@ post decoder url requestBody =
             case response.value of
                 Http.Text responseBody ->
                     Decode.decodeString decoder responseBody
-                        |> Result.formatError Http.UnexpectedPayload
+                        |> Result.mapError Http.UnexpectedPayload
 
                 Http.Blob _ ->
                     Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
@@ -148,16 +127,19 @@ post decoder url requestBody =
             , url = url
             , body = requestBody
             }
-            (Result.formatError rawErrorError
+            (Result.mapError rawErrorError
                 >> (flip Result.andThen) decodeResponse
                 >> Internal.resultFromResult
             )
 
 
-{-| The kinds of errors you typically want in practice. When you get a
-response but its status is not in the 200 range, it will trigger a
-`BadResponse`. When you try to decode JSON but something goes wrong,
-you will get an `UnexpectedPayload`.
+{-| A Request can fail in a couple ways:
+
+- BadUrl means you did not provide a valid URL.
+- Timeout means it took too long to get a response.
+- NetworkError means the user turned off their wifi, went in a cave, etc.
+- BadStatus means you got a response back, but the status code indicates failure.
+- BadPayload means you got a response back with a nice status code, but the body of the response was something unexpected. The String in this case is a debugging message that explains what went wrong with your JSON decoder or whatever.
 -}
 type alias Error =
     Http.Error
@@ -206,7 +188,7 @@ string =
 configure things like timeouts and progress monitoring. The Request argument
 defines all the information that will actually be sent along to a server.
 -}
-send : Settings -> Request -> Task RawError Response
+send : Settings -> Request -> Task Error Response
 send settings request =
     Internal.HttpTask settings request Internal.resultFromResult
 
@@ -227,8 +209,8 @@ headers manually.
         , body = empty
         }
 -}
-type alias Request =
-    Http.Request
+type alias Request a =
+    Http.Request a
 
 
 {-| Configure your request if you need specific behavior.
@@ -281,20 +263,8 @@ We have left these underlying facts about `XMLHttpRequest` as is because one
 goal of this library is to give a low-level enough API that others can build
 whatever helpful behavior they want on top of it.
 -}
-type alias Response =
-    Http.Response
-
-
-{-| The things that count as errors at the lowest level. Technically, getting
-a response back with status 404 is a &ldquo;successful&rdquo; response in that
-you actually got all the information you asked for.
-
-The `fromJson` function and `Error` type provide higher-level errors, but the
-point of `RawError` is to allow you to define higher-level errors however you
-want.
--}
-type alias RawError =
-    Http.RawError
+type alias Response a =
+    Http.Response a
 
 
 
@@ -303,18 +273,18 @@ type alias RawError =
 
 {-| A convenient way to make a `Request` corresponding to the request made by `get`
 -}
-getRequest : String -> Request
+getRequest : String -> Request a
 getRequest url =
     { verb = "GET"
     , headers = []
     , url = url
-    , body = Http.empty
+    , body = Http.emptyBody
     }
 
 
 {-| A convenient way to create a 200 OK repsonse
 -}
-ok : String -> Result RawError Response
+ok : String -> Result Error Response
 ok responseBody =
     Ok
         { status = 200
@@ -327,7 +297,7 @@ ok responseBody =
 
 {-| A convenient way to create a response representing a 500 error
 -}
-serverError : Result RawError Response
+serverError : Result Error Response
 serverError =
     Ok
         { status = 500
