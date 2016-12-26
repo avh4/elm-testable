@@ -17,8 +17,7 @@ type EffectsResult msg
 type EffectsLog msg
     = EffectsLog
         { http :
-            -- TODO: should be multidict
-            Dict ( Http.Settings, Http.Request ) (Result Http.RawError Http.Response -> EffectsResult msg)
+            Dict Http.Settings (Result Http.Error (Http.Response String) -> EffectsResult msg)
         , now : Time
         , sleep : PairingHeap Time (EffectsResult msg)
         , wrappedCmds : List (Platform.Cmd.Cmd msg)
@@ -56,8 +55,8 @@ insert effects (EffectsLog log) =
         Internal.None ->
             ( EffectsLog log, [] )
 
-        Internal.TaskCmd (Internal.HttpTask settings request mapResponse) ->
-            ( EffectsLog { log | http = Dict.insert ( settings, request ) (mapResponse >> unsafeFromResult) log.http }
+        Internal.TaskCmd (Internal.HttpTask settings mapResponse) ->
+            ( EffectsLog { log | http = Dict.insert settings (mapResponse >> unsafeFromResult) log.http }
             , []
             )
 
@@ -91,16 +90,15 @@ insert effects (EffectsLog log) =
             ( EffectsLog { log | wrappedCmds = cmd :: log.wrappedCmds }, [] )
 
 
-containsHttpMsg : Http.Settings -> Http.Request -> EffectsLog msg -> Bool
-containsHttpMsg settings request (EffectsLog log) =
-    Dict.get ( settings, request ) log.http
+containsHttpMsg : Http.Settings -> EffectsLog msg -> Bool
+containsHttpMsg settings (EffectsLog log) =
+    Dict.get settings log.http
         |> (/=) Nothing
 
 
-httpRequests : EffectsLog msg -> List Http.Request
+httpRequests : EffectsLog msg -> List Http.Settings
 httpRequests (EffectsLog log) =
     Dict.keys log.http
-        |> List.map Tuple.second
 
 
 containsCmd : Platform.Cmd.Cmd msg -> EffectsLog msg -> Bool
@@ -113,9 +111,9 @@ wrappedCmds (EffectsLog log) =
     log.wrappedCmds
 
 
-httpMsg : Http.Settings -> Http.Request -> Result Http.RawError Http.Response -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
-httpMsg expectedSettings expectedRequest response (EffectsLog log) =
-    case Dict.get ( expectedSettings, expectedRequest ) log.http of
+httpMsg : Http.Settings -> Result Http.Error (Http.Response String) -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
+httpMsg expectedSettings response (EffectsLog log) =
+    case Dict.get expectedSettings log.http of
         Nothing ->
             Nothing
 
@@ -123,7 +121,7 @@ httpMsg expectedSettings expectedRequest response (EffectsLog log) =
             case mapResponse response of
                 Finished msg ->
                     Just
-                        ( EffectsLog { log | http = Dict.remove ( expectedSettings, expectedRequest ) log.http }
+                        ( EffectsLog { log | http = Dict.remove expectedSettings log.http }
                         , [ msg ]
                         )
 
