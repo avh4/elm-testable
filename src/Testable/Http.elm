@@ -1,17 +1,14 @@
-module Testable.Http exposing (getString, get, post, Error, empty, string, Request, Settings, send, defaultSettings, getRequest, Response, ok, serverError)
+module Testable.Http exposing (getString, get, post, Error, emptyBody, Request, Settings, send, defaultSettings, getRequest, Response, ok, serverError)
 
 {-|
 `Testable.Http` is a replacement for the standard `Http` module.  You can use it
 to create components that can be tested with `Testable.TestContext`.
 
-# Encoding and Decoding
-@docs url
-
 # Fetch Strings and JSON
 @docs getString, get, post, Error
 
 # Body Values
-@docs empty, string
+@docs emptyBody
 
 # Arbitrary Requests
 @docs send, Request, Settings, defaultSettings
@@ -27,20 +24,10 @@ import Dict
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Testable.Internal as Internal
-import Time exposing (Time)
+import Testable.Task as Task
 
 
 -- Fetch Strings and JSON
-
-
-rawErrorError : Error -> Error
-rawErrorError rawError =
-    case rawError of
-        Http.RawTimeout ->
-            Http.Timeout
-
-        Http.RawNetworkError ->
-            Http.NetworkError
 
 
 {-| Send a GET request to the given URL. You will get the entire response as a
@@ -50,23 +37,20 @@ string.
     hats =
         getString "http://example.com/hat-categories.markdown"
 -}
-getString : String -> Task Error String
+getString : String -> Request String
 getString url =
     let
-        decodeResponse response =
-            case response.value of
-                Http.Text responseBody ->
-                    Ok responseBody
+        decodeResult result =
+            case result of
+                Ok response ->
+                    Ok response.body
 
-                Http.Blob _ ->
-                    Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
+                Err error ->
+                    Err error
     in
-        Internal.HttpTask defaultSettings
+        Internal.HttpRequest
             (getRequest url)
-            (Result.mapError rawErrorError
-                >> Result.andThen decodeResponse
-                >> Internal.resultFromResult
-            )
+            (decodeResult >> Internal.resultFromResult)
 
 
 {-| Send a GET request to the given URL. You also specify how to decode the
@@ -79,23 +63,20 @@ response.
         get (list string) "http://example.com/hat-categories.json"
 -}
 get : String -> Decoder value -> Request value
-get decoder url =
+get url decoder =
     let
-        decodeResponse response =
-            case response.value of
-                Http.Text responseBody ->
-                    Decode.decodeString decoder responseBody
-                        |> Result.mapError Http.UnexpectedPayload
+        decodeResult result =
+            case result of
+                Ok response ->
+                    Decode.decodeString decoder response.body
+                        |> Result.mapError (\error -> Http.BadPayload error response)
 
-                Http.Blob _ ->
-                    Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
+                Err error ->
+                    Err error
     in
-        Internal.HttpTask defaultSettings
+        Internal.HttpRequest
             (getRequest url)
-            (Result.mapError rawErrorError
-                >> (flip Result.andThen) decodeResponse
-                >> Internal.resultFromResult
-            )
+            (decodeResult >> Internal.resultFromResult)
 
 
 {-| Send a POST request to the given URL, carrying the given body. You also
@@ -109,28 +90,25 @@ specify how to decode the response with [a JSON decoder][json].
     hats =
         post (list string) "http://example.com/hat-categories.json" empty
 -}
-post : Decoder value -> String -> Body -> Task Error value
-post decoder url requestBody =
+post : String -> Body -> Decoder a -> Request a
+post url body decoder =
     let
-        decodeResponse response =
-            case response.value of
-                Http.Text responseBody ->
-                    Decode.decodeString decoder responseBody
-                        |> Result.mapError Http.UnexpectedPayload
+        decodeResult result =
+            case result of
+                Ok response ->
+                    Decode.decodeString decoder response.body
+                        |> Result.mapError (\error -> Http.BadPayload error response)
 
-                Http.Blob _ ->
-                    Err <| Http.UnexpectedPayload "Not Implemented: Decoding of Http.Blob response body"
+                Err error ->
+                    Err error
     in
-        Internal.HttpTask defaultSettings
-            { verb = "POST"
-            , headers = []
-            , url = url
-            , body = requestBody
+        Internal.HttpRequest
+            { defaultSettings
+                | url = url
+                , method = "POST"
+                , body = body
             }
-            (Result.mapError rawErrorError
-                >> (flip Result.andThen) decodeResponse
-                >> Internal.resultFromResult
-            )
+            (decodeResult >> Internal.resultFromResult)
 
 
 {-| A Request can fail in a couple ways:
@@ -158,26 +136,9 @@ type alias Body =
 
 {-| An empty request body, no value will be sent along.
 -}
-empty : Body
-empty =
-    Http.empty
-
-
-{-| Provide a string as the body of the request. Useful if you need to send
-JSON data to a server that does not belong in the URL.
-
-    import Json.Decode as JS
-
-    coolestHats : Task Error (List String)
-    coolestHats =
-        post
-            (JS.list JS.string)
-            "http://example.com/hats"
-            (string """{ "sortBy": "coolness", "take": 10 }""")
--}
-string : String -> Body
-string =
-    Http.string
+emptyBody : Body
+emptyBody =
+    Http.emptyBody
 
 
 
@@ -188,9 +149,17 @@ string =
 configure things like timeouts and progress monitoring. The Request argument
 defines all the information that will actually be sent along to a server.
 -}
-send : Settings -> Request -> Task Error Response
-send settings request =
-    Internal.HttpTask settings request Internal.resultFromResult
+send : (Result Error a -> msg) -> Request a -> Internal.Cmd msg
+send resultToMessage request =
+    Task.attempt resultToMessage (toTask request)
+
+
+{-| Convert a `Request` into a `Task`. This is only really useful if you want
+to chain together a bunch of requests (or any other tasks) in a single command.
+-}
+toTask : Request a -> Internal.Task Error a
+toTask (Internal.HttpRequest settings mapResult) =
+    Internal.HttpTask settings mapResult
 
 
 {-| Fully specify the request you want to send. For example, if you want to
@@ -210,7 +179,7 @@ headers manually.
         }
 -}
 type alias Request a =
-    Http.Request a
+    Internal.Request a
 
 
 {-| Configure your request if you need specific behavior.
@@ -236,10 +205,11 @@ type alias Settings =
 -}
 defaultSettings : Settings
 defaultSettings =
-    { timeout = 0
-    , onStart = Nothing
-    , onProgress = Nothing
-    , desiredResponseType = Nothing
+    { method = "GET"
+    , headers = []
+    , body = Http.emptyBody
+    , timeout = Nothing
+    , url = ""
     , withCredentials = False
     }
 
@@ -273,36 +243,30 @@ type alias Response a =
 
 {-| A convenient way to make a `Request` corresponding to the request made by `get`
 -}
-getRequest : String -> Request a
+getRequest : String -> Internal.Settings
 getRequest url =
-    { verb = "GET"
-    , headers = []
-    , url = url
-    , body = Http.emptyBody
-    }
+    { defaultSettings | url = url }
 
 
 {-| A convenient way to create a 200 OK repsonse
 -}
-ok : String -> Result Error Response
+ok : String -> Result Error (Response String)
 ok responseBody =
     Ok
-        { status = 200
-        , statusText = "OK"
+        { url = "<< Not Implemented >>"
+        , status = { code = 200, message = "OK" }
         , headers = Dict.empty
-        , url = "<< Not Implemented >>"
-        , value = Http.Text responseBody
+        , body = responseBody
         }
 
 
 {-| A convenient way to create a response representing a 500 error
 -}
-serverError : Result Error Response
+serverError : Result Error (Response String)
 serverError =
     Ok
-        { status = 500
-        , statusText = "Internal Server Error"
+        { url = "<< Not Implemented >>"
+        , status = { code = 500, message = "Internal Server Error" }
         , headers = Dict.empty
-        , url = "<< Not Implemented >>"
-        , value = Http.Text ""
+        , body = ""
         }

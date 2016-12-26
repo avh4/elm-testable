@@ -111,23 +111,14 @@ sequence list =
 onError : (x -> Task y a) -> Task x a -> Task y a
 onError f task =
     case task of
-        Internal.ImmediateTask (Failure error) ->
-            f error
+        Internal.HttpTask settings mapResponse ->
+            Internal.HttpTask settings (mapResponse >> resultOnError f)
 
-        Internal.SleepTask milliseconds (Failure error) ->
-            f error
+        Internal.ImmediateTask response ->
+            Internal.ImmediateTask (resultOnError f response)
 
-        Internal.ImmediateTask (Success value) ->
-            Internal.ImmediateTask (Success value)
-
-        Internal.SleepTask milliseconds (Success value) ->
-            Internal.SleepTask milliseconds (Success value)
-
-        Internal.ImmediateTask (Continue task) ->
-            Internal.ImmediateTask (Continue (onError f task))
-
-        Internal.SleepTask milliseconds (Continue task) ->
-            Internal.SleepTask milliseconds (Continue (onError f task))
+        Internal.SleepTask milliseconds response ->
+            Internal.SleepTask milliseconds (resultOnError f response)
 
 
 {-| Transform the error value. This can be useful if you need a bunch of error
@@ -164,6 +155,9 @@ toResult source =
 transform : (TaskResult x a -> TaskResult y b) -> Task x a -> Task y b
 transform tx source =
     case source of
+        Internal.HttpTask settings mapResponse ->
+            Internal.HttpTask settings (mapResponse >> tx)
+
         Internal.ImmediateTask result ->
             Internal.ImmediateTask (result |> tx)
 
@@ -215,6 +209,19 @@ resultMap f source =
 
         Continue next ->
             Continue (map f next)
+
+
+resultOnError : (x -> Task y a) -> TaskResult x a -> TaskResult y a
+resultOnError f source =
+    case source of
+        Success value ->
+            Success value
+
+        Failure error ->
+            Continue (f error)
+
+        Continue next ->
+            Continue (onError f next)
 
 
 resultAndThen : (a -> Task x b) -> TaskResult x a -> TaskResult x b
