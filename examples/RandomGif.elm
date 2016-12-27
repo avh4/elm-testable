@@ -1,5 +1,7 @@
 module RandomGif exposing (..)
 
+--- From example 5 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial/blob/master/examples/05-http.elm
+
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)

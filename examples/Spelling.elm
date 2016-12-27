@@ -6,13 +6,12 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import String
 import Testable.Cmd
-import Html.App
 import Testable
 
 
-main : Program Never
+main : Program Never Model Msg
 main =
-    Html.App.program
+    Html.program
         { init = Testable.init init
         , update = Testable.update update
         , view = view
