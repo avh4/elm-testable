@@ -40,17 +40,12 @@ string.
 getString : String -> Request String
 getString url =
     let
-        decodeResult result =
-            case result of
-                Ok response ->
-                    Ok response.body
-
-                Err error ->
-                    Err error
+        decodeResponse response =
+            Ok response.body
     in
         Internal.HttpRequest
             (getRequest url)
-            (decodeResult >> Internal.resultFromResult)
+            (decodeResponse >> Internal.resultFromResult)
 
 
 {-| Send a GET request to the given URL. You also specify how to decode the
@@ -65,18 +60,13 @@ response.
 get : String -> Decoder value -> Request value
 get url decoder =
     let
-        decodeResult result =
-            case result of
-                Ok response ->
-                    Decode.decodeString decoder response.body
-                        |> Result.mapError (\error -> Http.BadPayload error response)
-
-                Err error ->
-                    Err error
+        decodeResponse response =
+            Decode.decodeString decoder response.body
+                |> Result.mapError (\error -> Http.BadPayload error response)
     in
         Internal.HttpRequest
             (getRequest url)
-            (decodeResult >> Internal.resultFromResult)
+            (decodeResponse >> Internal.resultFromResult)
 
 
 {-| Send a POST request to the given URL, carrying the given body. You also
@@ -93,14 +83,9 @@ specify how to decode the response with [a JSON decoder][json].
 post : String -> Body -> Decoder a -> Request a
 post url body decoder =
     let
-        decodeResult result =
-            case result of
-                Ok response ->
-                    Decode.decodeString decoder response.body
-                        |> Result.mapError (\error -> Http.BadPayload error response)
-
-                Err error ->
-                    Err error
+        decodeResponse response =
+            Decode.decodeString decoder response.body
+                |> Result.mapError (\error -> Http.BadPayload error response)
     in
         Internal.HttpRequest
             { defaultSettings
@@ -108,7 +93,7 @@ post url body decoder =
                 , method = "POST"
                 , body = body
             }
-            (decodeResult >> Internal.resultFromResult)
+            (decodeResponse >> Internal.resultFromResult)
 
 
 {-| A Request can fail in a couple ways:
@@ -158,8 +143,8 @@ send resultToMessage request =
 to chain together a bunch of requests (or any other tasks) in a single command.
 -}
 toTask : Request a -> Internal.Task Error a
-toTask (Internal.HttpRequest settings mapResult) =
-    Internal.HttpTask settings mapResult
+toTask (Internal.HttpRequest settings onSuccess) =
+    Internal.HttpTask settings (Err >> Internal.resultFromResult) onSuccess
 
 
 {-| Fully specify the request you want to send. For example, if you want to

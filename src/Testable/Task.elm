@@ -111,8 +111,8 @@ sequence list =
 onError : (x -> Task y a) -> Task x a -> Task y a
 onError f task =
     case task of
-        Internal.HttpTask settings mapResponse ->
-            Internal.HttpTask settings (mapResponse >> resultOnError f)
+        Internal.HttpTask settings onError onSuccess ->
+            Internal.HttpTask settings (onError >> resultOnError f) (onSuccess >> resultOnError f)
 
         Internal.ImmediateTask response ->
             Internal.ImmediateTask (resultOnError f response)
@@ -155,8 +155,8 @@ toResult source =
 transform : (TaskResult x a -> TaskResult y b) -> Task x a -> Task y b
 transform tx source =
     case source of
-        Internal.HttpTask settings mapResponse ->
-            Internal.HttpTask settings (mapResponse >> tx)
+        Internal.HttpTask settings onError onSuccess ->
+            Internal.HttpTask settings (onError >> tx) (onSuccess >> tx)
 
         Internal.ImmediateTask result ->
             Internal.ImmediateTask (result |> tx)

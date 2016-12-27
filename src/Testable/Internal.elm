@@ -7,7 +7,7 @@ import Http
 
 type Cmd msg
     = None
-    | TaskCmd (Task msg msg)
+    | TaskCmd (Task Never msg)
     | Batch (List (Cmd msg))
     | WrappedCmd (Platform.Cmd.Cmd msg)
 
@@ -23,11 +23,11 @@ type alias Settings =
 
 
 type Request success
-    = HttpRequest Settings (Result Http.Error (Http.Response String) -> TaskResult Http.Error success)
+    = HttpRequest Settings (Http.Response String -> TaskResult Http.Error success)
 
 
 type Task error success
-    = HttpTask Settings (Result Http.Error (Http.Response String) -> TaskResult error success)
+    = HttpTask Settings (Http.Error -> TaskResult error success) (Http.Response String -> TaskResult error success)
     | ImmediateTask (TaskResult error success)
     | SleepTask Time (TaskResult error success)
 
