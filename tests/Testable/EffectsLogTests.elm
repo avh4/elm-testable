@@ -4,7 +4,7 @@ import Expect
 import Test exposing (..)
 import Testable.Cmd
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog, wrappedCmds)
-import Testable.Http as Http
+import Testable.Http as Http exposing (defaultSettings)
 import Testable.Task as Task
 import Platform.Cmd
 
@@ -18,7 +18,7 @@ port myPort : String -> Platform.Cmd.Cmd msg
 
 httpGetMsg : String -> String -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
 httpGetMsg url responseBody =
-    EffectsLog.httpMsg Http.defaultSettings (Http.ok responseBody)
+    EffectsLog.httpMsg { defaultSettings | url = url } (Http.ok responseBody)
 
 
 all : Test
