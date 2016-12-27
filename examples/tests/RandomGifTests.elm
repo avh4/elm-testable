@@ -8,7 +8,7 @@ import Testable.Http as Http
 
 
 catsComponent =
-    { init = RandomGif.init "__API_KEY__" "cats"
+    { init = RandomGif.init "cats"
     , update = RandomGif.update
     }
 
@@ -60,6 +60,6 @@ all =
                     |> startForTest
                     |> resolveHttpRequest (Http.getRequest "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats")
                         (Http.ok """{"data":{"image_url":"http://giphy.com/cat2000.gif"}}""")
-                    |> update RandomGif.RequestMore
+                    |> update RandomGif.MorePlease
                     |> assertHttpRequest (Http.getRequest "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats")
         ]

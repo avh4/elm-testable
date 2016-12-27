@@ -4,7 +4,7 @@ import Expect
 import Json.Decode as Decode
 import Testable.TestContext as TestContext
 import Testable.Cmd
-import Testable.Http as Http
+import Testable.Http as Http exposing (defaultSettings)
 import Test exposing (..)
 import Testable.Task as Task
 import Testable.Process as Process
@@ -77,19 +77,19 @@ all =
             \() ->
                 loadingComponent
                     |> TestContext.startForTest
-                    |> TestContext.assertHttpRequest (Http.getString "https://example.com/")
+                    |> TestContext.assertHttpRequest (Http.getRequest "https://example.com/")
         , test "records initial effects" <|
             \() ->
                 loadingComponent
                     |> TestContext.startForTest
-                    |> TestContext.resolveHttpRequest (Http.getString "https://example.com/")
+                    |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
                         (Http.ok "myData-1")
                     |> TestContext.assertCurrentModel (Just "myData-1")
         , test "stubbing an unmatched effect should produce an error" <|
             \() ->
                 loadingComponent
                     |> TestContext.startForTest
-                    |> TestContext.resolveHttpRequest (Http.getString "https://badwebsite.com/")
+                    |> TestContext.resolveHttpRequest (Http.getRequest "https://badwebsite.com/")
                         (Http.ok "_")
                     |> TestContext.currentModel
                     |> Expect.equal (Err [ "No pending HTTP request: { method = \"GET\", headers = [], body = EmptyBody, timeout = Nothing, url = \"https://badwebsite.com/\", withCredentials = False }" ])
@@ -97,9 +97,9 @@ all =
             \() ->
                 loadingComponent
                     |> TestContext.startForTest
-                    |> TestContext.resolveHttpRequest (Http.getString "https://example.com/")
+                    |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
                         (Http.ok "myData-1")
-                    |> TestContext.resolveHttpRequest (Http.getString "https://example.com/")
+                    |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
                         (Http.ok "myData-2")
                     |> TestContext.currentModel
                     |> Expect.equal (Err [ "No pending HTTP request: { method = \"GET\", headers = [], body = EmptyBody, timeout = Nothing, url = \"https://example.com/\", withCredentials = False }" ])
@@ -115,9 +115,9 @@ all =
                 , update = \data model -> ( Just data, Testable.Cmd.none )
                 }
                     |> TestContext.startForTest
-                    |> TestContext.resolveHttpRequest (Http.getString "https://example.com/")
+                    |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
                         (Http.ok "myData-1")
-                    |> TestContext.resolveHttpRequest (Http.getString "https://secondexample.com/")
+                    |> TestContext.resolveHttpRequest (Http.getRequest "https://secondexample.com/")
                         (Http.ok "myData-2")
                     |> TestContext.assertCurrentModel (Just <| Ok "myData-2")
         , test "Http.post effect" <|
@@ -132,7 +132,11 @@ all =
                 }
                     |> TestContext.startForTest
                     |> TestContext.resolveHttpRequest
-                        (Http.post "https://a" (Http.stringBody "text/plain" "requestBody") Decode.string)
+                        { defaultSettings
+                            | url = "https://a"
+                            , method = "POST"
+                            , body = (Http.stringBody "text/plain" "requestBody")
+                        }
                         (Http.ok "99.1")
                     |> TestContext.assertCurrentModel (Ok 99.1)
         , test "Task.succeed" <|
