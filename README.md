@@ -1,66 +1,96 @@
 ## Note:
 
-elm-testable does not support Elm 0.18.  A new package is currently in development that will allow testing of Cmds, Tasks, and Subs without the need for elm-testable's wrappers.  More details will be posted to elm-discuss when it is available.  (See the [rewrite-native branch](https://github.com/avh4/elm-testable/tree/rewrite-native).)
+This is a fork from [avh4's elm-testable](https://github.com/avh4/elm-testable), which is getting rewritten in
+Native code. This fork will keep being elm only.
 
-[![Build Status](https://travis-ci.org/avh4/elm-testable.svg?branch=master)](https://travis-ci.org/avh4/elm-testable)
+There are still some pending functionalities, like spawning tasks, http.progress, effect managers and so on.
 
-# avh4/elm-testable
+Also, the Http API is not fully compatible with the original one, as you cannot pass Expect, only the Decoder for the request function.
+
+# rogeriochaves/elm-testable
 
 This package allows you to write components that follow the Elm Architecture in a way that is testable.
-To allow this, elm-testable provides testable versions of the `Task`, `Effects`, and `Http` modules,
+To allow this, elm-testable provides testable versions of the `Task`, `Effects`, `Http` and `Process` modules,
 as well as `Testable.TestContext` to test testable components and `Testable` to integrate testable components with your Elm app.
 
 
 ## Example testable component
 
-The only difference between a testable component and a standard component is the added `Testable.` in several imports.  (With the exception of `Cmd`, which conflicts with the default import of `Platform.Cmd` in Elm 0.17.)
+The only difference between a testable component and a standard component is the added `Testable.` in several imports.  (With the exception of `Cmd`, which conflicts with the default import of `Platform.Cmd`)
 
 Here is the diff of converting `RandomGif.elm` into a testable component:
 
 ```diff
-diff --git b/examples/RandomGif.elm a/examples/RandomGif.elm
-@@ -6,8 +6,9 @@ import Html exposing (..)
- import Json.Decode as Json
--import Http
--import Task
-+import Testable.Cmd
-+import Testable.Http as Http
-+import Testable.Task as Task
- 
- @ -20,7 +21,7 @@ type alias Model =
+diff --git a/examples/RandomGif.elm b/examples/RandomGif.elm
+index 8f7d14b..d8e1db5 100644
+--- a/examples/RandomGif.elm
++++ b/examples/RandomGif.elm
+@@ -1,20 +1,22 @@
+-module Main exposing (..)
++module RandomGif exposing (..)
 
--init : String -> String -> ( Model, Cmd Msg )
-+init : String -> String -> ( Model, Testable.Cmd.Cmd Msg )
- init apiKey topic =
-@@ -36,7 +37,7 @@ type Msg
- 
+ --- From example 5 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial/blob/master/examples/05-http.elm
+
+ import Html exposing (..)
+ import Html.Attributes exposing (..)
+ import Html.Events exposing (..)
+-import Http
++import Testable.Http as Http
+ import Json.Decode as Decode
++import Testable
++import Testable.Cmd
+
+
+ main : Program Never Model Msg
+ main =
+     Html.program
+-        { init = init "cats"
++        { init = Testable.init (init "cats")
+         , view = view
+-        , update = update
++        , update = Testable.update update
+         , subscriptions = subscriptions
+         }
+
+@@ -29,7 +31,7 @@ type alias Model =
+     }
+
+
+-init : String -> ( Model, Cmd Msg )
++init : String -> ( Model, Testable.Cmd.Cmd Msg )
+ init topic =
+     ( Model topic "waiting.gif"
+     , getRandomGif topic
+@@ -45,17 +47,17 @@ type Msg
+     | NewGif (Result Http.Error String)
+
+
 -update : Msg -> Model -> ( Model, Cmd Msg )
 +update : Msg -> Model -> ( Model, Testable.Cmd.Cmd Msg )
  update msg model =
-@@ -44,7 +45,7 @@ update msg model =
-             ( Model model.apiKey model.topic (Maybe.withDefault model.gifUrl maybeUrl)
--            , Cmd.none
-+            , Testable.Cmd.none
-             )
-@@ -89,7 +90,7 @@ imgStyle url =
- 
--getRandomGif : String -> String -> Cmd Msg
-+getRandomGif : String -> String -> Testable.Cmd.Cmd Msg
- getRandomGif apiKey topic =
-     Http.get decodeUrl (randomUrl apiKey topic)
-         |> Task.perform (always Nothing >> NewGif)
-diff --git b/examples/Main.elm a/examples/Main.elm
-@@ -3,12 +3,13 @@ module Main exposing (..)
- import Task
-+import Testable
- 
- main =
-     Html.App.program
--        { init = init "__API_KEY__" "funny cats"
--        , update = update
-+        { init = Testable.init <| init "__API_KEY__" "funny cats"
-+        , update = Testable.update update
-         , view = view
+     case msg of
+         MorePlease ->
+             ( model, getRandomGif model.topic )
+
+         NewGif (Ok newUrl) ->
+-            ( Model model.topic newUrl, Cmd.none )
++            ( Model model.topic newUrl, Testable.Cmd.none )
+
+         NewGif (Err _) ->
+-            ( model, Cmd.none )
++            ( model, Testable.Cmd.none )
+
+
+
+@@ -85,7 +87,7 @@ subscriptions model =
+ -- HTTP
+
+
+-getRandomGif : String -> Cmd Msg
++getRandomGif : String -> Testable.Cmd.Cmd Msg
+ getRandomGif topic =
+     let
+         url =
 ```
 
 
@@ -107,17 +137,112 @@ all =
         ]
 ```
 
-Here are [complete tests for the RandomGif example](https://github.com/avh4/elm-testable/blob/master/examples/tests/RandomGifTests.elm).
+Here are [complete tests for the RandomGif example](https://github.com/rogeriochaves/elm-testable/blob/master/examples/tests/RandomGifTests.elm).
 
+## Testing Ports
+
+You can also test that an outgoing port was called, by wrapping your ports with `Testable.Cmd.wrap`, like this:
+
+```diff
+diff --git a/examples/Spelling.elm b/examples/Spelling.elm
+index e999eeb..e1ebbb5 100644
+--- a/examples/Spelling.elm
++++ b/examples/Spelling.elm
+@@ -5,14 +5,16 @@ port module Spelling exposing (..)
+ import Html exposing (..)
+ import Html.Events exposing (..)
+ import String
++import Testable.Cmd
++import Testable
+
+
+ main : Program Never Model Msg
+ main =
+     Html.program
+-        { init = init
++        { init = Testable.init init
++        , update = Testable.update update
+         , view = view
+-        , update = update
+         , subscriptions = subscriptions
+         }
+
+@@ -27,9 +29,9 @@ type alias Model =
+     }
+
+
+-init : ( Model, Cmd Msg )
++init : ( Model, Testable.Cmd.Cmd Msg )
+ init =
+-    ( Model "" [], Cmd.none )
++    ( Model "" [], Testable.Cmd.none )
+
+
+
+@@ -45,17 +47,17 @@ type Msg
+ port check : String -> Cmd msg
+
+
+-update : Msg -> Model -> ( Model, Cmd Msg )
+-update msg model =
+-    case msg of
++update : Msg -> Model -> ( Model, Testable.Cmd.Cmd Msg )
++update msg model =
++    case msg of
+         Change newWord ->
+-            ( Model newWord [], Cmd.none )
++            ( Model newWord [], Testable.Cmd.none )
+
+         Check ->
+-            ( model, check model.word )
++            ( model, Testable.Cmd.wrap <| check model.word )
+
+         Suggest newSuggestions ->
+-            ( Model model.word newSuggestions, Cmd.none )
++            ( Model model.word newSuggestions, Testable.Cmd.none )
+```
+
+And testing it like this:
+
+```elm
+module SpellingTests exposing (..)
+
+import ElmTest exposing (..)
+import Testable.TestContext exposing (..)
+import Spelling
+
+
+spellingComponent : Testable.TestContext.Component Spelling.Msg Spelling.Model
+spellingComponent =
+    { init = Spelling.init
+    , update = Spelling.update
+    }
+
+
+all : Test
+all =
+    suite "Spelling"
+        [ spellingComponent
+            |> startForTest
+            |> update (Spelling.Change "cats")
+            |> update Spelling.Check
+            |> assertCalled (Spelling.check "cats")
+            |> test "call suggestions check port when requested"
+        ]
+```
+
+Here are [complete tests for the Spelling example](https://github.com/rogeriochaves/elm-testable/blob/master/examples/tests/SpellingTests.elm).
+
+There is also an example for [testing WebSockets](https://github.com/rogeriochaves/elm-testable/blob/master/examples/tests/WebSocketsTests.elm).
 
 ## Example integration with `Main`
 
-To convert your testable `view` and `update` functions into functions that work with `StartApp`, use the `Testable` module:
+To convert your testable `view` and `update` functions into functions that work with `Html.program`, use the `Testable` module:
 
 ```elm
-main : Program Never
+main : Program Never Model Msg
 main =
-    Html.App.program
+    Html.program
         { init = Testable.init MyComponent.init
         , update = Testable.update MyComponent.update
         , view = MyComponent.view
