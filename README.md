@@ -3,7 +3,9 @@
 This is a fork from [avh4's elm-testable](https://github.com/avh4/elm-testable), which is getting rewritten in
 Native code. This fork will keep being elm only.
 
-There are still some pending functionalities, like spawning tasks.
+There are still some pending functionalities, like spawning tasks, http.progress, effect managers and so on.
+
+Also, the Http API is not fully compatible with the original one, as you cannot pass Expect, only the Decoder for the request function.
 
 # rogeriochaves/elm-testable
 

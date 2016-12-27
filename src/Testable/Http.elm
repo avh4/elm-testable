@@ -1,41 +1,112 @@
-module Testable.Http exposing (getString, get, post, Error, emptyBody, Request, Settings, send, defaultSettings, getRequest, Response, ok, serverError, toTask, stringBody)
+module Testable.Http exposing (Request, send, Error, getString, get, post, request, Header, header, Body, emptyBody, jsonBody, stringBody, multipartBody, Part, stringPart, Response, encodeUri, decodeUri, toTask, Settings, defaultSettings, getRequest, ok, serverError)
 
-{-|
-`Testable.Http` is a replacement for the standard `Http` module.  You can use it
-to create components that can be tested with `Testable.TestContext`.
+{-| Create and send HTTP requests.
 
-# Fetch Strings and JSON
-@docs getString, get, post, Error
+# Send Requests
+@docs Request, send, Error
 
-# Body Values
-@docs emptyBody
+# GET
+@docs getString, get
 
-# Arbitrary Requests
-@docs send, Request, Settings, defaultSettings
+# POST
+@docs post
 
-# Responses
-@docs Response, Error, stringBody
+# Custom Requests
+@docs request
+
+## Headers
+@docs Header, header
+
+## Request Bodies
+@docs Body, emptyBody, jsonBody, stringBody, multipartBody, Part, stringPart
+
+## Responses
+@docs Response
+
+# Low-Level
+@docs encodeUri, decodeUri, toTask
 
 # Helpers
-@docs getRequest, ok, serverError, toTask
+@docs Settings, defaultSettings, getRequest, ok, serverError
+
 -}
 
 import Dict
 import Http
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import Testable.Internal as Internal
 import Testable.Task as Task
 
 
--- Fetch Strings and JSON
+-- REQUESTS
 
 
-{-| Send a GET request to the given URL. You will get the entire response as a
-string.
+{-| Describes an HTTP request.
+-}
+type alias Request a =
+    Internal.Request a
 
-    hats : Task Error String
-    hats =
-        getString "http://example.com/hat-categories.markdown"
+
+{-| Send a `Request`. We could get the text of “War and Peace” like this:
+
+    import Http
+
+    type Msg = Click | NewBook (Result Http.Error String)
+
+    update : Msg -> Model -> Model
+    update msg model =
+      case msg of
+        Click ->
+          ( model, getWarAndPeace )
+
+        NewBook (Ok book) ->
+          ...
+
+        NewBook (Err _) ->
+          ...
+
+    getWarAndPeace : Cmd Msg
+    getWarAndPeace =
+      Http.send NewBook <|
+        Http.getString "https://example.com/books/war-and-peace.md"
+-}
+send : (Result Error a -> msg) -> Request a -> Internal.Cmd msg
+send resultToMessage request =
+    Task.attempt resultToMessage (toTask request)
+
+
+{-| Convert a `Request` into a `Task`. This is only really useful if you want
+to chain together a bunch of requests (or any other tasks) in a single command.
+-}
+toTask : Request a -> Internal.Task Error a
+toTask (Internal.HttpRequest settings onSuccess) =
+    Internal.HttpTask settings (Err >> Internal.resultFromResult) onSuccess
+
+
+{-| A Request can fail in a couple ways:
+
+- BadUrl means you did not provide a valid URL.
+- Timeout means it took too long to get a response.
+- NetworkError means the user turned off their wifi, went in a cave, etc.
+- BadStatus means you got a response back, but the status code indicates failure.
+- BadPayload means you got a response back with a nice status code, but the body of the response was something unexpected. The String in this case is a debugging message that explains what went wrong with your JSON decoder or whatever.
+-}
+type alias Error =
+    Http.Error
+
+
+
+-- GET
+
+
+{-| Create a `GET` request and interpret the response body as a `String`.
+
+    import Http
+
+    getWarAndPeace : Http.Request String
+    getWarAndPeace =
+      Http.getString "https://example.com/books/war-and-peace"
 -}
 getString : String -> Request String
 getString url =
@@ -48,14 +119,19 @@ getString url =
             (decodeResponse >> Internal.resultFromResult)
 
 
-{-| Send a GET request to the given URL. You also specify how to decode the
-response.
+{-| Create a `GET` request and try to decode the response body from JSON to
+some Elm value.
 
-    import Json.Decode (list, string)
+    import Http
+    import Json.Decode exposing (list, string)
 
-    hats : Task Error (List String)
-    hats =
-        get (list string) "http://example.com/hat-categories.json"
+    getBooks : Http.Request (List String)
+    getBooks =
+      Http.get "https://example.com/books" (list string)
+
+You can learn more about how JSON decoders work [here][] in the guide.
+
+[here]: https://guide.elm-lang.org/interop/json.html
 -}
 get : String -> Decoder value -> Request value
 get url decoder =
@@ -69,16 +145,27 @@ get url decoder =
             (decodeResponse >> Internal.resultFromResult)
 
 
-{-| Send a POST request to the given URL, carrying the given body. You also
-specify how to decode the response with [a JSON decoder][json].
 
-[json]: http://package.elm-lang.org/packages/elm-lang/core/latest/Json-Decode#Decoder
+-- POST
 
-    import Json.Decode (list, string)
 
-    hats : Task Error (List String)
-    hats =
-        post (list string) "http://example.com/hat-categories.json" empty
+{-| Create a `POST` request and try to decode the response body from JSON to
+an Elm value. For example, if we want to send a POST without any data in the
+request body, it would be like this:
+
+    import Http
+    import Json.Decode exposing (list, string)
+
+    postBooks : Http.Request (List String)
+    postBooks =
+      Http.post "https://example.com/books" Http.emptyBody (list string)
+
+See [`jsonBody`](#jsonBody) to learn how to have a more interesting request
+body. And check out [this section][here] of the guide to learn more about
+JSON decoders.
+
+[here]: https://guide.elm-lang.org/interop/json.html
+
 -}
 post : String -> Body -> Decoder a -> Request a
 post url body decoder =
@@ -96,95 +183,192 @@ post url body decoder =
             (decodeResponse >> Internal.resultFromResult)
 
 
-{-| A Request can fail in a couple ways:
 
-- BadUrl means you did not provide a valid URL.
-- Timeout means it took too long to get a response.
-- NetworkError means the user turned off their wifi, went in a cave, etc.
-- BadStatus means you got a response back, but the status code indicates failure.
-- BadPayload means you got a response back with a nice status code, but the body of the response was something unexpected. The String in this case is a debugging message that explains what went wrong with your JSON decoder or whatever.
+-- CUSTOM REQUESTS
+
+
+{-| Create a custom request. For example, a custom PUT request would look like
+this:
+
+    put : String -> Body -> Request ()
+    put url body =
+      request
+        { method = "PUT"
+        , headers = []
+        , url = url
+        , body = body
+        , expect = expectStringResponse (\_ -> Ok ())
+        , timeout = Nothing
+        , withCredentials = False
+        }
 -}
-type alias Error =
-    Http.Error
+request : Settings -> Decoder a -> Request a
+request settings decoder =
+    let
+        decodeResponse response =
+            Decode.decodeString decoder response.body
+                |> Result.mapError (\error -> Http.BadPayload error response)
+    in
+        Internal.HttpRequest settings (decodeResponse >> Internal.resultFromResult)
 
 
 
--- Body Values
+-- HEADERS
 
 
-{-| An opaque type representing the body of your HTTP message. With GET
-requests this is empty, but in other cases it may be a string or blob.
+{-| An HTTP header for configuring requests. See a bunch of common headers
+[here][].
+
+[here]: https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
+-}
+type alias Header =
+    Http.Header
+
+
+{-| Create a `Header`.
+
+    header "If-Modified-Since" "Sat 29 Oct 1994 19:43:31 GMT"
+    header "Max-Forwards" "10"
+    header "X-Requested-With" "XMLHttpRequest"
+
+**Note:** In the future, we may split this out into an `Http.Headers` module
+and provide helpers for cases that are common on the client-side. If this
+sounds nice to you, open an issue [here][] describing the helper you want and
+why you need it.
+
+[here]: https://github.com/elm-lang/http/issues
+-}
+header : String -> String -> Http.Header
+header =
+    Http.header
+
+
+
+-- BODY
+
+
+{-| Represents the body of a `Request`.
 -}
 type alias Body =
     Http.Body
 
 
-{-| An empty request body, no value will be sent along.
+{-| Create an empty body for your `Request`. This is useful for GET requests
+and POST requests where you are not sending any data.
 -}
 emptyBody : Body
 emptyBody =
     Http.emptyBody
 
 
-
--- Arbitrary Requests
-
-
-{-| Send a request exactly how you want it. The Settings argument lets you
-configure things like timeouts and progress monitoring. The Request argument
-defines all the information that will actually be sent along to a server.
+{-| Put some JSON value in the body of your `Request`. This will automatically
+add the `Content-Type: application/json` header.
 -}
-send : (Result Error a -> msg) -> Request a -> Internal.Cmd msg
-send resultToMessage request =
-    Task.attempt resultToMessage (toTask request)
+jsonBody : Encode.Value -> Body
+jsonBody value =
+    Http.stringBody "application/json" (Encode.encode 0 value)
 
 
-{-| Convert a `Request` into a `Task`. This is only really useful if you want
-to chain together a bunch of requests (or any other tasks) in a single command.
+{-| Put some string in the body of your `Request`. Defining `jsonBody` looks
+like this:
+
+    import Json.Encode as Encode
+
+    jsonBody : Encode.Value -> Body
+    jsonBody value =
+      stringBody "application/json" (Encode.encode 0 value)
+
+Notice that the first argument is a [MIME type][mime] so we know to add
+`Content-Type: application/json` to our request headers. Make sure your
+MIME type matches your data. Some servers are strict about this!
+
+[mime]: https://en.wikipedia.org/wiki/Media_type
 -}
-toTask : Request a -> Internal.Task Error a
-toTask (Internal.HttpRequest settings onSuccess) =
-    Internal.HttpTask settings (Err >> Internal.resultFromResult) onSuccess
+stringBody : String -> String -> Body
+stringBody =
+    Http.stringBody
 
 
-{-| Fully specify the request you want to send. For example, if you want to
-send a request between domains (CORS request) you will need to specify some
-headers manually.
-
-    corsPost : Request
-    corsPost =
-        { verb = "POST"
-        , headers =
-            [ ("Origin", "http://elm-lang.org")
-            , ("Access-Control-Request-Method", "POST")
-            , ("Access-Control-Request-Headers", "X-Custom-Header")
-            ]
-        , url = "http://example.com/hats"
-        , body = empty
-        }
+{-| Create multi-part bodies for your `Request`, automatically adding the
+`Content-Type: multipart/form-data` header.
 -}
-type alias Request a =
-    Internal.Request a
+multipartBody : List Part -> Body
+multipartBody =
+    Native.Http.multipart
 
 
-{-| Configure your request if you need specific behavior.
-  * `timeout` lets you specify how long you are willing to wait for a response
-    before giving up. By default it is 0 which means &ldquo;never give
-    up!&rdquo;
-  * `onStart` and `onProgress` allow you to monitor progress. This is useful
-    if you want to show a progress bar when uploading a large amount of data.
-  * `desiredResponseType` lets you override the MIME type of the response, so
-    you can influence what kind of `Value` you get in the `Response`.
+{-| Contents of a multi-part body. Right now it only supports strings, but we
+will support blobs and files when we get an API for them in Elm.
+-}
+type alias Part =
+    Http.Part
+
+
+{-| A named chunk of string data.
+
+    body =
+      multipartBody
+        [ stringPart "user" "tom"
+        , stringPart "payload" "42"
+        ]
+-}
+stringPart : String -> String -> Part
+stringPart =
+    Http.stringPart
+
+
+
+-- RESPONSES
+
+
+{-| The response from a `Request`.
+-}
+type alias Response a =
+    Http.Response a
+
+
+
+-- LOW-LEVEL
+
+
+{-| Use this to escape query parameters. Converts characters like `/` to `%2F`
+so that it does not clash with normal URL
+
+It work just like `encodeURIComponent` in JavaScript.
+-}
+encodeUri : String -> String
+encodeUri =
+    Http.encodeUri
+
+
+{-| Use this to unescape query parameters. It converts things like `%2F` to
+`/`. It can fail in some cases. For example, there is no way to unescape `%`
+because it could never appear alone in a properly escaped string.
+
+It works just like `decodeURIComponent` in JavaScript.
+-}
+decodeUri : String -> Maybe String
+decodeUri =
+    Http.decodeUri
+
+
+
+-- HELPERS
+
+
+{-| Specific Settings that you can send to your request when you
+  want a more custom request, like with differente headers or a timeout.
 -}
 type alias Settings =
     Internal.Settings
 
 
-{-| The default settings used by `get` and `post`.
-    { timeout = 0
-    , onStart = Nothing
-    , onProgress = Nothing
-    , desiredResponseType = Nothing
+{-| The default settings used by `get` and `post`. The url must be changed.
+    { method = "GET"
+    , headers = []
+    , body = Http.emptyBody
+    , timeout = Nothing
+    , url = ""
     , withCredentials = False
     }
 -}
@@ -197,49 +381,6 @@ defaultSettings =
     , url = ""
     , withCredentials = False
     }
-
-
-
--- Responses
-
-
-{-| All the details of the response. There are many weird facts about
-responses which include:
-
-  * The `status` may be 0 in the case that you load something from `file://`
-  * You cannot handle redirects yourself, they will all be followed
-    automatically. If you want to know if you have gone through one or more
-    redirect, the `url` field will let you know who sent you the response, so
-    you will know if it does not match the URL you requested.
-  * You are allowed to have duplicate headers, and their values will be
-    combined into a single comma-separated string.
-
-We have left these underlying facts about `XMLHttpRequest` as is because one
-goal of this library is to give a low-level enough API that others can build
-whatever helpful behavior they want on top of it.
--}
-type alias Response a =
-    Http.Response a
-
-
-{-| Put some string in the body of your `Request`. Defining `jsonBody` looks
-like this:
-    import Json.Encode as Encode
-    jsonBody : Encode.Value -> Body
-    jsonBody value =
-      stringBody "application/json" (Encode.encode 0 value)
-Notice that the first argument is a [MIME type][mime] so we know to add
-`Content-Type: application/json` to our request headers. Make sure your
-MIME type matches your data. Some servers are strict about this!
-[mime]: https://en.wikipedia.org/wiki/Media_type
--}
-stringBody : String -> String -> Body
-stringBody =
-    Http.stringBody
-
-
-
--- Helpers
 
 
 {-| A convenient way to make a `Request` corresponding to the request made by `get`
