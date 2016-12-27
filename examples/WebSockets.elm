@@ -1,14 +1,15 @@
 port module WebSockets exposing (..)
 
+--- From example 7 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial/blob/master/examples/07-websockets.elm
+
 import Html exposing (..)
-import Html.App as Html
 import Html.Events exposing (..)
 import WebSocket
 import Testable
 import Testable.Cmd
 
 
-main : Program Never
+main : Program Never Model Msg
 main =
     Html.program
         { init = Testable.init init
