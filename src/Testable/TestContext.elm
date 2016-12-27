@@ -20,7 +20,6 @@ import Testable.EffectsLog as EffectsLog exposing (EffectsLog, containsCmd)
 import Testable.Http as Http
 import Time exposing (Time)
 import Platform.Cmd
-import Testable.Internal as Internal
 
 
 {-| A component that can be used to create a `TestContext`
@@ -111,8 +110,8 @@ applyEffects newEffects (TestContext context) =
 
 {-| Assert that a given Http.Request has been made by the component under test
 -}
-assertHttpRequest : Internal.Request success -> TestContext msg model -> Expectation
-assertHttpRequest (Internal.HttpRequest settings _) (TestContext context) =
+assertHttpRequest : Http.Settings -> TestContext msg model -> Expectation
+assertHttpRequest settings (TestContext context) =
     case context.state of
         Err errors ->
             Expect.fail
@@ -139,8 +138,8 @@ assertHttpRequest (Internal.HttpRequest settings _) (TestContext context) =
 
 {-| Simulate an HTTP response to a request made with the given Http settings
 -}
-resolveHttpRequest : Internal.Request success -> Result Http.Error (Http.Response String) -> TestContext msg model -> TestContext msg model
-resolveHttpRequest (Internal.HttpRequest settings _) response (TestContext context) =
+resolveHttpRequest : Http.Settings -> Result Http.Error (Http.Response String) -> TestContext msg model -> TestContext msg model
+resolveHttpRequest settings response (TestContext context) =
     case context.state of
         Err errors ->
             TestContext
