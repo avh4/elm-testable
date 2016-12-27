@@ -7,6 +7,8 @@ There are still some pending functionalities, like spawning tasks, http.progress
 
 Also, the Http API is not fully compatible with the original one, as you cannot pass Expect, only the Decoder for the request function.
 
+[![Build Status](https://snap-ci.com/rogeriochaves/elm-testable/branch/master/build_image)](https://snap-ci.com/rogeriochaves/elm-testable/branch/master)
+
 # rogeriochaves/elm-testable
 
 This package allows you to write components that follow the Elm Architecture in a way that is testable.

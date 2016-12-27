@@ -1,9 +1,0 @@
-sudo: false
-
-language: node_js
-node_js: "5.1"
-
-script:
-  - elm-make --yes
-  - rsync -a elm-stuff/build-artifacts/ tests/elm-stuff/build-artifacts/
-  - ./check_all.sh
