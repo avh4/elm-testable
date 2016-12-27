@@ -1,4 +1,4 @@
-module Testable.Task exposing (Task, succeed, fail, map, andThen, sequence, onError, mapError, perform, attempt)
+module Testable.Task exposing (Task, succeed, fail, map, sequence, andThen, onError, mapError, perform, attempt)
 
 {-|
 `Testable.Task` is a replacement for the core `Task` module.  You can use it
@@ -26,6 +26,7 @@ import Testable.Internal as Internal exposing (TaskResult(..))
 
 {-| Represents asynchronous effects that may fail. It is useful for stuff like
 HTTP.
+
 For example, maybe we have a task with the type (`Task String User`). This means
 that when we perform the task, it will either fail with a `String` message or
 succeed with a `User`. So this could represent a task that is asking a server
@@ -33,6 +34,10 @@ for a certain user.
 -}
 type alias Task error success =
     Internal.Task error success
+
+
+
+-- BASICS
 
 
 {-| A task that succeeds immediately when run.
@@ -53,6 +58,10 @@ fail error =
     Internal.ImmediateTask (Failure error)
 
 
+
+-- MAPPING
+
+
 {-| Transform a task.
 
     map sqrt (succeed 9) == succeed 3
@@ -60,24 +69,6 @@ fail error =
 map : (a -> b) -> Task x a -> Task x b
 map f source =
     transform (resultMap f) source
-
-
-
--- Chaining
-
-
-{-| Chain together a task and a callback. The first task will run, and if it is
-successful, you give the result to the callback resulting in another task. This
-task then gets run.
-
-    succeed 2 |> andThen (\n -> succeed (n + 2)) == succeed 4
-
-This is useful for chaining tasks together. Maybe you need to get a user from
-your servers *and then* lookup their picture once you know their name.
--}
-andThen : (a -> Task x b) -> Task x a -> Task x b
-andThen next source =
-    transform (resultAndThen next) source
 
 
 {-| Start with a list of tasks, and turn them into a single task that returns a list. The tasks will be run in order one-by-one and if any task fails the whole sequence fails.
@@ -103,10 +94,39 @@ sequence list =
 
 
 
--- Errors
+-- CHAINING
 
 
-{-| Recover from a failure in a task. If the given task fails, we use the callback to recover.
+{-| Chain together a task and a callback. The first task will run, and if it is
+successful, you give the result to the callback resulting in another task. This
+task then gets run.
+
+    succeed 2
+      |> andThen (\n -> succeed (n + 2))
+      -- succeed 4
+
+This is useful for chaining tasks together. Maybe you need to get a user from
+your servers *and then* lookup their picture once you know their name.
+-}
+andThen : (a -> Task x b) -> Task x a -> Task x b
+andThen next source =
+    transform (resultAndThen next) source
+
+
+
+-- ERRORS
+
+
+{-| Recover from a failure in a task. If the given task fails, we use the
+callback to recover.
+
+    fail "file not found"
+      |> onError (\msg -> succeed 42)
+      -- succeed 42
+
+    succeed 9
+      |> onError (\msg -> succeed 42)
+      -- succeed 9
 -}
 onError : (x -> Task y a) -> Task x a -> Task y a
 onError f task =
@@ -128,7 +148,7 @@ types to match up.
 
     getResources : Task Error Resource
     getResources =
-        sequence [ mapError Http serverTask, mapError WebGL textureTask ]
+      sequence [ mapError Http serverTask, mapError WebGL textureTask ]
 -}
 mapError : (x -> y) -> Task x a -> Task y a
 mapError f task =
@@ -147,30 +167,27 @@ mapError f task =
         task
 
 
-toResult : Task x a -> Task never (Result x a)
-toResult source =
-    transform resultToResult source
+
+-- COMMANDS
 
 
-transform : (TaskResult x a -> TaskResult y b) -> Task x a -> Task y b
-transform tx source =
-    case source of
-        Internal.HttpTask settings onError onSuccess ->
-            Internal.HttpTask settings (onError >> tx) (onSuccess >> tx)
+{-| The only way to *do* things in Elm is to give commands to the Elm runtime.
+So we describe some complex behavior with a `Task` and then command the runtime
+to `perform` that task. For example, getting the current time looks like this:
 
-        Internal.ImmediateTask result ->
-            Internal.ImmediateTask (result |> tx)
+    import Task
+    import Time exposing (Time)
 
-        Internal.SleepTask milliseconds result ->
-            Internal.SleepTask milliseconds (result |> tx)
+    type Msg = Click | NewTime Time
 
+    update : Msg -> Model -> Model
+    update msg model =
+      case msg of
+        Click ->
+          ( model, Task.perform NewTime Time.now )
 
-
--- Commands
-
-
-{-| The only way to do things in Elm is to give commands to the Elm runtime.
-So we describe some complex behavior with a Task and then command the runtime to perform that task.
+        NewTime time ->
+          ...
 -}
 perform : (a -> msg) -> Task Never a -> Internal.Cmd msg
 perform onSuccess task =
@@ -196,6 +213,28 @@ attempt f task =
         |> toResult
         |> map f
         |> Internal.TaskCmd
+
+
+
+-- INTERNALS
+
+
+toResult : Task x a -> Task never (Result x a)
+toResult source =
+    transform resultToResult source
+
+
+transform : (TaskResult x a -> TaskResult y b) -> Task x a -> Task y b
+transform tx source =
+    case source of
+        Internal.HttpTask settings onError onSuccess ->
+            Internal.HttpTask settings (onError >> tx) (onSuccess >> tx)
+
+        Internal.ImmediateTask result ->
+            Internal.ImmediateTask (result |> tx)
+
+        Internal.SleepTask milliseconds result ->
+            Internal.SleepTask milliseconds (result |> tx)
 
 
 resultMap : (a -> b) -> TaskResult x a -> TaskResult x b
