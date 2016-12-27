@@ -48,8 +48,8 @@ port check : String -> Cmd msg
 
 
 update : Msg -> Model -> ( Model, Testable.Cmd.Cmd Msg )
-update action model =
-    case action of
+update msg model =
+    case msg of
         Change newWord ->
             ( Model newWord [], Testable.Cmd.none )
 
