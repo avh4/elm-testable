@@ -35,9 +35,9 @@ get expectedKey (Dict dict) =
 
 remove : key -> Dict key value -> Dict key value
 remove key (Dict dict) =
-    Dict (List.filter (fst >> (/=) key) dict)
+    Dict (List.filter (Tuple.first >> (/=) key) dict)
 
 
 keys : Dict key value -> List key
 keys (Dict dict) =
-    dict |> List.map fst
+    dict |> List.map Tuple.first
