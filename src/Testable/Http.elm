@@ -1,4 +1,4 @@
-module Testable.Http exposing (getString, get, post, Error, emptyBody, Request, Settings, send, defaultSettings, getRequest, Response, ok, serverError, toTask)
+module Testable.Http exposing (getString, get, post, Error, emptyBody, Request, Settings, send, defaultSettings, getRequest, Response, ok, serverError, toTask, stringBody)
 
 {-|
 `Testable.Http` is a replacement for the standard `Http` module.  You can use it
@@ -14,7 +14,7 @@ to create components that can be tested with `Testable.TestContext`.
 @docs send, Request, Settings, defaultSettings
 
 # Responses
-@docs Response, Error
+@docs Response, Error, stringBody
 
 # Helpers
 @docs getRequest, ok, serverError, toTask
@@ -220,6 +220,22 @@ whatever helpful behavior they want on top of it.
 -}
 type alias Response a =
     Http.Response a
+
+
+{-| Put some string in the body of your `Request`. Defining `jsonBody` looks
+like this:
+    import Json.Encode as Encode
+    jsonBody : Encode.Value -> Body
+    jsonBody value =
+      stringBody "application/json" (Encode.encode 0 value)
+Notice that the first argument is a [MIME type][mime] so we know to add
+`Content-Type: application/json` to our request headers. Make sure your
+MIME type matches your data. Some servers are strict about this!
+[mime]: https://en.wikipedia.org/wiki/Media_type
+-}
+stringBody : String -> String -> Body
+stringBody =
+    Http.stringBody
 
 
 

@@ -3,7 +3,7 @@
 set -ex
 
 elm-package install --yes
-[ ! -d node_modules ] && npm install elm-test@0.17
+[ ! -d node_modules ] && npm install elm-test@0.18
 PATH=$PATH:$(pwd)/node_modules/.bin
 
 rm -Rf elm-stuff/build-artifacts
