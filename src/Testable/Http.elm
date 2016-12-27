@@ -294,7 +294,7 @@ stringBody =
 -}
 multipartBody : List Part -> Body
 multipartBody =
-    Native.Http.multipart
+    Http.multipartBody
 
 
 {-| Contents of a multi-part body. Right now it only supports strings, but we
