@@ -17,7 +17,7 @@ type EffectsResult msg
 type EffectsLog msg
     = EffectsLog
         { http :
-            Dict Http.Settings (Result Http.Error (Http.Response String) -> EffectsResult msg)
+            Dict Http.Settings ( Http.Error -> EffectsResult msg, Http.Response String -> EffectsResult msg )
         , now : Time
         , sleep : PairingHeap Time (EffectsResult msg)
         , wrappedCmds : List (Platform.Cmd.Cmd msg)
@@ -34,14 +34,14 @@ empty =
         }
 
 
-unsafeFromResult : TaskResult a a -> EffectsResult a
+unsafeFromResult : TaskResult Never a -> EffectsResult a
 unsafeFromResult result =
     case result of
         Success a ->
             Finished a
 
         Failure a ->
-            Finished a
+            Debug.crash "Never failing task should not fail"
 
         Continue next ->
             MoreEffects (Internal.TaskCmd next)
@@ -55,8 +55,8 @@ insert effects (EffectsLog log) =
         Internal.None ->
             ( EffectsLog log, [] )
 
-        Internal.TaskCmd (Internal.HttpTask settings mapResponse) ->
-            ( EffectsLog { log | http = Dict.insert settings (mapResponse >> unsafeFromResult) log.http }
+        Internal.TaskCmd (Internal.HttpTask settings onError onSuccess) ->
+            ( EffectsLog { log | http = Dict.insert settings ( onError >> unsafeFromResult, onSuccess >> unsafeFromResult ) log.http }
             , []
             )
 
@@ -113,12 +113,9 @@ wrappedCmds (EffectsLog log) =
 
 httpMsg : Http.Settings -> Result Http.Error (Http.Response String) -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
 httpMsg expectedSettings response (EffectsLog log) =
-    case Dict.get expectedSettings log.http of
-        Nothing ->
-            Nothing
-
-        Just mapResponse ->
-            case mapResponse response of
+    let
+        updateEffect effectResult =
+            case effectResult of
                 Finished msg ->
                     Just
                         ( EffectsLog { log | http = Dict.remove expectedSettings log.http }
@@ -129,6 +126,18 @@ httpMsg expectedSettings response (EffectsLog log) =
                     EffectsLog log
                         |> insert next
                         |> Just
+    in
+        case Dict.get expectedSettings log.http of
+            Nothing ->
+                Nothing
+
+            Just ( onError, onSuccess ) ->
+                case response of
+                    Ok value ->
+                        updateEffect (onSuccess value)
+
+                    Err error ->
+                        updateEffect (onError error)
 
 
 sleepMsg : Time -> EffectsLog msg -> ( EffectsLog msg, List msg )
