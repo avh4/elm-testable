@@ -1,28 +1,33 @@
 module Testable.Internal exposing (..)
 
-import Http
 import Time exposing (Time)
 import Platform.Cmd
+import Http
 
 
 type Cmd msg
     = None
-    | TaskCmd (Task msg msg)
+    | TaskCmd (Task Never msg)
     | Batch (List (Cmd msg))
     | WrappedCmd (Platform.Cmd.Cmd msg)
 
 
 type alias Settings =
-    { timeout : Time
-    , onStart : Maybe (Task () ())
-    , onProgress : Maybe (Maybe { loaded : Int, total : Int } -> Task () ())
-    , desiredResponseType : Maybe String
+    { method : String
+    , headers : List Http.Header
+    , url : String
+    , body : Http.Body
+    , timeout : Maybe Time
     , withCredentials : Bool
     }
 
 
+type Request success
+    = HttpRequest Settings (Http.Response String -> TaskResult Http.Error success)
+
+
 type Task error success
-    = HttpTask Settings Http.Request (Result Http.RawError Http.Response -> TaskResult error success)
+    = HttpTask Settings (Http.Error -> TaskResult error success) (Http.Response String -> TaskResult error success)
     | ImmediateTask (TaskResult error success)
     | SleepTask Time (TaskResult error success)
 

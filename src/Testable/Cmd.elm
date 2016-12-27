@@ -40,7 +40,6 @@ map f source =
         Internal.TaskCmd wrapped ->
             wrapped
                 |> Task.map f
-                |> Task.mapError f
                 |> Internal.TaskCmd
 
         Internal.Batch list ->
