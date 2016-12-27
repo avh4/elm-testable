@@ -18,13 +18,7 @@ port myPort : String -> Platform.Cmd.Cmd msg
 
 httpGetMsg : String -> String -> EffectsLog msg -> Maybe ( EffectsLog msg, List msg )
 httpGetMsg url responseBody =
-    EffectsLog.httpMsg Http.defaultSettings
-        { verb = "GET"
-        , headers = []
-        , url = url
-        , body = Http.empty
-        }
-        (Http.ok responseBody)
+    EffectsLog.httpMsg Http.defaultSettings (Http.ok responseBody)
 
 
 all : Test
@@ -34,7 +28,11 @@ all =
             [ test "directly consuming the result" <|
                 \() ->
                     EffectsLog.empty
-                        |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.perform Err Ok)
+                        |> EffectsLog.insert
+                            (Http.getString "https://example.com/"
+                                |> Http.toTask
+                                |> Task.attempt identity
+                            )
                         |> Tuple.first
                         |> httpGetMsg "https://example.com/" "responseBody"
                         |> Maybe.map Tuple.second
@@ -42,7 +40,11 @@ all =
             , test "mapping the result" <|
                 \() ->
                     EffectsLog.empty
-                        |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.perform (Err >> MyWrapper) (Ok >> MyWrapper))
+                        |> EffectsLog.insert
+                            (Http.getString "https://example.com/"
+                                |> Http.toTask
+                                |> Task.attempt MyWrapper
+                            )
                         |> Tuple.first
                         |> httpGetMsg "https://example.com/" "responseBody"
                         |> Maybe.map Tuple.second
@@ -50,7 +52,11 @@ all =
             , test "resolving a request that doesn't match gives Nothing" <|
                 \() ->
                     EffectsLog.empty
-                        |> EffectsLog.insert (Http.getString "https://example.com/" |> Task.perform Err Ok)
+                        |> EffectsLog.insert
+                            (Http.getString "https://example.com/"
+                                |> Http.toTask
+                                |> Task.attempt identity
+                            )
                         |> Tuple.first
                         |> httpGetMsg "https://XXXX/" "responseBody"
                         |> Maybe.map Tuple.second

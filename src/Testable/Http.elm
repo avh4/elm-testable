@@ -1,4 +1,4 @@
-module Testable.Http exposing (getString, get, post, Error, emptyBody, Request, Settings, send, defaultSettings, getRequest, Response, ok, serverError)
+module Testable.Http exposing (getString, get, post, Error, emptyBody, Request, Settings, send, defaultSettings, getRequest, Response, ok, serverError, toTask)
 
 {-|
 `Testable.Http` is a replacement for the standard `Http` module.  You can use it
@@ -17,7 +17,7 @@ to create components that can be tested with `Testable.TestContext`.
 @docs Response, Error
 
 # Helpers
-@docs getRequest, ok, serverError
+@docs getRequest, ok, serverError, toTask
 -}
 
 import Dict
