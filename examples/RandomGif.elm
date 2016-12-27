@@ -1,28 +1,21 @@
 module RandomGif exposing (..)
 
--- From section 5 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial#example-5-random-gif-viewer
-
 import Html exposing (..)
-import Html.Attributes exposing (style)
-import Html.Events exposing (onClick)
-import Json.Decode as Json
-
-
--- import Cmd
-
-import Http
-
-
--- import Testable
+import Html.Attributes exposing (..)
+import Html.Events exposing (..)
+import Testable.Http as Http
+import Json.Decode as Decode
+import Testable
+import Testable.Cmd
 
 
 main : Program Never Model Msg
 main =
     Html.program
-        { init = init "dc6zaTOxFJmzC" "funny cats"
-        , update = update
+        { init = Testable.init (init "cats")
         , view = view
-        , subscriptions = always Sub.none
+        , update = Testable.update update
+        , subscriptions = subscriptions
         }
 
 
@@ -31,16 +24,15 @@ main =
 
 
 type alias Model =
-    { apiKey : String
-    , topic : String
+    { topic : String
     , gifUrl : String
     }
 
 
-init : String -> String -> ( Model, Cmd Msg )
-init apiKey topic =
-    ( Model apiKey topic "/favicon.ico"
-    , getRandomGif apiKey topic
+init : String -> ( Model, Testable.Cmd.Cmd Msg )
+init topic =
+    ( Model topic "waiting.gif"
+    , getRandomGif topic
     )
 
 
@@ -49,25 +41,21 @@ init apiKey topic =
 
 
 type Msg
-    = RequestMore
+    = MorePlease
     | NewGif (Result Http.Error String)
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Testable.Cmd.Cmd Msg )
 update msg model =
     case msg of
-        RequestMore ->
-            ( model, getRandomGif model.apiKey model.topic )
+        MorePlease ->
+            ( model, getRandomGif model.topic )
 
-        NewGif (Ok url) ->
-            ( Model model.apiKey model.topic url
-            , Cmd.none
-            )
+        NewGif (Ok newUrl) ->
+            ( Model model.topic newUrl, Testable.Cmd.none )
 
         NewGif (Err _) ->
-            ( Model model.apiKey model.topic model.gifUrl
-            , Cmd.none
-            )
+            ( model, Testable.Cmd.none )
 
 
 
@@ -76,48 +64,36 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ style [ ( "width", "200px" ) ] ]
-        [ h2 [ headerStyle ] [ text model.topic ]
-        , div [ imgStyle model.gifUrl ] []
-        , button [ onClick RequestMore ] [ text "More Please!" ]
-        ]
-
-
-headerStyle : Attribute Msg
-headerStyle =
-    style
-        [ ( "width", "200px" )
-        , ( "text-align", "center" )
-        ]
-
-
-imgStyle : String -> Attribute Msg
-imgStyle url =
-    style
-        [ ( "display", "inline-block" )
-        , ( "width", "200px" )
-        , ( "height", "200px" )
-        , ( "background-position", "center center" )
-        , ( "background-size", "cover" )
-        , ( "background-image", ("url('" ++ url ++ "')") )
+    div []
+        [ h2 [] [ text model.topic ]
+        , button [ onClick MorePlease ] [ text "More Please!" ]
+        , br [] []
+        , img [ src model.gifUrl ] []
         ]
 
 
 
--- EFFECTS
+-- SUBSCRIPTIONS
 
 
-getRandomGif : String -> String -> Cmd Msg
-getRandomGif apiKey topic =
-    Http.get (randomUrl apiKey topic) decodeUrl
-        |> Http.send NewGif
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
 
 
-randomUrl : String -> String -> String
-randomUrl apiKey topic =
-    "https://api.giphy.com/v1/gifs/random?api_key=" ++ apiKey ++ "&tag=" ++ topic
+
+-- HTTP
 
 
-decodeUrl : Json.Decoder String
-decodeUrl =
-    Json.at [ "data", "image_url" ] Json.string
+getRandomGif : String -> Testable.Cmd.Cmd Msg
+getRandomGif topic =
+    let
+        url =
+            "https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=" ++ topic
+    in
+        Http.send NewGif (Http.get url decodeGifUrl)
+
+
+decodeGifUrl : Decode.Decoder String
+decodeGifUrl =
+    Decode.at [ "data", "image_url" ] Decode.string
