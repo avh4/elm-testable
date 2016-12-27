@@ -92,7 +92,7 @@ all =
                     |> TestContext.resolveHttpRequest (Http.getString "https://badwebsite.com/")
                         (Http.ok "_")
                     |> TestContext.currentModel
-                    |> Expect.equal (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://badwebsite.com/\", body = Empty }" ])
+                    |> Expect.equal (Err [ "No pending HTTP request: { method = \"GET\", headers = [], body = EmptyBody, timeout = Nothing, url = \"https://badwebsite.com/\", withCredentials = False }" ])
         , test "effects should be removed after they are run" <|
             \() ->
                 loadingComponent
@@ -102,7 +102,7 @@ all =
                     |> TestContext.resolveHttpRequest (Http.getString "https://example.com/")
                         (Http.ok "myData-2")
                     |> TestContext.currentModel
-                    |> Expect.equal (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://example.com/\", body = Empty }" ])
+                    |> Expect.equal (Err [ "No pending HTTP request: { method = \"GET\", headers = [], body = EmptyBody, timeout = Nothing, url = \"https://example.com/\", withCredentials = False }" ])
         , test "multiple initial effects should be resolvable" <|
             \() ->
                 { init =
