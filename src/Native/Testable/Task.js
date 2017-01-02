@@ -1,5 +1,5 @@
-if (_elm_lang$core$Native_Scheduler.sleep === undefined) {
-  throw 'ERROR: Native.Testable.Task was loaded before _elm_lang$core$Native_Scheduler'
+if (typeof _elm_lang$core$Native_Scheduler.sleep === 'undefined') {
+  throw new Error('ERROR: Native.Testable.Task was loaded before _elm_lang$core$Native_Scheduler')
 }
 
 _elm_lang$core$Process$sleep = function (delay) {
@@ -7,8 +7,8 @@ _elm_lang$core$Process$sleep = function (delay) {
   return { ctor: 'SleepTask', _0: delay, _1: result }
 }
 
-if (_elm_lang$http$Native_Http.toTask === undefined) {
-  throw 'ERROR: Native.TestContext was loaded before _elm_lang$http$Native_Http'
+if (typeof _elm_lang$http$Native_Http.toTask === 'undefined') {
+  throw new Error('ERROR: Native.TestContext was loaded before _elm_lang$http$Native_Http')
 }
 
 _elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) {
@@ -92,8 +92,8 @@ var _user$project$Native_Testable_Task = (function () {
         return andThen(task.callback, next)
 
       case '_Task_onError':
-        var next = fromPlatformTask(task.task)
-        return onError(task.callback, next)
+        var next_ = fromPlatformTask(task.task)
+        return onError(task.callback, next_)
 
       case 'SleepTask':
       case 'HttpTask':

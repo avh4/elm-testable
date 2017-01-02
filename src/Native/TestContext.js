@@ -1,4 +1,4 @@
-if (_elm_lang$core$Native_Platform.initialize === undefined) {
+if (typeof _elm_lang$core$Native_Platform.initialize === 'undefined') {
   throw 'ERROR: Native.TestContext was loaded before _elm_lang$core$Native_Platform'
 }
 
