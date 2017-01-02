@@ -1,5 +1,5 @@
-if (typeof _elm_lang$core$Native_Scheduler.sleep === 'undefined') {
-  throw new Error('ERROR: Native.Testable.Task was loaded before _elm_lang$core$Native_Scheduler')
+if (typeof _elm_lang$core$Process$sleep === 'undefined') {
+  throw new Error('ERROR: Native.Testable.Task was loaded before _elm_lang$core$Process')
 }
 
 _elm_lang$core$Process$sleep = function (delay) {
