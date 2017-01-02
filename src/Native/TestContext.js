@@ -1,5 +1,5 @@
 if (typeof _elm_lang$core$Native_Platform.initialize === 'undefined') {
-  throw 'ERROR: Native.TestContext was loaded before _elm_lang$core$Native_Platform'
+  throw new Error('Native.TestContext was loaded before _elm_lang$core$Native_Platform: this shouldn\'t happen because Platform is a default import in Elm 0.18.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
 _elm_lang$core$Native_Platform.initialize = function (init, update, subscriptions, renderer) {
