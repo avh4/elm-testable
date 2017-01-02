@@ -1,5 +1,5 @@
 if (typeof _elm_lang$core$Process$sleep === 'undefined') {
-  throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: you probably need to add "import Process" to one of your Elm test files')
+  throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: this shouldn\'t happen because Testable.Task imports Process.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
 _elm_lang$core$Process$sleep = function (delay) {
@@ -8,7 +8,7 @@ _elm_lang$core$Process$sleep = function (delay) {
 }
 
 if (typeof _elm_lang$http$Native_Http.toTask === 'undefined') {
-  throw new Error('Native.TestContext was loaded before _elm_lang$http$Native_Http: you probably need to add "import Http" to one of your Elm test files')
+  throw new Error('Native.TestContext was loaded before _elm_lang$http$Native_Http: this shouldn\'t happen because Testable.Task imports Http.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
 _elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) {

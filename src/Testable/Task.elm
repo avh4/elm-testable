@@ -40,6 +40,12 @@ import Task as PlatformTask
 import Http
 
 
+-- This "unused" import is required because Native.Testable.Task needs
+-- it at runtime:
+
+import Process
+
+
 fromPlatformTask : PlatformTask.Task x a -> Task x a
 fromPlatformTask =
     Native.Testable.Task.fromPlatformTask
