@@ -35,7 +35,7 @@ var _user$project$Native_TestContext = (function () {
   return {
     extractProgram: F2(function (moduleName, program) {
       var containerModule = {}
-      var p = program()(containerModule, moduleName)
+      var programInstance = program()(containerModule, moduleName)
       var embedRoot = {}
       var flags
 
