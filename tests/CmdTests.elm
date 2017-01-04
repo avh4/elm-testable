@@ -5,6 +5,7 @@ import Expect
 import Html
 import TestContext exposing (TestContext)
 import TestPorts
+import Task
 
 
 testEqual : Gen a -> String -> (a -> a -> Expect.Expectation) -> Test
@@ -66,4 +67,22 @@ all =
                     |> TestContext.start
                     |> TestContext.update ()
                     |> TestContext.expectCmd (TestPorts.string expected)
+        , describe "Cmd.map"
+            [ test "with Tasks" <|
+                \() ->
+                    { init =
+                        ( Just "INIT"
+                        , Cmd.map Just <|
+                            Task.perform identity <|
+                                Task.succeed "TASK"
+                        )
+                    , update = \msg _ -> ( msg, Cmd.none )
+                    , subscriptions = \_ -> Sub.none
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.program
+                        |> TestContext.start
+                        |> TestContext.model
+                        |> Expect.equal (Just "TASK")
+            ]
         ]

@@ -59,10 +59,18 @@ var _user$project$Native_TestContext = (function () {
     extractCmds: function (root) {
       var cmds = []
       forEachLeaf(identity, root, function (tagger, cmd) {
-        // TODO: use tagger -- currently will violate types if Cmd.map is used
+        // NOTE: any new cases added here must use tagger or Cmd.map will be broken
         if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
-          cmds.push({ ctor: 'Task', _0: cmd.value._0 })
+          var mappedTask = {
+            ctor: '_Task_andThen',
+            callback: function (x) {
+              return { ctor: '_Task_succeed', value: tagger(x) }
+            },
+            task: cmd.value._0
+          }
+          cmds.push({ ctor: 'Task', _0: mappedTask })
         } else {
+          // We can safely ignore tagger because port Cmds can never actually produce messages
           cmds.push({ ctor: 'Port', _0: cmd.home, _1: cmd.value })
         }
       })
@@ -71,6 +79,7 @@ var _user$project$Native_TestContext = (function () {
     extractSubs: function (sub) {
       var subs = []
       forEachLeaf(identity, sub, function (tagger, s) {
+        // NOTE: if new kinds of Subs are handled here, they must use tagger or Sub.map will be broken
         var mapper = function (x) {
           return tagger(s.value(x))
         }
