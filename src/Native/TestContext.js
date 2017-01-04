@@ -11,25 +11,36 @@ _elm_lang$core$Native_Platform.initialize = function (init, update, subscription
 }
 
 var _user$project$Native_TestContext = (function () {
-  // forEachLeaf : Cmd msg -> (LeafCmd -> IO ()) -> IO ()
-  function forEachLeaf (bag, f) {
+  // forEachLeaf : Tagger -> Cmd msg -> (Tagger -> LeafCmd -> IO ()) -> IO ()
+  function forEachLeaf (tagger, bag, f) {
     switch (bag.type) {
       case 'leaf':
-        f(bag)
+        f(tagger, bag)
         break
 
       case 'node':
         var rest = bag.branches
         while (rest.ctor !== '[]') {
           // assert(rest.ctor === '::');
-          forEachLeaf(rest._0, f)
+          forEachLeaf(tagger, rest._0, f)
           rest = rest._1
         }
+        break
+
+      case 'map':
+        var newTagger = function (x) {
+          return tagger(bag.tagger(x))
+        }
+        forEachLeaf(newTagger, bag.tree, f)
         break
 
       default:
         throw new Error('Unknown internal bag node type: ' + bag.type)
     }
+  }
+
+  function identity (x) {
+    return x
   }
 
   return {
@@ -47,7 +58,8 @@ var _user$project$Native_TestContext = (function () {
     }),
     extractCmds: function (root) {
       var cmds = []
-      forEachLeaf(root, function (cmd) {
+      forEachLeaf(identity, root, function (tagger, cmd) {
+        // TODO: use tagger -- currently will violate types if Cmd.map is used
         if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
           cmds.push({ ctor: 'Task', _0: cmd.value._0 })
         } else {
@@ -58,8 +70,11 @@ var _user$project$Native_TestContext = (function () {
     },
     extractSubs: function (sub) {
       var subs = []
-      forEachLeaf(sub, function (s) {
-        subs.push({ ctor: 'PortSub', _0: s.home, _1: s.value })
+      forEachLeaf(identity, sub, function (tagger, s) {
+        var mapper = function (x) {
+          return tagger(s.value(x))
+        }
+        subs.push({ ctor: 'PortSub', _0: s.home, _1: mapper })
       })
       return _elm_lang$core$Native_List.fromArray(subs)
     },

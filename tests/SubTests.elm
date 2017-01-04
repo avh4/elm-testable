@@ -7,7 +7,7 @@ import TestContext exposing (TestContext)
 import TestPorts
 
 
-subProgram : Sub (Maybe String) -> TestContext (Maybe String) (Maybe String)
+subProgram : Sub (Maybe a) -> TestContext (Maybe a) (Maybe a)
 subProgram subs =
     { init = ( Nothing, Cmd.none )
     , update = \msg model -> ( msg, Cmd.none )
@@ -32,4 +32,12 @@ all =
                 subProgram (Sub.none)
                     |> TestContext.send TestPorts.stringSub "VALUE"
                     |> Expect.equal (Err "Not subscribed to port: stringSub")
+        , describe "Sub.map"
+            [ test "with port Sub" <|
+                \() ->
+                    subProgram (Sub.map Just <| TestPorts.stringSub Just)
+                        |> TestContext.send TestPorts.stringSub "1"
+                        |> Result.map TestContext.model
+                        |> Expect.equal (Ok <| Just <| Just "1")
+            ]
         ]
