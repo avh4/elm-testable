@@ -95,6 +95,9 @@ var _user$project$Native_TestContext = (function () {
     },
     applyMapper: F2(function (mapper, value) {
       return { ctor: 'Ok', _0: mapper(value) }
-    })
+    }),
+    mockTask: function (tag) {
+      return { ctor: 'MockTask', _0: tag }
+    }
   }
 })()

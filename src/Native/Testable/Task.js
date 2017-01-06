@@ -32,6 +32,12 @@ var _user$project$Native_Testable_Task = (function () {
       case 'Failure':
         return task
 
+      case 'MockTask':
+        return {
+          ctor: 'MockTask',
+          _0: task._0
+        }
+
       case 'SleepTask':
         return {
           ctor: 'SleepTask',
@@ -59,6 +65,12 @@ var _user$project$Native_Testable_Task = (function () {
       case 'Failure':
         var next = f(task._0)
         return fromPlatformTask(next)
+
+      case 'MockTask':
+        return {
+          ctor: 'MockTask',
+          _0: task._0
+        }
 
       case 'SleepTask':
         return {
@@ -95,6 +107,7 @@ var _user$project$Native_Testable_Task = (function () {
         var next_ = fromPlatformTask(task.task)
         return onError(task.callback, next_)
 
+      case 'MockTask':
       case 'SleepTask':
       case 'HttpTask':
         return task

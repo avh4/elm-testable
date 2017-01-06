@@ -113,6 +113,18 @@ all =
                         |> Expect.equal (Err expected)
             ]
           -- , describe "Process.sleep" []
+        , describe "mock tasks"
+            [ test "can verify a mock task is pending" <|
+                \() ->
+                    { init = ( (), TestContext.mockTask ( "id", 1 ) |> Task.perform identity )
+                    , update = \msg model -> ( msg, Cmd.none )
+                    , subscriptions = \_ -> Sub.none
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.program
+                        |> TestContext.start
+                        |> TestContext.expectMockTask ( "id", 1 )
+            ]
         , HttpTests.all
         , SubTests.all
           -- , describe "Flags" []

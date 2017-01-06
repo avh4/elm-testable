@@ -4,6 +4,8 @@ module TestContext
         , start
         , model
         , update
+        , mockTask
+        , expectMockTask
         , send
         , expectCmd
         , expectHttpRequest
@@ -14,6 +16,7 @@ import Expect
 import Json.Encode
 import Dict exposing (Dict)
 import Testable.Task exposing (fromPlatformTask, Task(..))
+import Set exposing (Set)
 
 
 type alias TestableProgram model msg =
@@ -41,6 +44,7 @@ type TestContext model msg
         { program : TestableProgram model msg
         , model : model
         , pendingCmds : List (TestableCmd msg)
+        , pendingMockTasks : Set String
         , pendingHttpRequests : Dict ( String, String ) (Task msg msg)
         }
 
@@ -80,6 +84,7 @@ start realProgram =
             { program = program
             , model = Tuple.first program.init
             , pendingCmds = []
+            , pendingMockTasks = Set.empty
             , pendingHttpRequests = Dict.empty
             }
             |> processCmds (Tuple.second program.init)
@@ -106,6 +111,12 @@ processCmd cmd (TestContext context) =
                     -- (TestContext context)
                     --     |> update msg
                     Debug.crash ("TODO: commented code above is not tested")
+
+                MockTask tag ->
+                    TestContext
+                        { context
+                            | pendingMockTasks = Set.insert tag context.pendingMockTasks
+                        }
 
                 SleepTask time next ->
                     -- TODO: track time
@@ -135,6 +146,38 @@ update msg (TestContext context) =
     in
         TestContext { context | model = newModel }
             |> processCmds newCmds
+
+
+mockTask : tag -> Platform.Task x a
+mockTask tag =
+    Native.TestContext.mockTask (toString tag)
+
+
+hasPendingMockTask : tag -> TestContext model msg -> Bool
+hasPendingMockTask tag (TestContext context) =
+    Set.member (toString tag) context.pendingMockTasks
+
+
+expectMockTask : tag -> TestContext model msg -> Expect.Expectation
+expectMockTask expected (TestContext context) =
+    if hasPendingMockTask expected (TestContext context) then
+        Expect.pass
+    else
+        [ if Set.isEmpty context.pendingMockTasks then
+            "pending mock tasks (none were initiated)"
+          else
+            Set.toList context.pendingMockTasks
+                |> List.sort
+                |> List.map ((++) "    - mockTask ")
+                |> String.join "\n"
+                |> ((++) "pending mock tasks:\n")
+        , "╷"
+        , "│ to include (TestContext.expectMockTask)"
+        , "╵"
+        , "mockTask " ++ (toString expected)
+        ]
+            |> String.join "\n"
+            |> Expect.fail
 
 
 send :
@@ -185,6 +228,7 @@ expectCmd expected (TestContext context) =
     if hasPendingCmd expected (TestContext context) then
         Expect.pass
     else
+        -- TODO: nicer failure messages like expectHttpRequest
         [ toString <| context.pendingCmds
         , "╷"
         , "│ TestContext.expectCmd"
@@ -209,7 +253,7 @@ expectHttpRequest method url (TestContext context) =
                 |> String.join "\n"
                 |> ((++) "pending HTTP requests:\n")
         , "╷"
-        , "│ to include"
+        , "│ to include (TestContext.expectHttpRequest)"
         , "╵"
         , method ++ " " ++ url
         ]

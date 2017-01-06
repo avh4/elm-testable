@@ -60,6 +60,7 @@ type Task error success
     | Failure error
     | SleepTask Time (Task error success)
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
+    | MockTask String
 
 
 {-| A task that succeeds immediately when run.
@@ -93,6 +94,9 @@ map f source =
         Failure x ->
             Failure x
 
+        MockTask tag ->
+            MockTask tag
+
         SleepTask time next ->
             SleepTask time (next |> map f)
 
@@ -122,6 +126,9 @@ andThen f source =
         Failure x ->
             Failure x
 
+        MockTask tag ->
+            MockTask tag
+
         SleepTask time next ->
             SleepTask time (next |> andThen f)
 
@@ -150,6 +157,9 @@ mapError f source =
 
         Failure x ->
             Failure (f x)
+
+        MockTask tag ->
+            MockTask tag
 
         SleepTask time next ->
             SleepTask time (next |> mapError f)
@@ -189,6 +199,9 @@ toResult source =
 
         Failure x ->
             Success (Err x)
+
+        MockTask tag ->
+            MockTask tag
 
         SleepTask time next ->
             SleepTask time (next |> toResult)
