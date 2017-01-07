@@ -10,7 +10,7 @@ _elm_lang$core$Native_Platform.initialize = function (init, update, subscription
   }
 }
 
-var _user$project$Native_TestContext = (function () {
+var _user$project$Native_TestContext = (function () { // eslint-disable-line no-unused-vars, camelcase
   // forEachLeaf : Tagger -> Cmd msg -> (Tagger -> LeafCmd -> IO ()) -> IO ()
   function forEachLeaf (tagger, bag, f) {
     switch (bag.type) {
@@ -46,7 +46,7 @@ var _user$project$Native_TestContext = (function () {
   return {
     extractProgram: F2(function (moduleName, program) {
       var containerModule = {}
-      var programInstance = program()(containerModule, moduleName)
+      var programInstance = program()(containerModule, moduleName) // eslint-disable-line no-unused-vars
       var embedRoot = {}
       var flags
 

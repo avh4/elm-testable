@@ -1,8 +1,8 @@
-if (typeof _elm_lang$core$Process$sleep === 'undefined') {
+if (typeof _elm_lang$core$Process$sleep === 'undefined') { // eslint-disable-line camelcase
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: this shouldn\'t happen because Testable.Task imports Process.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
-_elm_lang$core$Process$sleep = function (delay) {
+_elm_lang$core$Process$sleep = function (delay) { // eslint-disable-line no-global-assign, no-native-reassign, camelcase
   var result = { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
   return { ctor: 'SleepTask', _0: delay, _1: result }
 }
@@ -11,7 +11,7 @@ if (typeof _elm_lang$http$Native_Http.toTask === 'undefined') {
   throw new Error('Native.TestContext was loaded before _elm_lang$http$Native_Http: this shouldn\'t happen because Testable.Task imports Http.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
-_elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) {
+_elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) { // eslint-disable-line no-global-assign
   // TODO: handle maybeProgress
   // TODO: handle request.{headers, body, withCredentials}
   // TODO: handle request.timeout ?
@@ -22,7 +22,7 @@ _elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) {
   return { ctor: 'HttpTask', _0: options, _1: callback }
 })
 
-var _user$project$Native_Testable_Task = (function () {
+var _user$project$Native_Testable_Task = (function () { // eslint-disable-line no-unused-vars, camelcase
   function andThen (f, task) {
     switch (task.ctor) {
       case 'Success':
