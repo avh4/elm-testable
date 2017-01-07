@@ -65,8 +65,7 @@ all =
                     (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt (always ()))
                     |> TestContext.resolveMockTask ( "label", 1 ) (Ok ())
                     |> Result.map (TestContext.expectMockTask ( "label", 1 ))
-                    |> -- TODO: message should say it was previously resolved
-                       expectOk (expectFailure "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)\n\nbut mockTask (\"label\",1) was previously resolved with value Ok ()")
+                    |> expectOk (expectFailure "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)\n\nbut mockTask (\"label\",1) was previously resolved with value Ok ()")
         , test "can resolve a mock task with success" <|
             \() ->
                 cmdProgram (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt Just)
