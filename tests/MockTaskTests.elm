@@ -3,11 +3,13 @@ module MockTaskTests exposing (all)
 import Test exposing (..)
 import Expect
 import Html
-import TestContext exposing (TestContext, MockContext)
+import TestContextWithMocks as TestContext exposing (TestContext)
 import Task
 
 
-cmdProgram : ((mockLabel -> Platform.Task x a) -> Cmd msg) -> MockContext mockLabel (Result x a) (List msg) msg
+cmdProgram :
+    ((mockLabel -> Platform.Task x a) -> Cmd msg)
+    -> TestContext mockLabel (Result x a) (List msg) msg
 cmdProgram cmd =
     (\mockTask ->
         { init = ( [], cmd mockTask )
@@ -17,7 +19,7 @@ cmdProgram cmd =
         }
             |> Html.program
     )
-        |> TestContext.startWithMockTask
+        |> TestContext.start
 
 
 expectFailure : String -> Expect.Expectation -> Expect.Expectation
@@ -63,7 +65,7 @@ all =
                     (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt (always ()))
                     |> TestContext.resolveMockTask ( "label", 1 ) (Ok ())
                     |> Result.map (TestContext.expectMockTask ( "label", 1 ))
-                    |> -- TODO: message says is was previously resolved
+                    |> -- TODO: message should say it was previously resolved
                        expectOk (expectFailure "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)")
         , test "can resolve a mock task with success" <|
             \() ->
