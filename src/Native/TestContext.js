@@ -60,7 +60,7 @@ var _user$project$Native_TestContext = (function () {
       var cmds = []
       forEachLeaf(identity, root, function (tagger, cmd) {
         // NOTE: any new cases added here must use tagger or Cmd.map will be broken
-        if (cmd.home == 'Task' && cmd.value.ctor == 'Perform') {
+        if (cmd.home === 'Task' && cmd.value.ctor === 'Perform') {
           var mappedTask = {
             ctor: '_Task_andThen',
             callback: function (x) {
