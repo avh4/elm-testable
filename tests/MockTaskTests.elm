@@ -88,7 +88,12 @@ all =
                     |> TestContext.resolveMockTask ( "label", 1 ) (Ok [ 7, 8, 9 ])
                     |> Result.map TestContext.model
                     |> Expect.equal (Ok <| [ Just <| Ok [ 7, 8, 9 ] ])
-          -- TODO: can resolve a mock task with error
+        , test "can resolve a mock task with an error" <|
+            \() ->
+                cmdProgram (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt Just)
+                    |> TestContext.resolveMockTask ( "label", 1 ) (Err "failure")
+                    |> Result.map TestContext.model
+                    |> Expect.equal (Ok <| [ Just <| Err "failure" ])
           -- TODO: mockTask works with Task.andThen
           -- TODO: mockTask works with Task.onError
           -- TODO: mockTask works with Cmd.map
