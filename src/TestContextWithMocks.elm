@@ -39,12 +39,27 @@ type TestableSub msg
     = PortSub String (Mapper msg)
 
 
+type MockTaskState msg
+    = Pending (Mapper (Task msg msg))
+    | Resolved String
+
+
+isPending : MockTaskState msg -> Bool
+isPending state =
+    case state of
+        Pending _ ->
+            True
+
+        _ ->
+            False
+
+
 type TestContext mockLabel mockValue model msg
     = TestContext
         { program : TestableProgram model msg
         , model : model
         , pendingCmds : List (TestableCmd msg)
-        , pendingMockTasks : Dict String (Mapper (Task msg msg))
+        , mockTasks : Dict String (MockTaskState msg)
         , pendingHttpRequests : Dict ( String, String ) (Task msg msg)
         }
 
@@ -80,7 +95,7 @@ start getProgram =
             { program = program
             , model = Tuple.first program.init
             , pendingCmds = []
-            , pendingMockTasks = Dict.empty
+            , mockTasks = Dict.empty
             , pendingHttpRequests = Dict.empty
             }
             |> processCmds (Tuple.second program.init)
@@ -116,9 +131,9 @@ processTask task (TestContext context) =
         MockTask label mapper ->
             TestContext
                 { context
-                    | pendingMockTasks =
-                        context.pendingMockTasks
-                            |> Dict.insert label mapper
+                    | mockTasks =
+                        context.mockTasks
+                            |> Dict.insert label (Pending mapper)
                 }
 
         SleepTask time next ->
@@ -151,47 +166,81 @@ update msg (TestContext context) =
             |> processCmds newCmds
 
 
-hasPendingMockTask : String -> TestContext mockLabel mockValue model msg -> Bool
-hasPendingMockTask label (TestContext context) =
-    Dict.member label context.pendingMockTasks
-
-
 expectMockTask : mockLabel -> TestContext mockLabel mockValue model msg -> Expect.Expectation
 expectMockTask label (TestContext context) =
-    if hasPendingMockTask (toString label) (TestContext context) then
-        Expect.pass
-    else
-        [ if Dict.isEmpty context.pendingMockTasks then
-            "pending mock tasks (none were initiated)"
-          else
-            Dict.keys context.pendingMockTasks
-                |> List.sort
-                |> List.map ((++) "    - mockTask ")
+    case Dict.get (toString label) context.mockTasks of
+        Just (Pending _) ->
+            Expect.pass
+
+        Just (Resolved previousValue) ->
+            listFailure
+                "pending mock tasks"
+                "none were initiated"
+                (context.mockTasks |> Dict.filter (\_ -> isPending) |> Dict.keys)
+                ((++) "mockTask ")
+                "to include (TestContext.expectMockTask)"
+                (toString label)
+                [ "but mockTask "
+                    ++ (toString label)
+                    ++ " was previously resolved"
+                    ++ " with value "
+                    ++ previousValue
+                ]
+
+        Nothing ->
+            listFailure
+                "pending mock tasks"
+                "none were initiated"
+                (context.mockTasks |> Dict.filter (\_ -> isPending) |> Dict.keys)
+                ((++) "mockTask ")
+                "to include (TestContext.expectMockTask)"
+                (toString label)
+                []
+
+
+listFailure : String -> String -> List a -> (a -> String) -> String -> a -> List String -> Expect.Expectation
+listFailure collectionName emptyIndicator actuals view expectationName expected extraInfo =
+    [ [ if List.isEmpty actuals then
+            collectionName ++ " (" ++ emptyIndicator ++ ")"
+        else
+            actuals
+                |> List.map (view >> (++) "    - ")
                 |> String.join "\n"
-                |> ((++) "pending mock tasks:\n")
-        , "╷"
-        , "│ to include (TestContext.expectMockTask)"
-        , "╵"
-        , "mockTask " ++ (toString label)
-        ]
-            |> String.join "\n"
-            |> Expect.fail
+                |> ((++) (collectionName ++ ":\n"))
+      , "╷"
+      , "│ " ++ expectationName
+      , "╵"
+      , view expected
+      ]
+    , if List.isEmpty extraInfo then
+        []
+      else
+        [ "" ]
+    , extraInfo
+    ]
+        |> List.concat
+        |> String.join "\n"
+        |> Expect.fail
 
 
 resolveMockTask : mockLabel -> mockValue -> TestContext mockLabel mockValue model msg -> Result String (TestContext mockLabel mockValue model msg)
 resolveMockTask label result (TestContext context) =
-    case Dict.get (toString label) context.pendingMockTasks of
+    case Dict.get (toString label) context.mockTasks of
         Nothing ->
             Err ("No mockTask matches: " ++ toString label)
 
-        Just mapper ->
+        Just (Resolved previousValue) ->
+            Err ("mockTask " ++ toString label ++ " was previously resolved with value " ++ previousValue)
+
+        Just (Pending mapper) ->
             Mapper.apply mapper result
                 |> Result.map
                     (\next ->
                         processTask next
                             (TestContext
                                 { context
-                                    | pendingMockTasks = Dict.remove (toString label) context.pendingMockTasks
+                                    | mockTasks =
+                                        Dict.insert (toString label) (Resolved <| toString result) context.mockTasks
                                 }
                             )
                     )
@@ -261,6 +310,7 @@ expectHttpRequest method url (TestContext context) =
     if Dict.member ( method, url ) context.pendingHttpRequests then
         Expect.pass
     else
+        -- TODO: use listFailure
         [ if Dict.isEmpty context.pendingHttpRequests then
             "pending HTTP requests (none were made)"
           else
