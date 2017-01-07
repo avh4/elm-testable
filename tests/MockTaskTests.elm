@@ -3,8 +3,45 @@ module MockTaskTests exposing (all)
 import Test exposing (..)
 import Expect
 import Html
-import TestContext exposing (TestContext)
+import TestContext exposing (TestContext, MockContext)
 import Task
+
+
+cmdProgram : ((mockLabel -> Platform.Task x a) -> Cmd msg) -> MockContext mockLabel (Result x a) (List msg) msg
+cmdProgram cmd =
+    (\mockTask ->
+        { init = ( [], cmd mockTask )
+        , update = \msg model -> ( msg :: model, Cmd.none )
+        , subscriptions = \_ -> Sub.none
+        , view = \_ -> Html.text ""
+        }
+            |> Html.program
+    )
+        |> TestContext.startWithMockTask
+
+
+expectFailure : String -> Expect.Expectation -> Expect.Expectation
+expectFailure expectedMessage expectation =
+    expectation
+        |> Expect.getFailure
+        |> Expect.equal (Just { given = "", message = expectedMessage })
+
+
+expectOk : (a -> Expect.Expectation) -> Result x a -> Expect.Expectation
+expectOk expectation result =
+    case result of
+        Err x ->
+            [ toString result
+            , "╷"
+            , "│ expectOk"
+            , "╵"
+            , "Ok _"
+            ]
+                |> String.join "\n"
+                |> Expect.fail
+
+        Ok a ->
+            expectation a
 
 
 all : Test
@@ -12,60 +49,28 @@ all =
     describe "mock tasks"
         [ test "can verify a mock task is pending" <|
             \() ->
-                (\mockTask ->
-                    { init = ( (), mockTask ( "label", 1 ) |> Task.attempt (always ()) )
-                    , update = \msg model -> ( msg, Cmd.none )
-                    , subscriptions = \_ -> Sub.none
-                    , view = \_ -> Html.text ""
-                    }
-                        |> Html.program
-                )
-                    |> TestContext.startWithMockTask
+                cmdProgram
+                    (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt (always ()))
                     |> TestContext.expectMockTask ( "label", 1 )
         , test "can verify that a mock task is not pending" <|
             \() ->
-                (\mockTask ->
-                    { init = ( (), Cmd.none )
-                    , update = \msg model -> ( msg, Cmd.none )
-                    , subscriptions = \_ -> Sub.none
-                    , view = \_ -> Html.text ""
-                    }
-                        |> Html.program
-                )
-                    |> TestContext.startWithMockTask
+                cmdProgram (\mockTask -> Cmd.none)
                     |> TestContext.expectMockTask ( "label", 1 )
-                    |> Expect.getFailure
-                    |> Expect.equal (Just { given = "", message = "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)" })
+                    |> expectFailure "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)"
         , test "a resolved task is no longer pending" <|
             \() ->
-                (\mockTask ->
-                    { init = ( (), mockTask ( "label", 1 ) |> Task.attempt (always ()) )
-                    , update = \msg model -> ( msg, Cmd.none )
-                    , subscriptions = \_ -> Sub.none
-                    , view = \_ -> Html.text ""
-                    }
-                        |> Html.program
-                )
-                    |> TestContext.startWithMockTask
+                cmdProgram
+                    (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt (always ()))
                     |> TestContext.resolveMockTask ( "label", 1 ) (Ok ())
                     |> Result.map (TestContext.expectMockTask ( "label", 1 ))
-                    |> Result.map Expect.getFailure
                     |> -- TODO: message says is was previously resolved
-                       Expect.equal (Ok <| Just { given = "", message = "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)" })
+                       expectOk (expectFailure "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)")
         , test "can resolve a mock task with success" <|
             \() ->
-                (\mockTask ->
-                    { init = ( Nothing, mockTask ( "label", 1 ) |> Task.attempt Just )
-                    , update = \msg model -> ( msg, Cmd.none )
-                    , subscriptions = \_ -> Sub.none
-                    , view = \_ -> Html.text ""
-                    }
-                        |> Html.program
-                )
-                    |> TestContext.startWithMockTask
+                cmdProgram (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt Just)
                     |> TestContext.resolveMockTask ( "label", 1 ) (Ok [ 7, 8, 9 ])
                     |> Result.map TestContext.model
-                    |> Expect.equal (Ok <| Just <| Ok [ 7, 8, 9 ])
+                    |> Expect.equal (Ok <| [ Just <| Ok [ 7, 8, 9 ] ])
           -- TODO: a resolved task is no longer pending
           -- TODO: can resolve a mock task with error
           -- TODO: mockTask works with Task.andThen

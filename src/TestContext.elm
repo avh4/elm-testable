@@ -1,6 +1,7 @@
 module TestContext
     exposing
         ( TestContext
+        , MockContext
         , start
         , startWithMockTask
         , model
