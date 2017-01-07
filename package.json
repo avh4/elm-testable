@@ -1,5 +1,8 @@
 {
   "standard": {
+    "ignore": [
+      "elm-stuff"
+    ],
     "globals": [
       "F2",
       "_elm_lang$http$Native_Http",
@@ -15,6 +18,6 @@
     "standard": "*"
   },
   "scripts": {
-    "test": "standard src/"
+    "test": "standard --verbose"
   }
 }
