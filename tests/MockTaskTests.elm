@@ -22,11 +22,11 @@ cmdProgram cmd =
         |> TestContext.start
 
 
-expectFailure : String -> Expect.Expectation -> Expect.Expectation
+expectFailure : List String -> Expect.Expectation -> Expect.Expectation
 expectFailure expectedMessage expectation =
     expectation
         |> Expect.getFailure
-        |> Expect.equal (Just { given = "", message = expectedMessage })
+        |> Expect.equal (Just { given = "", message = String.join "\n" expectedMessage })
 
 
 expectOk : (a -> Expect.Expectation) -> Result x a -> Expect.Expectation
@@ -58,21 +58,36 @@ all =
             \() ->
                 cmdProgram (\mockTask -> Cmd.none)
                     |> TestContext.expectMockTask ( "label", 1 )
-                    |> expectFailure "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)"
+                    |> expectFailure
+                        [ "pending mock tasks (none were initiated)"
+                        , "╷"
+                        , "│ to include (TestContext.expectMockTask)"
+                        , "╵"
+                        , "mockTask (\"label\",1)"
+                        ]
         , test "a resolved task is no longer pending" <|
             \() ->
                 cmdProgram
                     (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt (always ()))
                     |> TestContext.resolveMockTask ( "label", 1 ) (Ok ())
                     |> Result.map (TestContext.expectMockTask ( "label", 1 ))
-                    |> expectOk (expectFailure "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)\n\nbut mockTask (\"label\",1) was previously resolved with value Ok ()")
+                    |> expectOk
+                        (expectFailure
+                            [ "pending mock tasks (none were initiated)"
+                            , "╷"
+                            , "│ to include (TestContext.expectMockTask)"
+                            , "╵"
+                            , "mockTask (\"label\",1)"
+                            , ""
+                            , "but mockTask (\"label\",1) was previously resolved with value Ok ()"
+                            ]
+                        )
         , test "can resolve a mock task with success" <|
             \() ->
                 cmdProgram (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt Just)
                     |> TestContext.resolveMockTask ( "label", 1 ) (Ok [ 7, 8, 9 ])
                     |> Result.map TestContext.model
                     |> Expect.equal (Ok <| [ Just <| Ok [ 7, 8, 9 ] ])
-          -- TODO: a resolved task is no longer pending
           -- TODO: can resolve a mock task with error
           -- TODO: mockTask works with Task.andThen
           -- TODO: mockTask works with Task.onError
