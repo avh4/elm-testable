@@ -236,13 +236,12 @@ resolveMockTask label result (TestContext context) =
             Mapper.apply mapper result
                 |> Result.map
                     (\next ->
-                        processTask next
-                            (TestContext
-                                { context
-                                    | mockTasks =
-                                        Dict.insert (toString label) (Resolved <| toString result) context.mockTasks
-                                }
-                            )
+                        TestContext
+                            { context
+                                | mockTasks =
+                                    Dict.insert (toString label) (Resolved <| toString result) context.mockTasks
+                            }
+                            |> processTask next
                     )
 
 

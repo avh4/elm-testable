@@ -126,6 +126,29 @@ all =
                     )
                     |> TestContext.resolveMockTask ( "label", 1 ) (Ok ())
                     |> Result.map TestContext.model
-                    |> Expect.equal (Ok <| [ ( "mapped", Ok () ) ])
-          -- TODO: what happens when mockTask |> andThen mockTask
+                    |> expectOk (Expect.equal [ ( "mapped", Ok () ) ])
+          -- |> Expect.equal (Ok <| [  ])
+        , test "can chain mock tasks" <|
+            \() ->
+                cmdProgram
+                    (\mockTask ->
+                        mockTask ( "initial", 1 )
+                            |> Task.andThen ((,) "andThen" >> mockTask)
+                            |> Task.attempt identity
+                    )
+                    |> TestContext.resolveMockTask ( "initial", 1 ) (Ok 999)
+                    |> expectOk (TestContext.expectMockTask ( "andThen", 999 ))
+        , test "can resolve chained mock tasks" <|
+            \() ->
+                cmdProgram
+                    (\mockTask ->
+                        mockTask ( "initial", 1 )
+                            |> Task.andThen ((,) "andThen" >> mockTask)
+                            |> Task.attempt identity
+                    )
+                    |> TestContext.resolveMockTask ( "initial", 1 ) (Ok 999)
+                    |> Result.andThen
+                        (TestContext.resolveMockTask ( "andThen", 999 ) (Ok 55))
+                    |> Result.map TestContext.model
+                    |> expectOk (Expect.equal [ Ok 55 ])
         ]
