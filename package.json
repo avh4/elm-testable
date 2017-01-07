@@ -8,5 +8,13 @@
       "_elm_lang$core$Native_Utils",
       "_elm_lang$core$Process$sleep"
     ]
+  },
+  "devDependencies": {
+    "elm": "^0.18.0",
+    "elm-test": "^0.18.2",
+    "standard": "*"
+  },
+  "scripts": {
+    "test": "standard src/"
   }
 }
