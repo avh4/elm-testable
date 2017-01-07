@@ -22,6 +22,20 @@ all =
                 )
                     |> TestContext.startWithMockTask
                     |> TestContext.expectMockTask ( "label", 1 )
+        , test "can verify that a mock task is not pending" <|
+            \() ->
+                (\mockTask ->
+                    { init = ( (), Cmd.none )
+                    , update = \msg model -> ( msg, Cmd.none )
+                    , subscriptions = \_ -> Sub.none
+                    , view = \_ -> Html.text ""
+                    }
+                        |> Html.program
+                )
+                    |> TestContext.startWithMockTask
+                    |> TestContext.expectMockTask ( "label", 1 )
+                    |> Expect.getFailure
+                    |> Expect.equal (Just { given = "", message = "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)" })
         , test "a resolved task is no longer pending" <|
             \() ->
                 (\mockTask ->
