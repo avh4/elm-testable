@@ -94,8 +94,28 @@ all =
                     |> TestContext.resolveMockTask ( "label", 1 ) (Err "failure")
                     |> Result.map TestContext.model
                     |> Expect.equal (Ok <| [ Just <| Err "failure" ])
-          -- TODO: mockTask works with Task.andThen
-          -- TODO: mockTask works with Task.onError
+        , test "works with Task.andThen" <|
+            \() ->
+                cmdProgram
+                    (\mockTask ->
+                        mockTask ( "label", 1 )
+                            |> Task.andThen ((++) "andThen!" >> Task.succeed)
+                            |> Task.attempt Just
+                    )
+                    |> TestContext.resolveMockTask ( "label", 1 ) (Ok "good")
+                    |> Result.map TestContext.model
+                    |> Expect.equal (Ok <| [ Just <| Ok "andThen!good" ])
+        , test "works with Task.onErro" <|
+            \() ->
+                cmdProgram
+                    (\mockTask ->
+                        mockTask ( "label", 1 )
+                            |> Task.onError ((++) "onError!" >> Task.succeed)
+                            |> Task.attempt Just
+                    )
+                    |> TestContext.resolveMockTask ( "label", 1 ) (Err "bad")
+                    |> Result.map TestContext.model
+                    |> Expect.equal (Ok <| [ Just <| Ok "onError!bad" ])
           -- TODO: mockTask works with Cmd.map
           -- TODO: what happens when mockTask |> andThen mockTask
         ]
