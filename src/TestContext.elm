@@ -192,7 +192,15 @@ resolveMockTask label result (TestContext context) =
 
         Just mapper ->
             Mapper.apply mapper result
-                |> Result.map (\next -> processTask next (TestContext context))
+                |> Result.map
+                    (\next ->
+                        processTask next
+                            (TestContext
+                                { context
+                                    | pendingMockTasks = Dict.remove (toString label) context.pendingMockTasks
+                                }
+                            )
+                    )
 
 
 send :

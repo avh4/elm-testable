@@ -126,6 +126,22 @@ all =
                     )
                         |> TestContext.startWithMockTask
                         |> TestContext.expectMockTask ( "label", 1 )
+            , test "a resolved task is no longer pending" <|
+                \() ->
+                    (\mockTask ->
+                        { init = ( (), mockTask ( "label", 1 ) |> Task.attempt (always ()) )
+                        , update = \msg model -> ( msg, Cmd.none )
+                        , subscriptions = \_ -> Sub.none
+                        , view = \_ -> Html.text ""
+                        }
+                            |> Html.program
+                    )
+                        |> TestContext.startWithMockTask
+                        |> TestContext.resolveMockTask ( "label", 1 ) (Ok ())
+                        |> Result.map (TestContext.expectMockTask ( "label", 1 ))
+                        |> Result.map Expect.getFailure
+                        |> -- TODO: message says is was previously resolved
+                           Expect.equal (Ok <| Just { given = "", message = "pending mock tasks (none were initiated)\n╷\n│ to include (TestContext.expectMockTask)\n╵\nmockTask (\"label\",1)" })
             , test "can resolve a mock task with success" <|
                 \() ->
                     (\mockTask ->
