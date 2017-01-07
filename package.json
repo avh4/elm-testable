@@ -1,0 +1,12 @@
+{
+  "standard": {
+    "globals": [
+      "F2",
+      "_elm_lang$http$Native_Http",
+      "_elm_lang$core$Native_List",
+      "_elm_lang$core$Native_Platform",
+      "_elm_lang$core$Native_Utils",
+      "_elm_lang$core$Process$sleep"
+    ]
+  }
+}
