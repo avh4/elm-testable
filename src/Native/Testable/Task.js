@@ -35,7 +35,8 @@ var _user$project$Native_Testable_Task = (function () {
       case 'MockTask':
         return {
           ctor: 'MockTask',
-          _0: task._0
+          _0: task._0,
+          _1: function (v) { return andThen(f, task._1(v)) }
         }
 
       case 'SleepTask':
@@ -69,7 +70,8 @@ var _user$project$Native_Testable_Task = (function () {
       case 'MockTask':
         return {
           ctor: 'MockTask',
-          _0: task._0
+          _0: task._0,
+          _1: function (v) { return onError(f, task._1(v)) }
         }
 
       case 'SleepTask':

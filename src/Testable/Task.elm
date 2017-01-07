@@ -38,6 +38,7 @@ import Native.Testable.Task
 import Time exposing (Time)
 import Task as PlatformTask
 import Http
+import Mapper exposing (Mapper)
 
 
 -- This "unused" import is required because Native.Testable.Task needs
@@ -60,7 +61,7 @@ type Task error success
     | Failure error
     | SleepTask Time (Task error success)
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
-    | MockTask String
+    | MockTask String (Mapper (Task error success))
 
 
 {-| A task that succeeds immediately when run.
@@ -94,8 +95,8 @@ map f source =
         Failure x ->
             Failure x
 
-        MockTask tag ->
-            MockTask tag
+        MockTask label mapper ->
+            MockTask label (mapper |> Mapper.map (map f))
 
         SleepTask time next ->
             SleepTask time (next |> map f)
@@ -126,8 +127,8 @@ andThen f source =
         Failure x ->
             Failure x
 
-        MockTask tag ->
-            MockTask tag
+        MockTask tag mapper ->
+            MockTask tag (mapper |> Mapper.map (andThen f))
 
         SleepTask time next ->
             SleepTask time (next |> andThen f)
@@ -158,8 +159,8 @@ mapError f source =
         Failure x ->
             Failure (f x)
 
-        MockTask tag ->
-            MockTask tag
+        MockTask tag mapper ->
+            MockTask tag (mapper |> Mapper.map (mapError f))
 
         SleepTask time next ->
             SleepTask time (next |> mapError f)
@@ -200,8 +201,8 @@ toResult source =
         Failure x ->
             Success (Err x)
 
-        MockTask tag ->
-            MockTask tag
+        MockTask tag mapper ->
+            MockTask tag (mapper |> Mapper.map toResult)
 
         SleepTask time next ->
             SleepTask time (next |> toResult)

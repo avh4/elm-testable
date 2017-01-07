@@ -93,11 +93,21 @@ var _user$project$Native_TestContext = (function () {
       // assert(sub.type === 'leaf');
       return sub.home
     },
-    applyMapper: F2(function (mapper, value) {
-      return { ctor: 'Ok', _0: mapper(value) }
-    }),
     mockTask: function (tag) {
-      return { ctor: 'MockTask', _0: tag }
+      return {
+        ctor: 'MockTask',
+        _0: tag,
+        _1: function (result) {
+          switch (result.ctor) {
+            case 'Ok':
+              return { ctor: 'Success', _0: result._0 }
+            case 'Err':
+              return { ctor: 'Failure', _0: result._0 }
+            default:
+              throw new Error("mockTask was resolved with a value that isn't a Result.  This shouldn't be possible if TestContext.elm is using native calls correctly.  Please report this at https://github.com/avh4/elm-testable/issues")
+          }
+        }
+      }
     }
   }
 })()

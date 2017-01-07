@@ -6,6 +6,7 @@ module TestContext
         , model
         , update
         , expectMockTask
+        , resolveMockTask
         , send
         , expectCmd
         , expectHttpRequest
@@ -16,6 +17,7 @@ import Expect
 import Json.Encode
 import Dict exposing (Dict)
 import Testable.Task exposing (fromPlatformTask, Task(..))
+import Mapper exposing (Mapper)
 
 
 type alias TestableProgram model msg =
@@ -34,10 +36,6 @@ type TestableSub msg
     = PortSub String (Mapper msg)
 
 
-type Mapper msg
-    = Mapper_Native_
-
-
 type alias TestContext model msg =
     MockContext Never (Result Never Never) model msg
 
@@ -47,7 +45,7 @@ type MockContext mockLabel mockValue model msg
         { program : TestableProgram model msg
         , model : model
         , pendingCmds : List (TestableCmd msg)
-        , pendingMockTasks : Dict String ()
+        , pendingMockTasks : Dict String (Mapper (Task msg msg))
         , pendingHttpRequests : Dict ( String, String ) (Task msg msg)
         }
 
@@ -70,11 +68,6 @@ extractSubs =
 extractSubPortName : ((value -> msg) -> Sub msg) -> String
 extractSubPortName =
     Native.TestContext.extractSubPortName
-
-
-applyMapper : Mapper msg -> value -> Result String msg
-applyMapper =
-    Native.TestContext.applyMapper
 
 
 start : Program flags model msg -> TestContext model msg
@@ -111,35 +104,42 @@ processCmd cmd (TestContext context) =
             TestContext { context | pendingCmds = context.pendingCmds ++ [ cmd ] }
 
         Task task ->
-            case fromPlatformTask task of
-                Success msg ->
-                    TestContext context
-                        |> update msg
+            processTask (fromPlatformTask task) (TestContext context)
 
-                Failure msg ->
-                    -- (TestContext context)
-                    --     |> update msg
-                    Debug.crash ("TODO: commented code above is not tested")
 
-                MockTask tag ->
-                    TestContext
-                        { context
-                            | pendingMockTasks = Dict.insert tag () context.pendingMockTasks
-                        }
+processTask : Task msg msg -> MockContext mockLabel mockValue model msg -> MockContext mockLabel mockValue model msg
+processTask task (TestContext context) =
+    case task of
+        Success msg ->
+            TestContext context
+                |> update msg
 
-                SleepTask time next ->
-                    -- TODO: track time
-                    TestContext context
+        Failure msg ->
+            -- (TestContext context)
+            --     |> update msg
+            Debug.crash ("TODO: commented code above is not tested")
 
-                HttpTask options next ->
-                    TestContext
-                        { context
-                            | pendingHttpRequests =
-                                context.pendingHttpRequests
-                                    |> Dict.insert
-                                        ( options.method, options.url )
-                                        (HttpTask options next)
-                        }
+        MockTask label mapper ->
+            TestContext
+                { context
+                    | pendingMockTasks =
+                        context.pendingMockTasks
+                            |> Dict.insert label mapper
+                }
+
+        SleepTask time next ->
+            -- TODO: track time
+            TestContext context
+
+        HttpTask options next ->
+            TestContext
+                { context
+                    | pendingHttpRequests =
+                        context.pendingHttpRequests
+                            |> Dict.insert
+                                ( options.method, options.url )
+                                task
+                }
 
 
 model : MockContext mockLabel mockValue model msg -> model
@@ -184,6 +184,17 @@ expectMockTask label (TestContext context) =
             |> Expect.fail
 
 
+resolveMockTask : mockLabel -> mockValue -> MockContext mockLabel mockValue model msg -> Result String (MockContext mockLabel mockValue model msg)
+resolveMockTask label result (TestContext context) =
+    case Dict.get (toString label) context.pendingMockTasks of
+        Nothing ->
+            Err ("No mockTask matches: " ++ toString label)
+
+        Just mapper ->
+            Mapper.apply mapper result
+                |> Result.map (\next -> processTask next (TestContext context))
+
+
 send :
     ((value -> msg) -> Sub msg)
     -> value
@@ -205,7 +216,7 @@ send subPort value (TestContext context) =
                 Err ("Not subscribed to port: " ++ portName)
 
             Just mapper ->
-                applyMapper mapper value
+                Mapper.apply mapper value
                     |> Result.map (\msg -> update msg (TestContext context))
 
 
