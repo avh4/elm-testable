@@ -2,9 +2,9 @@ module TestContext
     exposing
         ( TestContext
         , start
+        , startWithMockTask
         , model
         , update
-        , mockTask
         , expectMockTask
         , send
         , expectCmd
@@ -16,7 +16,6 @@ import Expect
 import Json.Encode
 import Dict exposing (Dict)
 import Testable.Task exposing (fromPlatformTask, Task(..))
-import Set exposing (Set)
 
 
 type alias TestableProgram model msg =
@@ -39,12 +38,16 @@ type Mapper msg
     = Mapper_Native_
 
 
-type TestContext model msg
+type alias TestContext model msg =
+    MockContext Never (Result Never Never) model msg
+
+
+type MockContext mockLabel mockValue model msg
     = TestContext
         { program : TestableProgram model msg
         , model : model
         , pendingCmds : List (TestableCmd msg)
-        , pendingMockTasks : Set String
+        , pendingMockTasks : Dict String ()
         , pendingHttpRequests : Dict ( String, String ) (Task msg msg)
         }
 
@@ -76,26 +79,32 @@ applyMapper =
 
 start : Program flags model msg -> TestContext model msg
 start realProgram =
+    startWithMockTask (always realProgram)
+
+
+startWithMockTask : ((mockLabel -> Platform.Task x a) -> Program flags model msg) -> MockContext mockLabel (Result x a) model msg
+startWithMockTask getProgram =
     let
         program =
-            extractProgram "<TestContext fake module>" realProgram
+            getProgram (\label -> Native.TestContext.mockTask (toString label))
+                |> extractProgram "<TestContext fake module>"
     in
         TestContext
             { program = program
             , model = Tuple.first program.init
             , pendingCmds = []
-            , pendingMockTasks = Set.empty
+            , pendingMockTasks = Dict.empty
             , pendingHttpRequests = Dict.empty
             }
             |> processCmds (Tuple.second program.init)
 
 
-processCmds : Cmd msg -> TestContext model msg -> TestContext model msg
+processCmds : Cmd msg -> MockContext mockLabel mockValue model msg -> MockContext mockLabel mockValue model msg
 processCmds cmds context =
     List.foldl processCmd context (extractCmds <| cmds)
 
 
-processCmd : TestableCmd msg -> TestContext model msg -> TestContext model msg
+processCmd : TestableCmd msg -> MockContext mockLabel mockValue model msg -> MockContext mockLabel mockValue model msg
 processCmd cmd (TestContext context) =
     case cmd of
         Port home value ->
@@ -115,7 +124,7 @@ processCmd cmd (TestContext context) =
                 MockTask tag ->
                     TestContext
                         { context
-                            | pendingMockTasks = Set.insert tag context.pendingMockTasks
+                            | pendingMockTasks = Dict.insert tag () context.pendingMockTasks
                         }
 
                 SleepTask time next ->
@@ -133,12 +142,12 @@ processCmd cmd (TestContext context) =
                         }
 
 
-model : TestContext model msg -> model
+model : MockContext mockLabel mockValue model msg -> model
 model (TestContext context) =
     context.model
 
 
-update : msg -> TestContext model msg -> TestContext model msg
+update : msg -> MockContext mockLabel mockValue model msg -> MockContext mockLabel mockValue model msg
 update msg (TestContext context) =
     let
         ( newModel, newCmds ) =
@@ -148,25 +157,20 @@ update msg (TestContext context) =
             |> processCmds newCmds
 
 
-mockTask : tag -> Platform.Task x a
-mockTask tag =
-    Native.TestContext.mockTask (toString tag)
+hasPendingMockTask : String -> MockContext mockLabel mockValue model msg -> Bool
+hasPendingMockTask label (TestContext context) =
+    Dict.member label context.pendingMockTasks
 
 
-hasPendingMockTask : tag -> TestContext model msg -> Bool
-hasPendingMockTask tag (TestContext context) =
-    Set.member (toString tag) context.pendingMockTasks
-
-
-expectMockTask : tag -> TestContext model msg -> Expect.Expectation
-expectMockTask expected (TestContext context) =
-    if hasPendingMockTask expected (TestContext context) then
+expectMockTask : mockLabel -> MockContext mockLabel mockValue model msg -> Expect.Expectation
+expectMockTask label (TestContext context) =
+    if hasPendingMockTask (toString label) (TestContext context) then
         Expect.pass
     else
-        [ if Set.isEmpty context.pendingMockTasks then
+        [ if Dict.isEmpty context.pendingMockTasks then
             "pending mock tasks (none were initiated)"
           else
-            Set.toList context.pendingMockTasks
+            Dict.keys context.pendingMockTasks
                 |> List.sort
                 |> List.map ((++) "    - mockTask ")
                 |> String.join "\n"
@@ -174,7 +178,7 @@ expectMockTask expected (TestContext context) =
         , "╷"
         , "│ to include (TestContext.expectMockTask)"
         , "╵"
-        , "mockTask " ++ (toString expected)
+        , "mockTask " ++ (toString label)
         ]
             |> String.join "\n"
             |> Expect.fail
@@ -183,8 +187,8 @@ expectMockTask expected (TestContext context) =
 send :
     ((value -> msg) -> Sub msg)
     -> value
-    -> TestContext model msg
-    -> Result String (TestContext model msg)
+    -> MockContext mockLabel mockValue model msg
+    -> Result String (MockContext mockLabel mockValue model msg)
 send subPort value (TestContext context) =
     let
         subs =
@@ -205,7 +209,7 @@ send subPort value (TestContext context) =
                     |> Result.map (\msg -> update msg (TestContext context))
 
 
-pendingCmds : TestContext model msg -> List (TestableCmd msg)
+pendingCmds : MockContext mockLabel mockValue model msg -> List (TestableCmd msg)
 pendingCmds (TestContext context) =
     context.pendingCmds
 
@@ -214,7 +218,7 @@ pendingCmds (TestContext context) =
 If `cmd` is a batch, then this will return True only if all Cmds in the batch
 are pending.
 -}
-hasPendingCmd : Cmd msg -> TestContext model msg -> Bool
+hasPendingCmd : Cmd msg -> MockContext mockLabel mockValue model msg -> Bool
 hasPendingCmd cmd (TestContext context) =
     let
         testableCmd =
@@ -223,7 +227,7 @@ hasPendingCmd cmd (TestContext context) =
         List.all (\c -> List.member c context.pendingCmds) testableCmd
 
 
-expectCmd : Cmd msg -> TestContext model msg -> Expect.Expectation
+expectCmd : Cmd msg -> MockContext mockLabel mockValue model msg -> Expect.Expectation
 expectCmd expected (TestContext context) =
     if hasPendingCmd expected (TestContext context) then
         Expect.pass
@@ -239,7 +243,7 @@ expectCmd expected (TestContext context) =
             |> Expect.fail
 
 
-expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation
+expectHttpRequest : String -> String -> MockContext mockLabel mockValue model msg -> Expect.Expectation
 expectHttpRequest method url (TestContext context) =
     if Dict.member ( method, url ) context.pendingHttpRequests then
         Expect.pass

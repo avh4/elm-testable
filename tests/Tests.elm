@@ -116,14 +116,16 @@ all =
         , describe "mock tasks"
             [ test "can verify a mock task is pending" <|
                 \() ->
-                    { init = ( (), TestContext.mockTask ( "id", 1 ) |> Task.perform identity )
-                    , update = \msg model -> ( msg, Cmd.none )
-                    , subscriptions = \_ -> Sub.none
-                    , view = \_ -> Html.text ""
-                    }
-                        |> Html.program
-                        |> TestContext.start
-                        |> TestContext.expectMockTask ( "id", 1 )
+                    (\mockTask ->
+                        { init = ( (), mockTask ( "label", 1 ) |> Task.attempt (always ()) )
+                        , update = \msg model -> ( msg, Cmd.none )
+                        , subscriptions = \_ -> Sub.none
+                        , view = \_ -> Html.text ""
+                        }
+                            |> Html.program
+                    )
+                        |> TestContext.startWithMockTask
+                        |> TestContext.expectMockTask ( "label", 1 )
             ]
         , HttpTests.all
         , SubTests.all
