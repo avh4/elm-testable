@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, assertCalled)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, assertCalled, text)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -9,6 +9,9 @@ the entire lifecycle of your component.
 # Inspecting
 @docs currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, assertCalled
 
+# Html Matchers
+@docs text
+
 # Simulating Effects
 @docs resolveHttpRequest, advanceTime
 -}
@@ -18,6 +21,7 @@ import String
 import Testable.Cmd
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog, containsCmd)
 import Testable.Http as Http
+import Testable.Html.Internal as Html
 import Time exposing (Time)
 import Platform.Cmd
 
@@ -27,6 +31,7 @@ import Platform.Cmd
 type alias Component msg model =
     { init : ( model, Testable.Cmd.Cmd msg )
     , update : msg -> model -> ( model, Testable.Cmd.Cmd msg )
+    , view : Html.Node msg
     }
 
 
@@ -229,3 +234,12 @@ assertCalled expectedCmd (TestContext context) =
                 Expect.pass
             else
                 Expect.equal [ expectedCmd ] (EffectsLog.wrappedCmds effectsLog)
+
+
+{-| Get text from a node
+-}
+text : TestContext msg model -> String
+text (TestContext context) =
+    case context.component.view of
+        Html.Text nodeText ->
+            nodeText

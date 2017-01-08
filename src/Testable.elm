@@ -20,6 +20,7 @@ import Testable.Cmd
 import Testable.Internal as Internal
 import Testable.Task
 import Testable.Html
+import Testable.Html.Internal
 
 
 {-| Converts a `Testable.Cmd` into a `Cmd`
@@ -112,4 +113,4 @@ update fn msg model =
 -}
 view : Testable.Html.Html msg -> Html.Html msg
 view =
-    Testable.Html.toPlatformHtml
+    Testable.Html.Internal.toPlatformHtml

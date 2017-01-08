@@ -1,23 +1,12 @@
-module Testable.Html exposing (Html, text, toPlatformHtml)
+module Testable.Html exposing (Html, text)
 
-import Html as PlatformHtml
+import Testable.Html.Internal exposing (Node(..))
 
 
 type alias Html msg =
     Node msg
 
 
-type Node msg
-    = Text String
-
-
 text : String -> Html msg
 text =
     Text
-
-
-toPlatformHtml : Html msg -> PlatformHtml.Html msg
-toPlatformHtml node =
-    case node of
-        Text value ->
-            PlatformHtml.text value
