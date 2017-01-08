@@ -21,12 +21,12 @@ type alias TestableProgram model msg =
 
 
 type alias TestContext model msg =
-    WithMocks.TestContext Never (Result Never Never) model msg
+    WithMocks.TestContext () model msg
 
 
 start : Program flags model msg -> TestContext model msg
 start realProgram =
-    WithMocks.start (always realProgram)
+    WithMocks.start (always realProgram) (always ())
 
 
 model : TestContext model msg -> model

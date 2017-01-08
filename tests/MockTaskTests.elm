@@ -8,18 +8,20 @@ import Task
 
 
 cmdProgram :
-    ((mockLabel -> Platform.Task x a) -> Cmd msg)
-    -> TestContext mockLabel (Result x a) (List msg) msg
-cmdProgram cmd =
-    (\mockTask ->
-        { init = ( [], cmd mockTask )
-        , update = \msg model -> ( msg :: model, Cmd.none )
-        , subscriptions = \_ -> Sub.none
-        , view = \_ -> Html.text ""
-        }
-            |> Html.program
-    )
-        |> TestContext.start
+    (mocks -> Cmd msg)
+    -> (TestContext.Token -> mocks)
+    -> TestContext mocks (List msg) msg
+cmdProgram cmd createMocks =
+    TestContext.start
+        (\mocks ->
+            { init = ( [], cmd mocks )
+            , update = \msg model -> ( msg :: model, Cmd.none )
+            , subscriptions = \_ -> Sub.none
+            , view = \_ -> Html.text ""
+            }
+                |> Html.program
+        )
+        createMocks
 
 
 expectFailure : List String -> Expect.Expectation -> Expect.Expectation
@@ -52,103 +54,151 @@ all =
         [ test "can verify a mock task is pending" <|
             \() ->
                 cmdProgram
-                    (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt (always ()))
-                    |> TestContext.expectMockTask ( "label", 1 )
+                    (\mocks -> mocks |> TestContext.toTask |> Task.attempt (always ()))
+                    (\token -> TestContext.mockTask token "singleton")
+                    |> TestContext.expectMockTask identity
         , test "can verify that a mock task is not pending" <|
             \() ->
-                cmdProgram (\mockTask -> Cmd.none)
-                    |> TestContext.expectMockTask ( "label", 1 )
+                cmdProgram
+                    (\mocks -> Cmd.none)
+                    (\token -> TestContext.mockTask token "singleton")
+                    |> TestContext.expectMockTask identity
                     |> expectFailure
                         [ "pending mock tasks (none were initiated)"
                         , "╷"
                         , "│ to include (TestContext.expectMockTask)"
                         , "╵"
-                        , "mockTask (\"label\",1)"
+                        , "mockTask \"singleton\""
                         ]
         , test "a resolved task is no longer pending" <|
             \() ->
                 cmdProgram
-                    (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt (always ()))
-                    |> TestContext.resolveMockTask ( "label", 1 ) (Ok ())
-                    |> Result.map (TestContext.expectMockTask ( "label", 1 ))
+                    (\mocks -> mocks |> TestContext.toTask |> Task.attempt (always ()))
+                    (\token -> TestContext.mockTask token "singleton")
+                    |> TestContext.resolveMockTask identity (Ok ())
+                    |> Result.map (TestContext.expectMockTask identity)
                     |> expectOk
                         (expectFailure
                             [ "pending mock tasks (none were initiated)"
                             , "╷"
                             , "│ to include (TestContext.expectMockTask)"
                             , "╵"
-                            , "mockTask (\"label\",1)"
+                            , "mockTask \"singleton\""
                             , ""
-                            , "but mockTask (\"label\",1) was previously resolved with value Ok ()"
+                            , "but mockTask \"singleton\" was previously resolved with value Ok ()"
                             ]
                         )
         , test "can resolve a mock task with success" <|
             \() ->
-                cmdProgram (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt Just)
-                    |> TestContext.resolveMockTask ( "label", 1 ) (Ok [ 7, 8, 9 ])
+                cmdProgram
+                    (\mocks -> mocks |> TestContext.toTask |> Task.attempt Just)
+                    (\token -> TestContext.mockTask token "singleton")
+                    |> TestContext.resolveMockTask identity (Ok [ 7, 8, 9 ])
                     |> Result.map TestContext.model
                     |> Expect.equal (Ok <| [ Just <| Ok [ 7, 8, 9 ] ])
         , test "can resolve a mock task with an error" <|
             \() ->
-                cmdProgram (\mockTask -> mockTask ( "label", 1 ) |> Task.attempt Just)
-                    |> TestContext.resolveMockTask ( "label", 1 ) (Err "failure")
+                cmdProgram
+                    (\mocks -> mocks |> TestContext.toTask |> Task.attempt Just)
+                    (\token -> TestContext.mockTask token "singleton")
+                    |> TestContext.resolveMockTask identity (Err "failure")
                     |> Result.map TestContext.model
                     |> Expect.equal (Ok <| [ Just <| Err "failure" ])
         , test "works with Task.andThen" <|
             \() ->
                 cmdProgram
-                    (\mockTask ->
-                        mockTask ( "label", 1 )
+                    (\mocks ->
+                        mocks
+                            |> TestContext.toTask
                             |> Task.andThen ((++) "andThen!" >> Task.succeed)
                             |> Task.attempt identity
                     )
-                    |> TestContext.resolveMockTask ( "label", 1 ) (Ok "good")
+                    (\token -> TestContext.mockTask token "singleton")
+                    |> TestContext.resolveMockTask identity (Ok "good")
                     |> Result.map TestContext.model
                     |> Expect.equal (Ok <| [ Ok "andThen!good" ])
-        , test "works with Task.onErro" <|
+        , test "works with Task.onError" <|
             \() ->
                 cmdProgram
-                    (\mockTask ->
-                        mockTask ( "label", 1 )
+                    (\mocks ->
+                        mocks
+                            |> TestContext.toTask
                             |> Task.onError ((++) "onError!" >> Task.succeed)
                             |> Task.attempt identity
                     )
-                    |> TestContext.resolveMockTask ( "label", 1 ) (Err "bad")
+                    (\token -> TestContext.mockTask token "singleton")
+                    |> TestContext.resolveMockTask identity (Err "bad")
                     |> Result.map TestContext.model
                     |> Expect.equal (Ok <| [ Ok "onError!bad" ])
         , test "works with Cmd.map" <|
             \() ->
                 cmdProgram
-                    (\mockTask ->
-                        mockTask ( "label", 1 )
+                    (\mocks ->
+                        mocks
+                            |> TestContext.toTask
                             |> Task.attempt identity
                             |> Cmd.map ((,) "mapped")
                     )
-                    |> TestContext.resolveMockTask ( "label", 1 ) (Ok ())
+                    (\token -> TestContext.mockTask token "singleton")
+                    |> TestContext.resolveMockTask identity (Ok ())
                     |> Result.map TestContext.model
                     |> expectOk (Expect.equal [ ( "mapped", Ok () ) ])
-          -- |> Expect.equal (Ok <| [  ])
         , test "can chain mock tasks" <|
             \() ->
                 cmdProgram
-                    (\mockTask ->
-                        mockTask ( "initial", 1 )
-                            |> Task.andThen ((,) "andThen" >> mockTask)
+                    (\mocks ->
+                        mocks.a
+                            |> TestContext.toTask
+                            |> Task.andThen (mocks.b >> TestContext.toTask)
                             |> Task.attempt identity
                     )
-                    |> TestContext.resolveMockTask ( "initial", 1 ) (Ok 999)
-                    |> expectOk (TestContext.expectMockTask ( "andThen", 999 ))
+                    (\token ->
+                        { a = TestContext.mockTask token "a"
+                        , b = \i -> TestContext.mockTask token ("b-" ++ toString i)
+                        }
+                    )
+                    |> TestContext.resolveMockTask .a (Ok 999)
+                    |> expectOk (TestContext.expectMockTask (\m -> m.b 999))
         , test "can resolve chained mock tasks" <|
             \() ->
                 cmdProgram
-                    (\mockTask ->
-                        mockTask ( "initial", 1 )
-                            |> Task.andThen ((,) "andThen" >> mockTask)
+                    (\mocks ->
+                        mocks.initial
+                            |> TestContext.toTask
+                            |> Task.andThen ((,) "andThen" >> mocks.b >> TestContext.toTask)
                             |> Task.attempt identity
                     )
-                    |> TestContext.resolveMockTask ( "initial", 1 ) (Ok 999)
+                    (\token ->
+                        { initial = TestContext.mockTask token "initial"
+                        , b = \i -> TestContext.mockTask token ("b-" ++ toString i)
+                        }
+                    )
+                    |> TestContext.resolveMockTask .initial (Ok 999)
                     |> Result.andThen
-                        (TestContext.resolveMockTask ( "andThen", 999 ) (Ok 55))
+                        (TestContext.resolveMockTask (\m -> m.b ( "andThen", 999 )) (Ok 55))
                     |> Result.map TestContext.model
                     |> expectOk (Expect.equal [ Ok 55 ])
+        , test "example of mock task with multiple task types" <|
+            \() ->
+                cmdProgram
+                    (\mocks ->
+                        Cmd.batch
+                            [ mocks.int |> TestContext.toTask |> Task.attempt Ok
+                            , mocks.string |> TestContext.toTask |> Task.attempt Err
+                            ]
+                    )
+                    (\token ->
+                        { int = TestContext.mockTask token "Int task"
+                        , string = TestContext.mockTask token "String task"
+                        }
+                    )
+                    |> TestContext.resolveMockTask .int (Ok 9)
+                    |> Result.andThen (TestContext.resolveMockTask .string (Ok "good"))
+                    |> Result.map TestContext.model
+                    |> Expect.equal
+                        (Ok <|
+                            [ Err <| Ok "good"
+                            , Ok <| Ok 9
+                            ]
+                        )
         ]
