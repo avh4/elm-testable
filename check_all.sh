@@ -20,4 +20,5 @@ elm-package install --yes
 elm-make --yes RandomGif.elm --output RandomGif.js
 elm-make --yes Spelling.elm --output Spelling.js
 elm-make --yes WebSockets.elm --output WebSockets.js
+elm-make --yes HelloWorld.elm --output HelloWorld.js
 open index.html || true

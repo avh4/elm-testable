@@ -3,6 +3,7 @@
     <script src="./RandomGif.js"></script>
     <script src="./Spelling.js"></script>
     <script src="./WebSockets.js"></script>
+    <script src="./HelloWorld.js"></script>
 
     <h1>RandomGif</h1>
     <div id="random-gif"></div>
@@ -13,12 +14,17 @@
     <h1>WebSockets</h1>
     <div id="web-sockets"></div>
 
+    <h1>HelloWorld</h1>
+    <div id="hello-world"></div>
+
     <script>
       var randomGif = Elm.RandomGif.embed(document.getElementById('random-gif'));
 
       var webSockets = Elm.WebSockets.embed(document.getElementById('web-sockets'));
 
       var spelling = Elm.Spelling.embed(document.getElementById('spelling'));
+
+      var helloWorld = Elm.HelloWorld.embed(document.getElementById('hello-world'));
 
       function spellCheck(word) {
         return word.split('');
