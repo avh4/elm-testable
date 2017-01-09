@@ -5,11 +5,13 @@ import Json.Decode as Decode
 import Testable.TestContext as TestContext
 import Testable.Cmd
 import Testable.Http as Http exposing (defaultSettings)
+import Testable.Html exposing (text)
 import Test exposing (..)
 import Testable.Task as Task
 import Testable.Process as Process
 import Platform.Cmd
 import Time
+import Expect
 
 
 type CounterMsg
@@ -28,6 +30,7 @@ counterComponent =
 
                 Dec ->
                     ( model - 1, Testable.Cmd.none )
+    , view = \model -> text ""
     }
 
 
@@ -52,6 +55,7 @@ loadingComponent =
 
                 NewData (Err _) ->
                     ( model, Testable.Cmd.none )
+    , view = \model -> text ""
     }
 
 
@@ -113,6 +117,7 @@ all =
                         ]
                     )
                 , update = \data model -> ( Just data, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
@@ -129,6 +134,7 @@ all =
                         |> Task.attempt identity
                     )
                 , update = \value model -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.resolveHttpRequest
@@ -143,6 +149,7 @@ all =
             \() ->
                 { init = ( "waiting", Task.succeed "ready" |> Task.perform identity )
                 , update = \value model -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.assertCurrentModel "ready"
@@ -150,6 +157,7 @@ all =
             \() ->
                 { init = ( Ok "waiting", Task.fail "failed" |> Task.attempt identity )
                 , update = \value model -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.assertCurrentModel (Err "failed")
@@ -157,6 +165,7 @@ all =
             \() ->
                 { init = ( 0, Task.succeed 100 |> Task.andThen ((+) 1 >> Task.succeed) |> Task.perform identity )
                 , update = \value model -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.assertCurrentModel 101
@@ -169,6 +178,7 @@ all =
                         |> Task.perform identity
                     )
                 , update = \value mode -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.advanceTime (4 * Time.second)
@@ -182,6 +192,7 @@ all =
                         |> Task.perform identity
                     )
                 , update = \value mode -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.advanceTime (5 * Time.second)
@@ -193,8 +204,20 @@ all =
                     , Testable.Cmd.none
                     )
                 , update = \_ _ -> ( Nothing, Testable.Cmd.wrap <| outgoingPort "foo" )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.update Inc
                     |> TestContext.assertCalled (outgoingPort "foo")
+        , test "asserting text" <|
+            \() ->
+                { init =
+                    ( Nothing
+                    , Testable.Cmd.none
+                    )
+                , update = \_ _ -> ( Nothing, Testable.Cmd.none )
+                , view = \model -> text "foo"
+                }
+                    |> TestContext.startForTest
+                    |> TestContext.assertText (Expect.equal "foo")
         ]

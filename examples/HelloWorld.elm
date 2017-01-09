@@ -7,7 +7,7 @@ import Html
 
 main : Html.Html msg
 main =
-    Testable.view view
+    Testable.view (always view) ()
 
 
 view : Testable.Html.Html msg

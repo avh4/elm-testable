@@ -111,6 +111,7 @@ update fn msg model =
 
 {-| Converts a testable Html into a standard Html function
 -}
-view : Testable.Html.Html msg -> Html.Html msg
-view =
-    Testable.Html.Internal.toPlatformHtml
+view : (model -> Testable.Html.Html msg) -> model -> Html.Html msg
+view fn model =
+    fn model
+        |> Testable.Html.Internal.toPlatformHtml

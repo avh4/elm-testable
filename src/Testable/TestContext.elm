@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, assertCalled, text)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, assertCalled, assertText)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -10,7 +10,7 @@ the entire lifecycle of your component.
 @docs currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, assertCalled
 
 # Html Matchers
-@docs text
+@docs assertText
 
 # Simulating Effects
 @docs resolveHttpRequest, advanceTime
@@ -31,7 +31,7 @@ import Platform.Cmd
 type alias Component msg model =
     { init : ( model, Testable.Cmd.Cmd msg )
     , update : msg -> model -> ( model, Testable.Cmd.Cmd msg )
-    , view : Html.Node msg
+    , view : model -> Html.Node msg
     }
 
 
@@ -236,10 +236,18 @@ assertCalled expectedCmd (TestContext context) =
                 Expect.equal [ expectedCmd ] (EffectsLog.wrappedCmds effectsLog)
 
 
-{-| Get text from a node
+{-| Write an assetion based on the node text
 -}
-text : TestContext msg model -> String
-text (TestContext context) =
-    case context.component.view of
-        Html.Text nodeText ->
-            nodeText
+assertText : (String -> Expectation) -> TestContext msg model -> Expectation
+assertText expectation (TestContext context) =
+    case context.state of
+        Err errors ->
+            Expect.fail
+                ("Tried to get text from the view, but TextContext had previous errors:"
+                    ++ String.join "\n    " ("" :: errors)
+                )
+
+        Ok { model } ->
+            context.component.view model
+                |> Html.nodeText
+                |> expectation

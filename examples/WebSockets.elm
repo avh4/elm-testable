@@ -2,8 +2,9 @@ port module WebSockets exposing (..)
 
 --- From example 7 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial/blob/master/examples/07-websockets.elm
 
-import Html exposing (..)
-import Html.Events exposing (..)
+import Html
+import Testable.Html exposing (..)
+import Testable.Html.Events exposing (..)
 import WebSocket
 import Testable
 import Testable.Cmd
@@ -13,7 +14,7 @@ main : Program Never Model Msg
 main =
     Html.program
         { init = Testable.init init
-        , view = view
+        , view = Testable.view view
         , update = Testable.update update
         , subscriptions = subscriptions
         }

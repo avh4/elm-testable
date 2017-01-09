@@ -10,6 +10,7 @@ webSocketsComponent : Testable.TestContext.Component WebSockets.Msg WebSockets.M
 webSocketsComponent =
     { init = WebSockets.init
     , update = WebSockets.update
+    , view = WebSockets.view
     }
 
 

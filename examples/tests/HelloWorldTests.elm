@@ -11,7 +11,7 @@ helloWorldComponent : Testable.TestContext.Component () ()
 helloWorldComponent =
     { init = ( (), Testable.Cmd.none )
     , update = (\_ _ -> ( (), Testable.Cmd.none ))
-    , view = HelloWorld.view
+    , view = (\_ -> HelloWorld.view)
     }
 
 
@@ -22,6 +22,5 @@ all =
             \() ->
                 helloWorldComponent
                     |> startForTest
-                    |> text
-                    |> Expect.equal "Hello World!"
+                    |> assertText (Expect.equal "Hello World!")
         ]
