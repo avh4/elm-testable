@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, assertCalled, find, assertText)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, assertCalled, find, assertText, trigger)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -10,7 +10,7 @@ the entire lifecycle of your component.
 @docs currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, assertCalled
 
 # Html Matchers
-@docs find, assertText
+@docs find, assertText, trigger
 
 # Simulating Effects
 @docs resolveHttpRequest, advanceTime
@@ -263,3 +263,30 @@ assertText expectation (TestContext context) =
                 |> Maybe.map (Html.nodeText >> expectation)
                 |> Maybe.withDefault
                     (Expect.fail <| "Could not find and element with the query " ++ toString context.query)
+
+
+{-| Trigger node events
+-}
+trigger : String -> String -> TestContext msg model -> TestContext msg model
+trigger name event (TestContext context) =
+    case context.state of
+        Err errors ->
+            TestContext
+                { context
+                    | state = Err (("trigger " ++ name ++ " " ++ event ++ " applied to an TestContext with previous errors") :: errors)
+                }
+
+        Ok { model } ->
+            context.component.view model
+                |> Html.findNode context.query
+                |> Maybe.map
+                    (\node ->
+                        case (Html.triggerEvent node name event) of
+                            Ok msg ->
+                                update msg (TestContext context)
+
+                            Err err ->
+                                (TestContext { context | state = Err [ err ] })
+                    )
+                |> Maybe.withDefault
+                    (TestContext { context | state = Err [ "Could not find and element with the query " ++ toString context.query ] })

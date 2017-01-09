@@ -5,7 +5,8 @@ import Json.Decode as Decode
 import Testable.TestContext as TestContext
 import Testable.Cmd
 import Testable.Http as Http exposing (defaultSettings)
-import Testable.Html exposing (div, input, text)
+import Testable.Html exposing (..)
+import Testable.Html.Events exposing (..)
 import Test exposing (..)
 import Testable.Html.Selector exposing (..)
 import Testable.Task as Task
@@ -31,7 +32,7 @@ counterComponent =
 
                 Dec ->
                     ( model - 1, Testable.Cmd.none )
-    , view = \model -> text ""
+    , view = \model -> div [] [ button [ onClick Inc ] [ text "+" ] ]
     }
 
 
@@ -233,4 +234,12 @@ all =
                     |> TestContext.startForTest
                     |> TestContext.find [ tag "input" ]
                     |> TestContext.assertText (Expect.equal "bar")
+        , test "querying views" <|
+            \() ->
+                counterComponent
+                    |> TestContext.startForTest
+                    |> TestContext.find [ tag "button" ]
+                    |> TestContext.trigger "click" "{}"
+                    |> TestContext.trigger "click" "{}"
+                    |> TestContext.assertCurrentModel 2
         ]

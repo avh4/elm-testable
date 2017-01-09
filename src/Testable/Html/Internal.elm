@@ -89,3 +89,30 @@ findNode query node =
                 Just node
             else
                 Nothing
+
+
+isEventWithName : String -> Attribute msg -> Bool
+isEventWithName expectedName attribute =
+    case attribute of
+        On eventName _ ->
+            eventName == expectedName
+
+
+getMsg : String -> Attribute msg -> Result String msg
+getMsg event attribute =
+    case attribute of
+        On _ decoder ->
+            Json.decodeString decoder event
+
+
+triggerEvent : Node msg -> String -> String -> Result String msg
+triggerEvent node name event =
+    case node of
+        Node _ attributes _ ->
+            List.filter (isEventWithName name) attributes
+                |> List.head
+                |> Maybe.map (getMsg event)
+                |> Maybe.withDefault (Err ("Could not find event " ++ name ++ " to be triggered on node " ++ toString node))
+
+        Text _ ->
+            Err "Cannot trigger events on text nodes"
