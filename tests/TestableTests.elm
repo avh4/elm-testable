@@ -1,14 +1,19 @@
-module TestableTests exposing (..)
+port module TestableTests exposing (..)
 
 import Expect
 import Json.Decode as Decode
 import Testable.TestContext as TestContext
 import Testable.Cmd
-import Testable.Http as Http
-import Http as ElmHttp
+import Testable.Http as Http exposing (defaultSettings)
+import Testable.Html exposing (..)
+import Testable.Html.Events exposing (..)
 import Test exposing (..)
+import Testable.Html.Selector exposing (..)
 import Testable.Task as Task
+import Testable.Process as Process
+import Platform.Cmd
 import Time
+import Expect
 
 
 type CounterMsg
@@ -27,6 +32,7 @@ counterComponent =
 
                 Dec ->
                     ( model - 1, Testable.Cmd.none )
+    , view = \model -> div [] [ button [ onClick Inc ] [ text (toString model) ] ]
     }
 
 
@@ -39,7 +45,8 @@ loadingComponent =
     { init =
         ( Nothing
         , Http.getString "https://example.com/"
-            |> Task.perform Err Ok
+            |> Http.toTask
+            |> Task.attempt identity
             |> Testable.Cmd.map NewData
         )
     , update =
@@ -50,56 +57,11 @@ loadingComponent =
 
                 NewData (Err _) ->
                     ( model, Testable.Cmd.none )
+    , view = \model -> text ""
     }
 
 
-type RawLoadingMsg
-    = RawNewData (Result Http.RawError String)
-
-
-componentWithSendSettings : Http.Settings
-componentWithSendSettings =
-    { timeout = 500
-    , onStart = Just <| Task.succeed ()
-    , onProgress = Nothing
-    , desiredResponseType = Just "text/plain"
-    , withCredentials = True
-    }
-
-
-loadingComponentWithSend : TestContext.Component RawLoadingMsg (Maybe String)
-loadingComponentWithSend =
-    let
-        initRequest =
-            { url = "https://example.com/"
-            , verb = "GET"
-            , headers = []
-            , body = Http.empty
-            }
-
-        parseResponseValue response =
-            case response.value of
-                ElmHttp.Text str ->
-                    str
-
-                _ ->
-                    "Unsupported body type"
-    in
-        { init =
-            ( Nothing
-            , Http.send componentWithSendSettings initRequest
-                |> Task.perform Err Ok
-                |> Testable.Cmd.map ((Result.map parseResponseValue) >> RawNewData)
-            )
-        , update =
-            \msg model ->
-                case msg of
-                    RawNewData (Ok data) ->
-                        ( Just data, Testable.Cmd.none )
-
-                    RawNewData (Err _) ->
-                        ( model, Testable.Cmd.none )
-        }
+port outgoingPort : String -> Platform.Cmd.Cmd msg
 
 
 all : Test
@@ -136,7 +98,7 @@ all =
                     |> TestContext.resolveHttpRequest (Http.getRequest "https://badwebsite.com/")
                         (Http.ok "_")
                     |> TestContext.currentModel
-                    |> Expect.equal (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://badwebsite.com/\", body = Empty }" ])
+                    |> Expect.equal (Err [ "No pending HTTP request: { method = \"GET\", headers = [], body = EmptyBody, timeout = Nothing, url = \"https://badwebsite.com/\", withCredentials = False }" ])
         , test "effects should be removed after they are run" <|
             \() ->
                 loadingComponent
@@ -146,31 +108,18 @@ all =
                     |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
                         (Http.ok "myData-2")
                     |> TestContext.currentModel
-                    |> Expect.equal (Err [ "No pending HTTP request: { verb = \"GET\", headers = [], url = \"https://example.com/\", body = Empty }" ])
-        , test "records initial effects successfully when sending an arbitrary request" <|
-            \() ->
-                loadingComponentWithSend
-                    |> TestContext.startForTest
-                    |> TestContext.assertHttpRequestWithSettings componentWithSendSettings
-                        (Http.getRequest "https://example.com/")
-        , test "updates with successful response when sending an arbitrary request" <|
-            \() ->
-                loadingComponentWithSend
-                    |> TestContext.startForTest
-                    |> TestContext.resolveHttpRequestWithSettings componentWithSendSettings
-                        (Http.getRequest "https://example.com/")
-                        (Http.ok "myData-1")
-                    |> TestContext.assertCurrentModel (Just "myData-1")
+                    |> Expect.equal (Err [ "No pending HTTP request: { method = \"GET\", headers = [], body = EmptyBody, timeout = Nothing, url = \"https://example.com/\", withCredentials = False }" ])
         , test "multiple initial effects should be resolvable" <|
             \() ->
                 { init =
                     ( Nothing
                     , Testable.Cmd.batch
-                        [ Task.perform Err Ok <| Http.getString "https://example.com/"
-                        , Task.perform Err Ok <| Http.getString "https://secondexample.com/"
+                        [ Task.attempt identity <| Http.toTask <| Http.getString "https://example.com/"
+                        , Task.attempt identity <| Http.toTask <| Http.getString "https://secondexample.com/"
                         ]
                     )
                 , update = \data model -> ( Just data, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.resolveHttpRequest (Http.getRequest "https://example.com/")
@@ -182,65 +131,116 @@ all =
             \() ->
                 { init =
                     ( Ok 0
-                    , Http.post Decode.float "https://a" (Http.string "requestBody")
-                        |> Task.perform Err Ok
+                    , Http.post "https://a" (Http.stringBody "text/plain" "requestBody") Decode.float
+                        |> Http.toTask
+                        |> Task.attempt identity
                     )
                 , update = \value model -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.resolveHttpRequest
-                        { verb = "POST"
-                        , headers = []
-                        , url = "https://a"
-                        , body = Http.string "requestBody"
+                        { defaultSettings
+                            | url = "https://a"
+                            , method = "POST"
+                            , body = (Http.stringBody "text/plain" "requestBody")
                         }
                         (Http.ok "99.1")
                     |> TestContext.assertCurrentModel (Ok 99.1)
         , test "Task.succeed" <|
             \() ->
-                { init = ( "waiting", Task.succeed "ready" |> Task.perform identity identity )
+                { init = ( "waiting", Task.succeed "ready" |> Task.perform identity )
                 , update = \value model -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.assertCurrentModel "ready"
         , test "Task.fail" <|
             \() ->
-                { init = ( Ok "waiting", Task.fail "failed" |> Task.perform Err Ok )
+                { init = ( Ok "waiting", Task.fail "failed" |> Task.attempt identity )
                 , update = \value model -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.assertCurrentModel (Err "failed")
         , test "Task.andThen" <|
             \() ->
-                { init = ( 0, Task.succeed 100 |> Task.andThen ((+) 1 >> Task.succeed) |> Task.perform identity identity )
+                { init = ( 0, Task.succeed 100 |> Task.andThen ((+) 1 >> Task.succeed) |> Task.perform identity )
                 , update = \value model -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.assertCurrentModel 101
-        , test "Task.sleep" <|
+        , test "Process.sleep" <|
             \() ->
                 { init =
                     ( "waiting"
-                    , Task.sleep (5 * Time.second)
+                    , Process.sleep (5 * Time.second)
                         |> Task.andThen (\_ -> Task.succeed "5 seconds passed")
-                        |> Task.perform identity identity
+                        |> Task.perform identity
                     )
                 , update = \value mode -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.advanceTime (4 * Time.second)
                     |> TestContext.assertCurrentModel "waiting"
-        , test "Task.sleep" <|
+        , test "Process.sleep" <|
             \() ->
                 { init =
                     ( "waiting"
-                    , Task.sleep (5 * Time.second)
+                    , Process.sleep (5 * Time.second)
                         |> Task.andThen (\_ -> Task.succeed "5 seconds passed")
-                        |> Task.perform identity identity
+                        |> Task.perform identity
                     )
                 , update = \value mode -> ( value, Testable.Cmd.none )
+                , view = \model -> text ""
                 }
                     |> TestContext.startForTest
                     |> TestContext.advanceTime (5 * Time.second)
                     |> TestContext.assertCurrentModel "5 seconds passed"
+        , test "sending a value through a port" <|
+            \() ->
+                { init =
+                    ( Nothing
+                    , Testable.Cmd.none
+                    )
+                , update = \_ _ -> ( Nothing, Testable.Cmd.wrap <| outgoingPort "foo" )
+                , view = \model -> text ""
+                }
+                    |> TestContext.startForTest
+                    |> TestContext.update Inc
+                    |> TestContext.assertCalled (outgoingPort "foo")
+        , test "asserting text" <|
+            \() ->
+                { init =
+                    ( Nothing
+                    , Testable.Cmd.none
+                    )
+                , update = \_ _ -> ( Nothing, Testable.Cmd.none )
+                , view = \model -> text "foo"
+                }
+                    |> TestContext.startForTest
+                    |> TestContext.assertText (Expect.equal "foo")
+        , test "querying views" <|
+            \() ->
+                { init =
+                    ( Nothing
+                    , Testable.Cmd.none
+                    )
+                , update = \_ _ -> ( Nothing, Testable.Cmd.none )
+                , view = \model -> div [] [ text "foo", input [] [ text "bar" ] ]
+                }
+                    |> TestContext.startForTest
+                    |> TestContext.find [ tag "input" ]
+                    |> TestContext.assertText (Expect.equal "bar")
+        , test "querying views" <|
+            \() ->
+                counterComponent
+                    |> TestContext.startForTest
+                    |> TestContext.find [ tag "button" ]
+                    |> TestContext.trigger "click" "{}"
+                    |> TestContext.trigger "click" "{}"
+                    |> TestContext.find [ tag "div" ]
+                    |> TestContext.assertText (Expect.equal "2")
         ]

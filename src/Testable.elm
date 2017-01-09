@@ -1,4 +1,4 @@
-module Testable exposing (cmd, task, init, update)
+module Testable exposing (cmd, task, init, update, view)
 
 {-|
 
@@ -8,16 +8,19 @@ This module converts Testable things into real things.
 @docs cmd, task
 
 # StartApp helpers
-@docs init, update
+@docs init, update, view
 
 -}
 
 import Http
 import Process
 import Task
+import Html
 import Testable.Cmd
 import Testable.Internal as Internal
 import Testable.Task
+import Testable.Html
+import Testable.Html.Internal
 
 
 {-| Converts a `Testable.Cmd` into a `Cmd`
@@ -32,10 +35,13 @@ cmd testableEffects =
             Cmd.none
 
         Internal.TaskCmd testableTask ->
-            Task.perform identity identity (task testableTask)
+            Task.perform identity (task testableTask)
 
         Internal.Batch list ->
             Cmd.batch (List.map cmd list)
+
+        Internal.WrappedCmd cmd ->
+            cmd
 
 
 {-| Converts a `Testable.Task` into an `Task`
@@ -46,25 +52,33 @@ cmd testableEffects =
 task : Testable.Task.Task error success -> Task.Task error success
 task testableTask =
     case testableTask of
-        Internal.HttpTask settings request mapResponse ->
+        Internal.HttpTask settings taskOnError taskOnSuccess ->
             let
-                httpSettings =
-                    { settings
-                        | onStart = Maybe.map task settings.onStart
-                        , onProgress = Maybe.map ((<<) task) settings.onProgress
-                    }
+                request =
+                    Http.request
+                        { method = settings.method
+                        , headers = settings.headers
+                        , url = settings.url
+                        , body = settings.body
+                        , expect = Http.expectStringResponse Ok
+                        , timeout = settings.timeout
+                        , withCredentials = settings.withCredentials
+                        }
+
+                task =
+                    Http.toTask request
             in
-                Http.send httpSettings request
-                    |> Task.toResult
-                    |> Task.map mapResponse
-                    |> (flip Task.andThen) taskResult
+                task
+                    |> Task.andThen (taskOnSuccess >> Task.succeed)
+                    |> Task.onError (taskOnError >> Task.succeed)
+                    |> Task.andThen (taskResult)
 
         Internal.ImmediateTask result ->
             taskResult result
 
         Internal.SleepTask milliseconds result ->
             Process.sleep milliseconds
-                |> (flip Task.andThen) (\_ -> taskResult result)
+                |> Task.andThen (\_ -> taskResult result)
 
 
 taskResult : Internal.TaskResult error success -> Task.Task error success
@@ -93,3 +107,11 @@ update : (msg -> model -> ( model, Testable.Cmd.Cmd msg )) -> (msg -> model -> (
 update fn msg model =
     fn msg model
         |> init
+
+
+{-| Converts a testable Html into a standard Html function
+-}
+view : (model -> Testable.Html.Html msg) -> model -> Html.Html msg
+view fn model =
+    fn model
+        |> Testable.Html.Internal.toPlatformHtml
