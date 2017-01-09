@@ -5,8 +5,8 @@ import Test exposing (..)
 
 -- import RandomGifTests
 -- import SpellingTests
--- import WebSocketsTests
 
+import WebSocketsTests
 import HelloWorldTests
 
 
@@ -16,5 +16,5 @@ all =
         [ HelloWorldTests.all
           -- , RandomGifTests.all
           -- , SpellingTests.all
-          -- , WebSocketsTests.all
+        , WebSocketsTests.all
         ]
