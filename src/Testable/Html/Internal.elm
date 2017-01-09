@@ -3,6 +3,7 @@ module Testable.Html.Internal exposing (..)
 import Html as PlatformHtml
 import Html.Events as PlatformEvents
 import Json.Decode as Json
+import Testable.Html.Selector exposing (Selector(..))
 
 
 type Node msg
@@ -41,3 +42,50 @@ nodeText node =
 
         Text nodeText ->
             nodeText
+
+
+nodeMatchesSelector : Node msg -> Selector -> Bool
+nodeMatchesSelector node selector =
+    case node of
+        Node type_ attributes children ->
+            case selector of
+                Tag expectedType ->
+                    type_ == expectedType
+
+        Text _ ->
+            False
+
+
+isJust : Maybe a -> Bool
+isJust maybe =
+    case maybe of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
+findNode : List Selector -> Node msg -> Maybe (Node msg)
+findNode query node =
+    case node of
+        Node type_ attributes children ->
+            let
+                nodeMatches =
+                    List.map (nodeMatchesSelector node) query
+                        |> (::) True
+                        |> List.all identity
+            in
+                if nodeMatches then
+                    Just node
+                else
+                    List.map (findNode query) children
+                        |> List.filter isJust
+                        |> List.head
+                        |> Maybe.withDefault Nothing
+
+        Text _ ->
+            if List.isEmpty query then
+                Just node
+            else
+                Nothing

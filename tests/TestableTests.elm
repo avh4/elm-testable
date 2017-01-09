@@ -5,8 +5,9 @@ import Json.Decode as Decode
 import Testable.TestContext as TestContext
 import Testable.Cmd
 import Testable.Http as Http exposing (defaultSettings)
-import Testable.Html exposing (text)
+import Testable.Html exposing (div, input, text)
 import Test exposing (..)
+import Testable.Html.Selector exposing (..)
 import Testable.Task as Task
 import Testable.Process as Process
 import Platform.Cmd
@@ -220,4 +221,16 @@ all =
                 }
                     |> TestContext.startForTest
                     |> TestContext.assertText (Expect.equal "foo")
+        , test "querying views" <|
+            \() ->
+                { init =
+                    ( Nothing
+                    , Testable.Cmd.none
+                    )
+                , update = \_ _ -> ( Nothing, Testable.Cmd.none )
+                , view = \model -> div [] [ text "foo", input [] [ text "bar" ] ]
+                }
+                    |> TestContext.startForTest
+                    |> TestContext.find [ tag "input" ]
+                    |> TestContext.assertText (Expect.equal "bar")
         ]

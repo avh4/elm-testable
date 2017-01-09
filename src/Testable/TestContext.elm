@@ -1,4 +1,4 @@
-module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, assertCalled, assertText)
+module Testable.TestContext exposing (Component, TestContext, startForTest, update, currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, resolveHttpRequest, advanceTime, assertCalled, find, assertText)
 
 {-| A `TestContext` allows you to manage the lifecycle of an Elm component that
 uses `Testable.Effects`.  Using `TestContext`, you can write tests that exercise
@@ -10,7 +10,7 @@ the entire lifecycle of your component.
 @docs currentModel, assertCurrentModel, assertHttpRequest, assertNoPendingHttpRequests, assertCalled
 
 # Html Matchers
-@docs assertText
+@docs find, assertText
 
 # Simulating Effects
 @docs resolveHttpRequest, advanceTime
@@ -22,6 +22,7 @@ import Testable.Cmd
 import Testable.EffectsLog as EffectsLog exposing (EffectsLog, containsCmd)
 import Testable.Http as Http
 import Testable.Html.Internal as Html
+import Testable.Html.Selector as HtmlSelector
 import Time exposing (Time)
 import Platform.Cmd
 
@@ -46,6 +47,7 @@ type TestContext msg model
                 { model : model
                 , effectsLog : EffectsLog msg
                 }
+        , query : List HtmlSelector.Selector
         }
 
 
@@ -64,6 +66,7 @@ startForTest component =
                     { model = initialState
                     , effectsLog = EffectsLog.empty
                     }
+            , query = []
             }
             |> applyEffects initialEffects
 
@@ -124,7 +127,7 @@ assertHttpRequest settings (TestContext context) =
                     ++ "\n    Expected: "
                     ++ toString settings
                     ++ "\n    Actual:"
-                    ++ "\n      TextContext had previous errors:"
+                    ++ "\n      TestContext had previous errors:"
                     ++ String.join "\n        " ("" :: errors)
                 )
 
@@ -173,7 +176,7 @@ assertNoPendingHttpRequests (TestContext context) =
     case context.state of
         Err errors ->
             Expect.fail
-                ("Expected no pending HTTP requests, but TextContext had previous errors:"
+                ("Expected no pending HTTP requests, but TestContext had previous errors:"
                     ++ String.join "\n    " ("" :: errors)
                 )
 
@@ -225,7 +228,7 @@ assertCalled expectedCmd (TestContext context) =
     case context.state of
         Err errors ->
             Expect.fail
-                ("Expected that a cmd was called, but TextContext had previous errors:"
+                ("Expected that a cmd was called, but TestContext had previous errors:"
                     ++ String.join "\n    " ("" :: errors)
                 )
 
@@ -236,6 +239,13 @@ assertCalled expectedCmd (TestContext context) =
                 Expect.equal [ expectedCmd ] (EffectsLog.wrappedCmds effectsLog)
 
 
+{-| Finds an html node in the view
+-}
+find : List HtmlSelector.Selector -> TestContext msg model -> TestContext msg model
+find query (TestContext context) =
+    TestContext { context | query = query }
+
+
 {-| Write an assetion based on the node text
 -}
 assertText : (String -> Expectation) -> TestContext msg model -> Expectation
@@ -243,11 +253,13 @@ assertText expectation (TestContext context) =
     case context.state of
         Err errors ->
             Expect.fail
-                ("Tried to get text from the view, but TextContext had previous errors:"
+                ("Tried to get text from the view, but TestContext had previous errors:"
                     ++ String.join "\n    " ("" :: errors)
                 )
 
         Ok { model } ->
             context.component.view model
-                |> Html.nodeText
-                |> expectation
+                |> Html.findNode context.query
+                |> Maybe.map (Html.nodeText >> expectation)
+                |> Maybe.withDefault
+                    (Expect.fail <| "Could not find and element with the query " ++ toString context.query)
