@@ -32,7 +32,7 @@ counterComponent =
 
                 Dec ->
                     ( model - 1, Testable.Cmd.none )
-    , view = \model -> div [] [ button [ onClick Inc ] [ text "+" ] ]
+    , view = \model -> div [] [ button [ onClick Inc ] [ text (toString model) ] ]
     }
 
 
@@ -241,5 +241,6 @@ all =
                     |> TestContext.find [ tag "button" ]
                     |> TestContext.trigger "click" "{}"
                     |> TestContext.trigger "click" "{}"
-                    |> TestContext.assertCurrentModel 2
+                    |> TestContext.find [ tag "div" ]
+                    |> TestContext.assertText (Expect.equal "2")
         ]
