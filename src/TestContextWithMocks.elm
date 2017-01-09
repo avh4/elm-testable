@@ -66,7 +66,13 @@ type TestContext mocks model msg
         , pendingCmds : List (TestableCmd msg)
         , mockTasks : Dict String (MockTaskState msg)
         , pendingHttpRequests : Dict ( String, String ) (Task msg msg)
+        , errors : List String
         }
+
+
+setError : String -> TestContext mocks model msg -> TestContext mocks model msg
+setError message (TestContext context) =
+    TestContext { context | errors = message :: context.errors }
 
 
 extractProgram : String -> Program flags model msg -> TestableProgram model msg
@@ -129,6 +135,7 @@ start getProgram createMocks =
             , pendingCmds = []
             , mockTasks = Dict.empty
             , pendingHttpRequests = Dict.empty
+            , errors = []
             }
             |> processCmds (Tuple.second program.init)
 
@@ -259,7 +266,7 @@ listFailure collectionName emptyIndicator actuals view expectationName expected 
         |> Expect.fail
 
 
-resolveMockTask : (mocks -> MockTask x a) -> Result x a -> TestContext mocks model msg -> Result String (TestContext mocks model msg)
+resolveMockTask : (mocks -> MockTask x a) -> Result x a -> TestContext mocks model msg -> TestContext mocks model msg
 resolveMockTask whichMock result (TestContext context) =
     let
         label =
@@ -267,22 +274,28 @@ resolveMockTask whichMock result (TestContext context) =
     in
         case Dict.get label context.mockTasks of
             Nothing ->
-                Err ("No mockTask matches: " ++ toString label)
+                (TestContext context)
+                    |> setError ("No mockTask matches: " ++ toString label)
 
             Just (Resolved previousValue) ->
-                Err ("mockTask " ++ toString label ++ " was previously resolved with value " ++ previousValue)
+                (TestContext context)
+                    |> setError ("mockTask " ++ toString label ++ " was previously resolved with value " ++ previousValue)
 
             Just (Pending mapper) ->
-                Mapper.apply mapper result
-                    |> Result.map
-                        (\next ->
-                            TestContext
-                                { context
-                                    | mockTasks =
-                                        Dict.insert label (Resolved <| toString result) context.mockTasks
-                                }
-                                |> processTask next
-                        )
+                case
+                    Mapper.apply mapper result
+                of
+                    Ok next ->
+                        TestContext
+                            { context
+                                | mockTasks =
+                                    Dict.insert label (Resolved <| toString result) context.mockTasks
+                            }
+                            |> processTask next
+
+                    Err message ->
+                        (TestContext context)
+                            |> setError message
 
 
 send :
