@@ -198,15 +198,15 @@ update msg (TestContext context) =
             |> processCmds newCmds
 
 
-expectMockTask : (mocks -> MockTask x a) -> TestContext mocks model msg -> Expect.Expectation
-expectMockTask whichMock (TestContext context) =
+getPendingTask : String -> (mocks -> MockTask x a) -> TestContext mocks model msg -> Result String (Mapper (Task msg msg))
+getPendingTask fnName whichMock (TestContext context) =
     let
         label =
             context.mocks |> whichMock |> getId
     in
         case Dict.get label context.mockTasks of
-            Just (Pending _) ->
-                Expect.pass
+            Just (Pending mapper) ->
+                Ok mapper
 
             Just (Resolved previousValue) ->
                 listFailure
@@ -214,7 +214,7 @@ expectMockTask whichMock (TestContext context) =
                     "none were initiated"
                     (context.mockTasks |> Dict.filter (\_ -> isPending) |> Dict.keys)
                     (toString >> (++) "mockTask ")
-                    "to include (TestContext.expectMockTask)"
+                    ("to include (TestContext." ++ fnName ++ ")")
                     label
                     [ "but mockTask "
                         ++ (toString label)
@@ -222,6 +222,7 @@ expectMockTask whichMock (TestContext context) =
                         ++ " with value "
                         ++ previousValue
                     ]
+                    |> Err
 
             Nothing ->
                 listFailure
@@ -229,12 +230,23 @@ expectMockTask whichMock (TestContext context) =
                     "none were initiated"
                     (context.mockTasks |> Dict.filter (\_ -> isPending) |> Dict.keys)
                     (toString >> (++) "mockTask ")
-                    "to include (TestContext.expectMockTask)"
+                    ("to include (TestContext." ++ fnName ++ ")")
                     label
                     []
+                    |> Err
 
 
-listFailure : String -> String -> List a -> (a -> String) -> String -> a -> List String -> Expect.Expectation
+expectMockTask : (mocks -> MockTask x a) -> TestContext mocks model msg -> Expect.Expectation
+expectMockTask whichMock context =
+    case getPendingTask "expectMockTask" whichMock context of
+        Ok _ ->
+            Expect.pass
+
+        Err message ->
+            Expect.fail message
+
+
+listFailure : String -> String -> List a -> (a -> String) -> String -> a -> List String -> String
 listFailure collectionName emptyIndicator actuals view expectationName expected extraInfo =
     [ [ if List.isEmpty actuals then
             collectionName ++ " (" ++ emptyIndicator ++ ")"
@@ -256,7 +268,6 @@ listFailure collectionName emptyIndicator actuals view expectationName expected 
     ]
         |> List.concat
         |> String.join "\n"
-        |> Expect.fail
 
 
 resolveMockTask : (mocks -> MockTask x a) -> Result x a -> TestContext mocks model msg -> Result String (TestContext mocks model msg)
@@ -265,14 +276,11 @@ resolveMockTask whichMock result (TestContext context) =
         label =
             context.mocks |> whichMock |> getId
     in
-        case Dict.get label context.mockTasks of
-            Nothing ->
-                Err ("No mockTask matches: " ++ toString label)
+        case getPendingTask "resolveMockTask" whichMock (TestContext context) of
+            Err message ->
+                Err message
 
-            Just (Resolved previousValue) ->
-                Err ("mockTask " ++ toString label ++ " was previously resolved with value " ++ previousValue)
-
-            Just (Pending mapper) ->
+            Ok mapper ->
                 Mapper.apply mapper result
                     |> Result.map
                         (\next ->
