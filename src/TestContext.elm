@@ -26,7 +26,7 @@ type alias TestContext model msg =
 
 start : Program flags model msg -> TestContext model msg
 start realProgram =
-    WithMocks.start (always realProgram) (always ())
+    WithMocks.start realProgram
 
 
 model : TestContext model msg -> model

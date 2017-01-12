@@ -2,7 +2,6 @@ module TestContextWithMocks
     exposing
         ( TestContext
         , MockTask
-        , Token
         , toTask
         , mockTask
         , start
@@ -62,7 +61,6 @@ type TestContext mocks model msg
     = TestContext
         { program : TestableProgram model msg
         , model : model
-        , mocks : mocks
         , pendingCmds : List (TestableCmd msg)
         , mockTasks : Dict String (MockTaskState msg)
         , pendingHttpRequests : Dict ( String, String ) (Task msg msg)
@@ -103,29 +101,21 @@ toTask (MockTask_ id) =
     Native.TestContext.mockTask id
 
 
-type Token
-    = Token_
-
-
-mockTask : Token -> String -> MockTask x a
-mockTask _ =
+mockTask : String -> MockTask x a
+mockTask =
     MockTask_
 
 
-start : (mocks -> Program flags model msg) -> (Token -> mocks) -> TestContext mocks model msg
-start getProgram createMocks =
+start : Program flags model msg -> TestContext mocks model msg
+start getProgram =
     let
-        mocks =
-            createMocks Token_
-
         program =
-            getProgram mocks
+            getProgram
                 |> extractProgram "<TestContext fake module>"
     in
         TestContext
             { program = program
             , model = Tuple.first program.init
-            , mocks = mocks
             , pendingCmds = []
             , mockTasks = Dict.empty
             , pendingHttpRequests = Dict.empty
@@ -198,11 +188,11 @@ update msg (TestContext context) =
             |> processCmds newCmds
 
 
-getPendingTask : String -> (mocks -> MockTask x a) -> TestContext mocks model msg -> Result String (Mapper (Task msg msg))
-getPendingTask fnName whichMock (TestContext context) =
+getPendingTask : String -> MockTask x a -> TestContext mocks model msg -> Result String (Mapper (Task msg msg))
+getPendingTask fnName mock (TestContext context) =
     let
         label =
-            context.mocks |> whichMock |> getId
+            mock |> getId
     in
         case Dict.get label context.mockTasks of
             Just (Pending mapper) ->
@@ -236,7 +226,7 @@ getPendingTask fnName whichMock (TestContext context) =
                     |> Err
 
 
-expectMockTask : (mocks -> MockTask x a) -> TestContext mocks model msg -> Expect.Expectation
+expectMockTask : MockTask x a -> TestContext mocks model msg -> Expect.Expectation
 expectMockTask whichMock context =
     case getPendingTask "expectMockTask" whichMock context of
         Ok _ ->
@@ -270,13 +260,13 @@ listFailure collectionName emptyIndicator actuals view expectationName expected 
         |> String.join "\n"
 
 
-resolveMockTask : (mocks -> MockTask x a) -> Result x a -> TestContext mocks model msg -> Result String (TestContext mocks model msg)
-resolveMockTask whichMock result (TestContext context) =
+resolveMockTask : MockTask x a -> Result x a -> TestContext mocks model msg -> Result String (TestContext mocks model msg)
+resolveMockTask mock result (TestContext context) =
     let
         label =
-            context.mocks |> whichMock |> getId
+            mock |> getId
     in
-        case getPendingTask "resolveMockTask" whichMock (TestContext context) of
+        case getPendingTask "resolveMockTask" mock (TestContext context) of
             Err message ->
                 Err message
 
