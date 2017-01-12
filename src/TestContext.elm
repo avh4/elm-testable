@@ -21,7 +21,7 @@ type alias TestableProgram model msg =
 
 
 type alias TestContext model msg =
-    WithMocks.TestContext () model msg
+    WithMocks.TestContext model msg
 
 
 start : Program flags model msg -> TestContext model msg

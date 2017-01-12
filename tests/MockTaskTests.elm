@@ -9,7 +9,7 @@ import Task
 
 cmdProgram :
     Cmd msg
-    -> TestContext mocks (List msg) msg
+    -> TestContext (List msg) msg
 cmdProgram cmd =
     Html.program
         { init = ( [], cmd )
