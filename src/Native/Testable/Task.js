@@ -7,6 +7,18 @@ _elm_lang$core$Process$sleep = function (delay) { // eslint-disable-line no-glob
   return { ctor: 'SleepTask', _0: delay, _1: result }
 }
 
+if (typeof _elm_lang$core$Process$spawn === 'undefined') { // eslint-disable-line camelcase
+  throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: this shouldn\'t happen because Testable.Task imports Process.  Please report this at https://github.com/avh4/elm-testable/issues')
+}
+
+_elm_lang$core$Process$spawn = function (task) { // eslint-disable-line no-global-assign, no-native-reassign, camelcase
+  var processId = -1 // TODO: create unique process ids
+  var result = { ctor: 'Success', _0: processId }
+  var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'NeverTask' } })(task)
+  var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'NeverTask' } })(t1)
+  return { ctor: 'SpawnedTask', _0: t2, _1: result }
+}
+
 if (typeof _elm_lang$http$Native_Http.toTask === 'undefined') {
   throw new Error('Native.TestContext was loaded before _elm_lang$http$Native_Http: this shouldn\'t happen because Testable.Task imports Http.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
@@ -41,7 +53,7 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
 
       case 'SleepTask':
         return {
-          ctor: 'SleepTask',
+          ctor: task.ctor,
           _0: task._0,
           _1: andThen(f, task._1)
         }
@@ -52,6 +64,16 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
           _0: task._0,
           _1: function (v) { return andThen(f, task._1(v)) }
         }
+
+      case 'SpawnedTask':
+        return {
+          ctor: task.ctor,
+          _0: task._0,
+          _1: andThen(f, task._1)
+        }
+
+      case 'NeverTask':
+        return task
 
       default:
         throw new Error('Unknown Testable.Task value: ' + task.ctor)
@@ -76,7 +98,7 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
 
       case 'SleepTask':
         return {
-          ctor: 'SleepTask',
+          ctor: task.ctor,
           _0: task._0,
           _1: onError(f, task._1)
         }
@@ -87,6 +109,16 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
           _0: task._0,
           _1: function (v) { return onError(f, task._1(v)) }
         }
+
+      case 'SpawnedTask':
+        return {
+          ctor: task.ctor,
+          _0: task._0,
+          _1: onError(f, task._1)
+        }
+
+      case 'NeverTask':
+        return task
 
       default:
         throw new Error('Unknown Testable.Task value: ' + task.ctor)
@@ -112,6 +144,8 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
       case 'MockTask':
       case 'SleepTask':
       case 'HttpTask':
+      case 'SpawnedTask':
+      case 'NeverTask':
         return task
 
       case '_Task_nativeBinding':

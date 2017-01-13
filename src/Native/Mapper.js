@@ -5,7 +5,7 @@ var _user$project$Native_Mapper = (function () { // eslint-disable-line no-unuse
       return { ctor: 'Ok', _0: mapper(value) }
     }),
     map: F2(function (f, mapper) {
-      throw new Error('TODO: Mapper.js#map') // TODO
+      return function (x) { return f(mapper(x)) }
     })
   }
 })()

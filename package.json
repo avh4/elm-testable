@@ -9,7 +9,10 @@
       "_elm_lang$core$Native_List",
       "_elm_lang$core$Native_Platform",
       "_elm_lang$core$Native_Utils",
-      "_elm_lang$core$Process$sleep"
+      "_elm_lang$core$Process$sleep",
+      "_elm_lang$core$Process$spawn",
+      "_elm_lang$core$Task$andThen",
+      "_elm_lang$core$Task$onError"
     ]
   },
   "devDependencies": {

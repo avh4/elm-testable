@@ -2,6 +2,8 @@ module Testable.Task
     exposing
         ( fromPlatformTask
         , Task(..)
+        , map
+        , mapError
         )
 
 {-|
@@ -62,6 +64,8 @@ type Task error success
     | SleepTask Time (Task error success)
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
     | MockTask String (Mapper (Task error success))
+    | SpawnedTask (Platform.Task Never Never) (Task error success)
+    | NeverTask
 
 
 {-| A task that succeeds immediately when run.
@@ -104,6 +108,12 @@ map f source =
         HttpTask options next ->
             HttpTask options (next >> map f)
 
+        SpawnedTask task next ->
+            SpawnedTask task (next |> map f)
+
+        NeverTask ->
+            NeverTask
+
 
 
 -- Chaining
@@ -136,6 +146,12 @@ andThen f source =
         HttpTask options next ->
             HttpTask options (next >> andThen f)
 
+        SpawnedTask task next ->
+            SpawnedTask task (next |> andThen f)
+
+        NeverTask ->
+            NeverTask
+
 
 
 -- Errors
@@ -167,6 +183,12 @@ mapError f source =
 
         HttpTask options next ->
             HttpTask options (next >> mapError f)
+
+        SpawnedTask task next ->
+            SpawnedTask task (next |> mapError f)
+
+        NeverTask ->
+            NeverTask
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -209,6 +231,12 @@ toResult source =
 
         HttpTask options next ->
             HttpTask options (next >> toResult)
+
+        SpawnedTask task next ->
+            SpawnedTask task (next |> toResult)
+
+        NeverTask ->
+            NeverTask
 
 
 

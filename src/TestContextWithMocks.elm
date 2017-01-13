@@ -172,6 +172,19 @@ processTask task (TestContext context) =
                                 task
                 }
 
+        SpawnedTask task next ->
+            (TestContext context)
+                |> processTask
+                    (task
+                        |> Testable.Task.fromPlatformTask
+                        |> Testable.Task.map never
+                        |> Testable.Task.mapError never
+                    )
+                |> processTask next
+
+        NeverTask ->
+            (TestContext context)
+
 
 model : TestContext model msg -> model
 model (TestContext context) =

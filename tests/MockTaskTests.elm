@@ -5,6 +5,7 @@ import Expect exposing (Expectation)
 import Html
 import TestContextWithMocks as TestContext exposing (TestContext)
 import Task
+import Process
 
 
 cmdProgram :
@@ -41,6 +42,14 @@ testResults : a -> List (a -> Result String a) -> (a -> Expectation) -> Expectat
 testResults init steps expect =
     List.foldl (\f a -> Result.andThen f a) (Ok init) steps
         |> expectOk expect
+
+
+expectNotInclude : a -> List a -> Expectation
+expectNotInclude what list =
+    if List.member what list then
+        Expect.fail ("Expected " ++ toString list ++ " to not include " ++ toString what)
+    else
+        Expect.pass
 
 
 singleMock : TestContext.MockTask String String
@@ -216,5 +225,24 @@ all =
                             [ Err <| Ok "good"
                             , Ok <| Ok 9
                             ]
+                    )
+        , test "inspecting spawned tasks" <|
+            \() ->
+                testResults
+                    (cmdProgram
+                        (singleMock |> TestContext.toTask |> Process.spawn |> Task.attempt identity)
+                    )
+                    []
+                    (TestContext.expectMockTask singleMock)
+        , test "resolving a spawned task does nothing" <|
+            \() ->
+                testResults
+                    (cmdProgram
+                        (singleMock |> TestContext.toTask |> Process.spawn |> Task.attempt (Result.map toString))
+                    )
+                    [ TestContext.resolveMockTask singleMock (Ok "spawned task") ]
+                    (TestContext.model
+                        >> List.filterMap (Result.toMaybe)
+                        >> expectNotInclude "spawned task"
                     )
         ]
