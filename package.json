@@ -21,6 +21,6 @@
     "standard": "*"
   },
   "scripts": {
-    "test": "standard --verbose"
+    "test": "elm-make --yes && elm-test && standard --verbose"
   }
 }

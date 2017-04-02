@@ -6,10 +6,10 @@ node_js: "5.1"
 install:
   - npm install -f
   - export PATH="`pwd`/node_modules/.bin:$PATH"
+  - elm-package install --yes
   - (cd tests; elm-package install --yes)
 
 script:
   - elm-make --yes
   - rsync -a elm-stuff/build-artifacts/ tests/elm-stuff/build-artifacts/
-  - elm-test
   - npm test
