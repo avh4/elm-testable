@@ -8,6 +8,7 @@ import ModelTests
 import SubTests
 import TaskTests
 import Testable.TaskTests
+import TimeTests
 
 
 all : Test
@@ -22,6 +23,7 @@ all =
         , MockTaskTests.all
         , HttpTests.all
         , SubTests.all
+        , TimeTests.all
 
         -- TODO , describe "Flags" []
         ]

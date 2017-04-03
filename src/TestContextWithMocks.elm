@@ -11,6 +11,7 @@ module TestContextWithMocks
         , resolveMockTask
         , send
         , expectCmd
+        , advanceTime
         , expectHttpRequest
         , resolveHttpRequest
         )
@@ -25,7 +26,9 @@ import Expect
 import Http
 import Json.Encode
 import Mapper exposing (Mapper)
+import PairingHeap exposing (PairingHeap)
 import Testable.Task exposing (fromPlatformTask, Task(..))
+import Time exposing (Time)
 
 
 type alias TestableProgram model msg =
@@ -66,6 +69,7 @@ type TestContext model msg
         , pendingCmds : List (TestableCmd msg)
         , mockTasks : Dict String (MockTaskState msg)
         , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task msg msg)
+        , futureTasks : PairingHeap Time (Task msg msg)
         }
 
 
@@ -121,6 +125,7 @@ start getProgram =
             , pendingCmds = []
             , mockTasks = Dict.empty
             , pendingHttpRequests = Dict.empty
+            , futureTasks = PairingHeap.empty
             }
             |> processCmds (Tuple.second program.init)
 
@@ -161,8 +166,15 @@ processTask task (TestContext context) =
                 }
 
         SleepTask time next ->
-            -- TODO: track time
-            TestContext context
+            TestContext
+                { context
+                    | futureTasks =
+                        context.futureTasks
+                            |> PairingHeap.insert time next
+
+                    -- TODO: add now offset
+                    -- TODO: make sure the offset is set based on the current now when the task is initiated, not when it is created
+                }
 
         HttpTask options next ->
             TestContext
@@ -355,6 +367,24 @@ expectCmd expected (TestContext context) =
         ]
             |> String.join "\n"
             |> Expect.fail
+
+
+advanceTime : Time -> TestContext model msg -> TestContext model msg
+advanceTime dt (TestContext context) =
+    case PairingHeap.findMin context.futureTasks of
+        Nothing ->
+            -- TODO: add to now
+            TestContext context
+
+        Just ( time, next ) ->
+            -- TODO: update now before running
+            -- TODO: make sure now is set correctly from time, not from dt
+            -- TODO: continue until all tasks are done
+            -- TODO: make sure now is set based on dt at the very end
+            if time <= {- TODO: context.now + -} dt then
+                processTask next (TestContext context)
+            else
+                (TestContext context)
 
 
 expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation

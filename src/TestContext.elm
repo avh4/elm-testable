@@ -6,12 +6,14 @@ module TestContext
         , update
         , send
         , expectCmd
+        , advanceTime
         , expectHttpRequest
         , resolveHttpRequest
         )
 
-import TestContextWithMocks as WithMocks
 import Expect
+import TestContextWithMocks as WithMocks
+import Time exposing (Time)
 
 
 type alias TestableProgram model msg =
@@ -52,6 +54,11 @@ send subPort value context =
 expectCmd : Cmd msg -> TestContext model msg -> Expect.Expectation
 expectCmd expected context =
     WithMocks.expectCmd expected context
+
+
+advanceTime : Time -> TestContext model msg -> TestContext model msg
+advanceTime dt context =
+    WithMocks.advanceTime dt context
 
 
 expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation
