@@ -12,6 +12,7 @@ import Time exposing (Time)
 type SleepProgramMsg
     = Sleep Time String
     | Wake String
+    | Custom (List (Cmd String))
 
 
 sleepProgram : List ( Time, String ) -> TestContext String SleepProgramMsg
@@ -37,6 +38,9 @@ sleepProgram initSleeps =
 
                 Wake m ->
                     ( model ++ ";" ++ m, Cmd.none )
+
+                Custom cmds ->
+                    ( model, Cmd.batch cmds |> Cmd.map Wake )
     , subscriptions = \_ -> Sub.none
     , view = \_ -> Html.text ""
     }
@@ -91,5 +95,20 @@ all =
                         |> TestContext.advanceTime (5 * Time.second)
                         |> TestContext.model
                         |> Expect.equal "INIT;3;5"
+            , test "task is scheduled from when it starts, not from whe it's created" <|
+                \() ->
+                    sleepProgram []
+                        |> TestContext.update
+                            (Custom
+                                [ Process.sleep (3 * Time.second)
+                                    |> Task.andThen (\_ -> Process.sleep (3 * Time.second))
+                                    |> Task.perform (\_ -> "AFTER 6")
+                                , Process.sleep (5 * Time.second)
+                                    |> Task.perform (\_ -> "AFTER 5")
+                                ]
+                            )
+                        |> TestContext.advanceTime (5 * Time.second)
+                        |> TestContext.model
+                        |> Expect.equal "INIT;AFTER 5"
             ]
         ]

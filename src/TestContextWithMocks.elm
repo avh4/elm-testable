@@ -372,23 +372,26 @@ expectCmd expected (TestContext context) =
 
 advanceTime : Time -> TestContext model msg -> TestContext model msg
 advanceTime dt (TestContext context) =
+    advanceTimeUntil (context.now + dt) (TestContext context)
+
+
+advanceTimeUntil : Time -> TestContext model msg -> TestContext model msg
+advanceTimeUntil targetTime (TestContext context) =
     case PairingHeap.findMin context.futureTasks of
         Nothing ->
-            TestContext { context | now = context.now + dt }
+            TestContext { context | now = targetTime }
 
         Just ( time, next ) ->
-            -- TODO: update now before running
-            -- TODO: make sure now is set correctly from time, not from dt
-            -- TODO: make sure now is set based on dt at the very end
-            if time <= context.now + dt then
+            if time <= targetTime then
                 TestContext
                     { context
                         | futureTasks = PairingHeap.deleteMin context.futureTasks
+                        , now = time
                     }
                     |> processTask next
-                    |> advanceTime dt
+                    |> advanceTimeUntil targetTime
             else
-                TestContext { context | now = context.now + dt }
+                TestContext { context | now = targetTime }
 
 
 expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation
