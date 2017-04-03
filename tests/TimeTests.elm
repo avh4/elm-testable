@@ -14,12 +14,17 @@ type SleepProgramMsg
     | Wake String
 
 
-sleepProgram : Time -> String -> TestContext String SleepProgramMsg
-sleepProgram delay msg =
+sleepProgram : List ( Time, String ) -> TestContext String SleepProgramMsg
+sleepProgram initSleeps =
     { init =
         ( "INIT"
-        , Process.sleep delay
-            |> Task.perform (always <| Wake msg)
+        , initSleeps
+            |> List.map
+                (\( delay, msg ) ->
+                    Process.sleep delay
+                        |> Task.perform (always <| Wake msg)
+                )
+            |> Cmd.batch
         )
     , update =
         \msg model ->
@@ -45,26 +50,26 @@ all =
         [ describe "Process.sleep"
             [ test "does not trigger before the given delay" <|
                 \() ->
-                    sleepProgram (5 * Time.second) "AWOKE"
+                    sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
                         |> TestContext.advanceTime (4.999 * Time.second)
                         |> TestContext.model
                         |> Expect.equal "INIT"
             , test "triggers when the given delay has elapsed" <|
                 \() ->
-                    sleepProgram (5 * Time.second) "AWOKE"
+                    sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
                         |> TestContext.advanceTime (5 * Time.second)
                         |> TestContext.model
                         |> Expect.equal "AWOKE"
             , test "current time is remembered" <|
                 \() ->
-                    sleepProgram (5 * Time.second) "AWOKE"
+                    sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
                         |> TestContext.advanceTime (3 * Time.second)
                         |> TestContext.advanceTime (2 * Time.second)
                         |> TestContext.model
                         |> Expect.equal "AWOKE"
             , test "task is scheduled relative to the current time" <|
                 \() ->
-                    sleepProgram 9999999 "LATER"
+                    sleepProgram []
                         |> TestContext.advanceTime (2 * Time.second)
                         |> TestContext.update (Sleep (1 * Time.second) "WAKE")
                         |> TestContext.advanceTime (0.999 * Time.second)
