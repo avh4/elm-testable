@@ -61,4 +61,13 @@ all =
                     |> Expect.equal (Ok "BOOKS1")
 
         -- TODO: test an HTTP request with a JSON decoder
+        -- TODO: give custom status code in response
+        -- TODO: disallow 3xx codes in response, since Http uses XHR, which silently follows redirects
+        -- TODO: verify/match HTTP headers
+        -- TODO: give headers for stubbed response
+        -- TODO: support Http.Progress
+        -- TODO: Do we need expectHttpRequest? won't resolveHttpRequest be enough?
+        -- TODO: give custom URL in response (this would happen in real life if there are redirects)
+        -- TODO: handle timeouts
+        -- TODO: what is Http.Request.withCredentials for?
         ]
