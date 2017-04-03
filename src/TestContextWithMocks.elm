@@ -375,8 +375,7 @@ advanceTime : Time -> TestContext model msg -> TestContext model msg
 advanceTime dt (TestContext context) =
     case PairingHeap.findMin context.futureTasks of
         Nothing ->
-            -- TODO: add to now
-            TestContext context
+            TestContext { context | now = context.now + dt }
 
         Just ( time, next ) ->
             -- TODO: update now before running
