@@ -382,7 +382,11 @@ advanceTime dt (TestContext context) =
             -- TODO: continue until all tasks are done
             -- TODO: make sure now is set based on dt at the very end
             if time <= context.now + dt then
-                processTask next (TestContext context)
+                TestContext
+                    { context
+                        | futureTasks = PairingHeap.deleteMin context.futureTasks
+                    }
+                    |> processTask next
             else
                 TestContext { context | now = context.now + dt }
 

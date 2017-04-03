@@ -36,7 +36,7 @@ sleepProgram initSleeps =
                     )
 
                 Wake m ->
-                    ( m, Cmd.none )
+                    ( model ++ ";" ++ m, Cmd.none )
     , subscriptions = \_ -> Sub.none
     , view = \_ -> Html.text ""
     }
@@ -59,14 +59,14 @@ all =
                     sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
                         |> TestContext.advanceTime (5 * Time.second)
                         |> TestContext.model
-                        |> Expect.equal "AWOKE"
+                        |> Expect.equal "INIT;AWOKE"
             , test "current time is remembered" <|
                 \() ->
                     sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
                         |> TestContext.advanceTime (3 * Time.second)
                         |> TestContext.advanceTime (2 * Time.second)
                         |> TestContext.model
-                        |> Expect.equal "AWOKE"
+                        |> Expect.equal "INIT;AWOKE"
             , test "task is scheduled relative to the current time" <|
                 \() ->
                     sleepProgram []
@@ -75,5 +75,12 @@ all =
                         |> TestContext.advanceTime (0.999 * Time.second)
                         |> TestContext.model
                         |> Expect.equal "INIT"
+            , test "tasks are only triggered once" <|
+                \() ->
+                    sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
+                        |> TestContext.advanceTime (5 * Time.second)
+                        |> TestContext.advanceTime (5 * Time.second)
+                        |> TestContext.model
+                        |> Expect.equal "INIT;AWOKE"
             ]
         ]
