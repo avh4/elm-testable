@@ -80,7 +80,8 @@ all =
                     |> TestContext.update 300
                     |> TestContext.model
                     |> Expect.equal 321
-          -- TODO: ensure correct ordering of interleaved Cmds and Tasks
+
+        -- TODO: ensure correct ordering of interleaved Cmds and Tasks
         , testEqual string "Task.fail" <|
             \actual expected ->
                 { init = ( Ok (), Task.fail actual |> Task.attempt identity )
