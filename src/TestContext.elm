@@ -7,6 +7,7 @@ module TestContext
         , send
         , expectCmd
         , expectHttpRequest
+        , resolveHttpRequest
         )
 
 import TestContextWithMocks as WithMocks
@@ -56,3 +57,8 @@ expectCmd expected context =
 expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation
 expectHttpRequest method url context =
     WithMocks.expectHttpRequest method url context
+
+
+resolveHttpRequest : String -> String -> String -> TestContext model msg -> Result String (TestContext model msg)
+resolveHttpRequest method url responseBody context =
+    WithMocks.resolveHttpRequest method url responseBody context

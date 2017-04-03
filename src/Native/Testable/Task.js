@@ -29,7 +29,23 @@ _elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) { // es
   // TODO: handle request.timeout ?
   var options = { method: request.method, url: request.url }
   var callback = function (response) {
-    throw new Error('TODO: decode value out of ' + response + ' with Expect in ' + request)
+    switch (request.expect.responseType) {
+      case 'text':
+        var result = request.expect.responseToResult(response)
+        switch (result.ctor) {
+          case 'Ok':
+            return { ctor: 'Success', _0: result._0 }
+
+          case 'Err':
+            return { ctor: 'Failure', _0: result._0 }
+
+          default:
+            throw new Error('Unknown Result type: ' + result.ctor)
+        }
+
+      default:
+        throw new Error('Unknown Http.Expect type: ' + request.expect.responseType)
+    }
   }
   return { ctor: 'HttpTask', _0: options, _1: callback }
 })

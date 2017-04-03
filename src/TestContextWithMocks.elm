@@ -12,6 +12,7 @@ module TestContextWithMocks
         , send
         , expectCmd
         , expectHttpRequest
+        , resolveHttpRequest
         )
 
 {-| This is a TestContext that allows mock Tasks.  You probably want to use
@@ -19,11 +20,12 @@ the `TestContext` module instead unless you are really sure of what you are doin
 -}
 
 import Native.TestContext
-import Expect
-import Json.Encode
 import Dict exposing (Dict)
-import Testable.Task exposing (fromPlatformTask, Task(..))
+import Expect
+import Http
+import Json.Encode
 import Mapper exposing (Mapper)
+import Testable.Task exposing (fromPlatformTask, Task(..))
 
 
 type alias TestableProgram model msg =
@@ -63,7 +65,7 @@ type TestContext model msg
         , model : model
         , pendingCmds : List (TestableCmd msg)
         , mockTasks : Dict String (MockTaskState msg)
-        , pendingHttpRequests : Dict ( String, String ) (Task msg msg)
+        , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task msg msg)
         }
 
 
@@ -169,7 +171,7 @@ processTask task (TestContext context) =
                         context.pendingHttpRequests
                             |> Dict.insert
                                 ( options.method, options.url )
-                                task
+                                next
                 }
 
         SpawnedTask task next ->
@@ -376,3 +378,22 @@ expectHttpRequest method url (TestContext context) =
         ]
             |> String.join "\n"
             |> Expect.fail
+
+
+resolveHttpRequest : String -> String -> String -> TestContext model msg -> Result String (TestContext model msg)
+resolveHttpRequest method url responseBody (TestContext context) =
+    case Dict.get ( method, url ) context.pendingHttpRequests of
+        Just next ->
+            Ok <|
+                processTask
+                    (next <|
+                        { url = "TODO: not implemented yet"
+                        , status = { code = 200, message = "OK" }
+                        , headers = Dict.empty -- TODO
+                        , body = responseBody
+                        }
+                    )
+                    (TestContext context)
+
+        Nothing ->
+            Err ("No HTTP request was made matching: " ++ method ++ " " ++ url)
