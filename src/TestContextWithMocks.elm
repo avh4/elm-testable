@@ -188,7 +188,7 @@ processTask task (TestContext context) =
                 }
 
         SpawnedTask task next ->
-            (TestContext context)
+            TestContext context
                 |> processTask
                     (task
                         |> Testable.Task.fromPlatformTask
@@ -198,7 +198,11 @@ processTask task (TestContext context) =
                 |> processTask next
 
         NeverTask ->
-            (TestContext context)
+            TestContext context
+
+        NowTask next ->
+            TestContext context
+                |> processTask (next context.now)
 
 
 model : TestContext model msg -> model

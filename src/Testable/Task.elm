@@ -66,6 +66,7 @@ type Task error success
     | MockTask String (Mapper (Task error success))
     | SpawnedTask (Platform.Task Never Never) (Task error success)
     | NeverTask
+    | NowTask (Time -> Task error success)
 
 
 {-| A task that succeeds immediately when run.
@@ -114,6 +115,9 @@ map f source =
         NeverTask ->
             NeverTask
 
+        NowTask next ->
+            NowTask (next >> map f)
+
 
 
 -- Chaining
@@ -152,6 +156,9 @@ andThen f source =
         NeverTask ->
             NeverTask
 
+        NowTask next ->
+            NowTask (next >> andThen f)
+
 
 
 -- Errors
@@ -189,6 +196,9 @@ mapError f source =
 
         NeverTask ->
             NeverTask
+
+        NowTask next ->
+            NowTask (next >> mapError f)
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -237,6 +247,9 @@ toResult source =
 
         NeverTask ->
             NeverTask
+
+        NowTask next ->
+            NowTask (next >> toResult)
 
 
 

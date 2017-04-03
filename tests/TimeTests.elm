@@ -48,6 +48,26 @@ sleepProgram initSleeps =
         |> TestContext.start
 
 
+nowProgram : TestContext String Time
+nowProgram =
+    { init =
+        ( "INIT"
+        , Cmd.batch
+            [ Time.now |> Task.perform identity
+            , Process.sleep (sec 3)
+                |> Task.andThen (always Time.now)
+                |> Task.perform identity
+            ]
+        )
+    , update =
+        \msg model -> ( model ++ ";" ++ toString msg, Cmd.none )
+    , subscriptions = \_ -> Sub.none
+    , view = \_ -> Html.text ""
+    }
+        |> Html.program
+        |> TestContext.start
+
+
 sec : Float -> Time
 sec =
     (*) Time.second
@@ -55,7 +75,7 @@ sec =
 
 all : Test
 all =
-    describe "Time"
+    describe "simulating time"
         [ describe "Process.sleep"
             [ test "does not trigger before the given delay" <|
                 \() ->
@@ -116,4 +136,19 @@ all =
                         |> TestContext.model
                         |> Expect.equal "INIT;AFTER 5"
             ]
+        , describe "Time.now"
+            [ test "initially 0" <|
+                \() ->
+                    nowProgram
+                        |> TestContext.model
+                        |> Expect.equal "INIT;0"
+            , test "tracks current time" <|
+                \() ->
+                    nowProgram
+                        |> TestContext.advanceTime (sec 5)
+                        |> TestContext.model
+                        |> Expect.equal "INIT;0;3000"
+            ]
+
+        -- TODO: Time.every
         ]
