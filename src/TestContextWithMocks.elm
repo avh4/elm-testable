@@ -167,14 +167,13 @@ processTask task (TestContext context) =
                             |> Dict.insert label (Pending mapper)
                 }
 
-        SleepTask time next ->
+        SleepTask delay next ->
             TestContext
                 { context
                     | futureTasks =
                         context.futureTasks
-                            |> PairingHeap.insert time next
+                            |> PairingHeap.insert (context.now + delay) next
 
-                    -- TODO: add now offset
                     -- TODO: make sure the offset is set based on the current now when the task is initiated, not when it is created
                 }
 

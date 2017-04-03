@@ -62,5 +62,13 @@ all =
                         |> TestContext.advanceTime (2 * Time.second)
                         |> TestContext.model
                         |> Expect.equal "AWOKE"
+            , test "task is scheduled relative to the current time" <|
+                \() ->
+                    sleepProgram 9999999 "LATER"
+                        |> TestContext.advanceTime (2 * Time.second)
+                        |> TestContext.update (Sleep (1 * Time.second) "WAKE")
+                        |> TestContext.advanceTime (0.999 * Time.second)
+                        |> TestContext.model
+                        |> Expect.equal "INIT"
             ]
         ]
