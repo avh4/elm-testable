@@ -70,6 +70,7 @@ type TestContext model msg
         , mockTasks : Dict String (MockTaskState msg)
         , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task msg msg)
         , futureTasks : PairingHeap Time (Task msg msg)
+        , now : Time
         }
 
 
@@ -126,6 +127,7 @@ start getProgram =
             , mockTasks = Dict.empty
             , pendingHttpRequests = Dict.empty
             , futureTasks = PairingHeap.empty
+            , now = 0
             }
             |> processCmds (Tuple.second program.init)
 
@@ -381,10 +383,10 @@ advanceTime dt (TestContext context) =
             -- TODO: make sure now is set correctly from time, not from dt
             -- TODO: continue until all tasks are done
             -- TODO: make sure now is set based on dt at the very end
-            if time <= {- TODO: context.now + -} dt then
+            if time <= context.now + dt then
                 processTask next (TestContext context)
             else
-                (TestContext context)
+                TestContext { context | now = context.now + dt }
 
 
 expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation

@@ -9,14 +9,29 @@ import Task
 import Time exposing (Time)
 
 
-sleepProgram : Time -> String -> TestContext String String
+type SleepProgramMsg
+    = Sleep Time String
+    | Wake String
+
+
+sleepProgram : Time -> String -> TestContext String SleepProgramMsg
 sleepProgram delay msg =
     { init =
         ( "INIT"
         , Process.sleep delay
-            |> Task.perform (always msg)
+            |> Task.perform (always <| Wake msg)
         )
-    , update = \msg _ -> ( msg, Cmd.none )
+    , update =
+        \msg model ->
+            case msg of
+                Sleep time m ->
+                    ( model
+                    , Process.sleep time
+                        |> Task.perform (always <| Wake m)
+                    )
+
+                Wake m ->
+                    ( m, Cmd.none )
     , subscriptions = \_ -> Sub.none
     , view = \_ -> Html.text ""
     }
@@ -38,6 +53,13 @@ all =
                 \() ->
                     sleepProgram (5 * Time.second) "AWOKE"
                         |> TestContext.advanceTime (5 * Time.second)
+                        |> TestContext.model
+                        |> Expect.equal "AWOKE"
+            , test "current time is remembered" <|
+                \() ->
+                    sleepProgram (5 * Time.second) "AWOKE"
+                        |> TestContext.advanceTime (3 * Time.second)
+                        |> TestContext.advanceTime (2 * Time.second)
                         |> TestContext.model
                         |> Expect.equal "AWOKE"
             ]
