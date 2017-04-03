@@ -82,5 +82,14 @@ all =
                         |> TestContext.advanceTime (5 * Time.second)
                         |> TestContext.model
                         |> Expect.equal "INIT;AWOKE"
+            , test "triggers all tasks up to now" <|
+                \() ->
+                    sleepProgram
+                        [ ( 5 * Time.second, "5" )
+                        , ( 3 * Time.second, "3" )
+                        ]
+                        |> TestContext.advanceTime (5 * Time.second)
+                        |> TestContext.model
+                        |> Expect.equal "INIT;3;5"
             ]
         ]
