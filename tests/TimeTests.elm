@@ -48,51 +48,56 @@ sleepProgram initSleeps =
         |> TestContext.start
 
 
+sec : Float -> Time
+sec =
+    (*) Time.second
+
+
 all : Test
 all =
     describe "Time"
         [ describe "Process.sleep"
             [ test "does not trigger before the given delay" <|
                 \() ->
-                    sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
-                        |> TestContext.advanceTime (4.999 * Time.second)
+                    sleepProgram [ ( sec 5, "AWOKE" ) ]
+                        |> TestContext.advanceTime (sec 4.999)
                         |> TestContext.model
                         |> Expect.equal "INIT"
             , test "triggers when the given delay has elapsed" <|
                 \() ->
-                    sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
-                        |> TestContext.advanceTime (5 * Time.second)
+                    sleepProgram [ ( sec 5, "AWOKE" ) ]
+                        |> TestContext.advanceTime (sec 5)
                         |> TestContext.model
                         |> Expect.equal "INIT;AWOKE"
             , test "current time is remembered" <|
                 \() ->
-                    sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
-                        |> TestContext.advanceTime (3 * Time.second)
-                        |> TestContext.advanceTime (2 * Time.second)
+                    sleepProgram [ ( sec 5, "AWOKE" ) ]
+                        |> TestContext.advanceTime (sec 3)
+                        |> TestContext.advanceTime (sec 2)
                         |> TestContext.model
                         |> Expect.equal "INIT;AWOKE"
             , test "task is scheduled relative to the current time" <|
                 \() ->
                     sleepProgram []
-                        |> TestContext.advanceTime (2 * Time.second)
-                        |> TestContext.update (Sleep (1 * Time.second) "WAKE")
-                        |> TestContext.advanceTime (0.999 * Time.second)
+                        |> TestContext.advanceTime (sec 2)
+                        |> TestContext.update (Sleep (sec 1) "WAKE")
+                        |> TestContext.advanceTime (sec 0.999)
                         |> TestContext.model
                         |> Expect.equal "INIT"
             , test "tasks are only triggered once" <|
                 \() ->
-                    sleepProgram [ ( 5 * Time.second, "AWOKE" ) ]
-                        |> TestContext.advanceTime (5 * Time.second)
-                        |> TestContext.advanceTime (5 * Time.second)
+                    sleepProgram [ ( sec 5, "AWOKE" ) ]
+                        |> TestContext.advanceTime (sec 5)
+                        |> TestContext.advanceTime (sec 5)
                         |> TestContext.model
                         |> Expect.equal "INIT;AWOKE"
             , test "triggers all tasks up to now" <|
                 \() ->
                     sleepProgram
-                        [ ( 5 * Time.second, "5" )
-                        , ( 3 * Time.second, "3" )
+                        [ ( sec 5, "5" )
+                        , ( sec 3, "3" )
                         ]
-                        |> TestContext.advanceTime (5 * Time.second)
+                        |> TestContext.advanceTime (sec 5)
                         |> TestContext.model
                         |> Expect.equal "INIT;3;5"
             , test "task is scheduled from when it starts, not from whe it's created" <|
@@ -100,14 +105,14 @@ all =
                     sleepProgram []
                         |> TestContext.update
                             (Custom
-                                [ Process.sleep (3 * Time.second)
-                                    |> Task.andThen (\_ -> Process.sleep (3 * Time.second))
+                                [ Process.sleep (sec 3)
+                                    |> Task.andThen (\_ -> Process.sleep (sec 3))
                                     |> Task.perform (\_ -> "AFTER 6")
-                                , Process.sleep (5 * Time.second)
+                                , Process.sleep (sec 5)
                                     |> Task.perform (\_ -> "AFTER 5")
                                 ]
                             )
-                        |> TestContext.advanceTime (5 * Time.second)
+                        |> TestContext.advanceTime (sec 5)
                         |> TestContext.model
                         |> Expect.equal "INIT;AFTER 5"
             ]
