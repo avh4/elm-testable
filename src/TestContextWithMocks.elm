@@ -393,7 +393,13 @@ resolveHttpRequest method url responseBody (TestContext context) =
                         , body = responseBody
                         }
                     )
-                    (TestContext context)
+                    (TestContext
+                        { context
+                            | pendingHttpRequests =
+                                Dict.remove ( method, url )
+                                    context.pendingHttpRequests
+                        }
+                    )
 
         Nothing ->
             Err ("No HTTP request was made matching: " ++ method ++ " " ++ url)

@@ -59,7 +59,23 @@ all =
                         "BOOKS1"
                     |> Result.map (TestContext.model)
                     |> Expect.equal (Ok "BOOKS1")
+        , test "requests should be removed after they are resolve" <|
+            \() ->
+                loadingProgram
+                    |> TestContext.resolveHttpRequest "GET"
+                        "https://example.com/books"
+                        "BOOKS1"
+                    |> Result.withDefault loadingProgram
+                    |> TestContext.expectHttpRequest "GET" "https://example.com/books"
+                    |> Expect.getFailure
+                    |> Expect.equal
+                        (Just
+                            { given = ""
+                            , message = "pending HTTP requests (none were made)\n╷\n│ to include (TestContext.expectHttpRequest)\n╵\nGET https://example.com/books"
+                            }
+                        )
 
+        -- TODO: nicer message when an expected request was previously resolved
         -- TODO: test an HTTP request with a JSON decoder
         -- TODO: give custom status code in response
         -- TODO: disallow 3xx codes in response, since Http uses XHR, which silently follows redirects
