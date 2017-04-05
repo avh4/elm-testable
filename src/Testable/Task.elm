@@ -4,6 +4,7 @@ module Testable.Task
         , Task(..)
         , map
         , mapError
+        , andThen
         )
 
 {-|
@@ -41,6 +42,7 @@ import Time exposing (Time)
 import Task as PlatformTask
 import Http
 import Mapper exposing (Mapper)
+import Testable.EffectManager as EffectManager
 
 
 -- This "unused" import is required because Native.Testable.Task needs
@@ -64,9 +66,13 @@ type Task error success
     | SleepTask Time (Task error success)
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
     | MockTask String (Mapper (Task error success))
-    | SpawnedTask (Platform.Task Never Never) (Task error success)
+    | SpawnedTask (Task Never Never) (Task error success)
     | NeverTask
     | NowTask (Time -> Task error success)
+    | Core_Time_setInterval Time (Task Never ())
+    | ToApp EffectManager.AppMsg (Task error success)
+    | ToEffectManager String EffectManager.SelfMsg (Task error success)
+    | NewEffectManagerState String String EffectManager.State -- first String is for debugging
 
 
 {-| A task that succeeds immediately when run.
@@ -118,6 +124,18 @@ map f source =
         NowTask next ->
             NowTask (next >> map f)
 
+        Core_Time_setInterval delay task ->
+            Core_Time_setInterval delay task
+
+        ToApp msg next ->
+            ToApp msg (next |> map f)
+
+        ToEffectManager home msg next ->
+            ToEffectManager home msg (next |> map f)
+
+        NewEffectManagerState junk home msg ->
+            NewEffectManagerState junk home msg
+
 
 
 -- Chaining
@@ -159,6 +177,18 @@ andThen f source =
         NowTask next ->
             NowTask (next >> andThen f)
 
+        Core_Time_setInterval delay task ->
+            Core_Time_setInterval delay task
+
+        ToApp msg next ->
+            ToApp msg (next |> andThen f)
+
+        ToEffectManager home msg next ->
+            ToEffectManager home msg (next |> andThen f)
+
+        NewEffectManagerState junk home msg ->
+            NewEffectManagerState junk home msg
+
 
 
 -- Errors
@@ -199,6 +229,18 @@ mapError f source =
 
         NowTask next ->
             NowTask (next >> mapError f)
+
+        Core_Time_setInterval delay task ->
+            Core_Time_setInterval delay task
+
+        ToApp msg next ->
+            ToApp msg (next |> mapError f)
+
+        ToEffectManager home msg next ->
+            ToEffectManager home msg (next |> mapError f)
+
+        NewEffectManagerState junk home msg ->
+            NewEffectManagerState junk home msg
 
 
 {-| Helps with handling failure. Instead of having a task fail with some value
@@ -250,6 +292,18 @@ toResult source =
 
         NowTask next ->
             NowTask (next >> toResult)
+
+        Core_Time_setInterval delay task ->
+            Core_Time_setInterval delay task
+
+        ToApp msg next ->
+            ToApp msg (next |> toResult)
+
+        ToEffectManager home msg next ->
+            ToEffectManager home msg (next |> toResult)
+
+        NewEffectManagerState junk home msg ->
+            NewEffectManagerState junk home msg
 
 
 

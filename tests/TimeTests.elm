@@ -68,6 +68,19 @@ nowProgram =
         |> TestContext.start
 
 
+everyProgram : TestContext String Time
+everyProgram =
+    { init = ( "INIT", Cmd.none )
+    , update =
+        \msg model -> ( model ++ ";" ++ toString msg, Cmd.none )
+    , subscriptions =
+        \_ -> Time.every (sec 1) identity
+    , view = \_ -> Html.text ""
+    }
+        |> Html.program
+        |> TestContext.start
+
+
 sec : Float -> Time
 sec =
     (*) Time.second
@@ -149,6 +162,12 @@ all =
                         |> TestContext.model
                         |> Expect.equal "INIT;0;3000"
             ]
-
-        -- TODO: Time.every
+        , describe "Time.every"
+            [ test "triggers after initial delay" <|
+                \() ->
+                    everyProgram
+                        |> TestContext.advanceTime (sec 1)
+                        |> TestContext.model
+                        |> Expect.equal "INIT;1000"
+            ]
         ]

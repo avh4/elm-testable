@@ -27,6 +27,7 @@ import Http
 import Json.Encode
 import Mapper exposing (Mapper)
 import PairingHeap exposing (PairingHeap)
+import Testable.EffectManager as EffectManager exposing (EffectManager)
 import Testable.Task exposing (fromPlatformTask, Task(..))
 import Time exposing (Time)
 
@@ -45,6 +46,7 @@ type TestableCmd msg
 
 type TestableSub msg
     = PortSub String (Mapper msg)
+    | EffectManagerSub String EffectManager.MySub
 
 
 type MockTaskState msg
@@ -71,6 +73,7 @@ type TestContext model msg
         , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task msg msg)
         , futureTasks : PairingHeap Time (Task msg msg)
         , now : Time
+        , effectManagerStates : Dict String EffectManager.State
         }
 
 
@@ -113,23 +116,100 @@ mockTask =
     MockTask_
 
 
+orCrash : String -> Maybe a -> a
+orCrash message maybe =
+    case maybe of
+        Just x ->
+            x
+
+        Nothing ->
+            Debug.crash message
+
+
 start : Program flags model msg -> TestContext model msg
 start getProgram =
     let
         program =
             getProgram
                 |> extractProgram "<TestContext fake module>"
+
+        model =
+            Tuple.first program.init
+
+        effectManagerInit =
+            -- TODO: iterate all effectManagers
+            EffectManager.extractEffectManager "Time"
+                |> orCrash "XXX: no effect manager: Time"
+                |> .init
+                |> fromPlatformTask
+                |> Testable.Task.mapError never
+                |> Testable.Task.andThen (NewEffectManagerState "start" "Time")
     in
         TestContext
             { program = program
-            , model = Tuple.first program.init
+            , model = model
             , pendingCmds = []
             , mockTasks = Dict.empty
             , pendingHttpRequests = Dict.empty
             , futureTasks = PairingHeap.empty
             , now = 0
+            , effectManagerStates = Dict.empty
             }
-            |> processCmds (Tuple.second program.init)
+            |> processTask effectManagerInit
+            |> dispatchEffects
+                (Tuple.second program.init)
+                (program.subscriptions model)
+
+
+dispatchEffect : String -> List EffectManager.MySub -> TestContext model msg -> TestContext model msg
+dispatchEffect home subs (TestContext context) =
+    let
+        effectManager =
+            EffectManager.extractEffectManager home
+                |> orCrash ("Could not extract effect manager: " ++ home)
+
+        currentState =
+            Dict.get home context.effectManagerStates
+                -- TODO: is it possible for this to happen normally?
+                |> orCrash ("There's no recorded state for effect manager: " ++ home)
+
+        task =
+            effectManager.onEffects [] subs currentState
+                |> fromPlatformTask
+                |> Testable.Task.mapError never
+                |> Testable.Task.andThen (NewEffectManagerState "onEffects" home)
+    in
+        TestContext context
+            |> processTask task
+
+
+dispatchEffects : Cmd msg -> Sub msg -> TestContext model msg -> TestContext model msg
+dispatchEffects cmd sub (TestContext context) =
+    let
+        isEffectManager s =
+            case s of
+                EffectManagerSub home mySub ->
+                    Just ( home, mySub )
+
+                _ ->
+                    Nothing
+
+        timeSubs =
+            -- TODO: group by home and process all homes
+            extractSubs sub
+                |> List.filterMap isEffectManager
+                |> List.filterMap
+                    (\( home, mySub ) ->
+                        if home == "Time" then
+                            Just mySub
+                        else
+                            Nothing
+                    )
+    in
+        TestContext context
+            |> dispatchEffect "Time" timeSubs
+            -- TODO: process cmds through the effect managers
+            |> processCmds cmd
 
 
 processCmds : Cmd msg -> TestContext model msg -> TestContext model msg
@@ -173,8 +253,6 @@ processTask task (TestContext context) =
                     | futureTasks =
                         context.futureTasks
                             |> PairingHeap.insert (context.now + delay) next
-
-                    -- TODO: make sure the offset is set based on the current now when the task is initiated, not when it is created
                 }
 
         HttpTask options next ->
@@ -189,9 +267,11 @@ processTask task (TestContext context) =
 
         SpawnedTask task next ->
             TestContext context
+                -- ??? which order should these be processed in?
+                -- ??? ideally nothing should depened on the order, but maybe we should
+                -- ??? simulate the same order that the Elm runtime would result in?
                 |> processTask
                     (task
-                        |> Testable.Task.fromPlatformTask
                         |> Testable.Task.map never
                         |> Testable.Task.mapError never
                     )
@@ -204,6 +284,52 @@ processTask task (TestContext context) =
             TestContext context
                 |> processTask (next context.now)
 
+        Core_Time_setInterval delay recurringTask ->
+            TestContext context
+                |> processTask
+                    -- TODO: recur
+                    (SleepTask delay recurringTask
+                        |> Testable.Task.andThen (always NeverTask)
+                        |> Testable.Task.mapError never
+                    )
+
+        ToApp msg next ->
+            TestContext context
+                |> update (EffectManager.unwrapAppMsg msg)
+                |> processTask next
+
+        ToEffectManager home selfMsg next ->
+            TestContext context
+                |> dispatchSelfMsg home selfMsg
+                |> processTask next
+
+        NewEffectManagerState junk home newState ->
+            TestContext
+                { context
+                    | effectManagerStates = Dict.insert home newState context.effectManagerStates
+                }
+
+
+dispatchSelfMsg : String -> EffectManager.SelfMsg -> TestContext model msg -> TestContext model msg
+dispatchSelfMsg home selfMsg (TestContext context) =
+    let
+        effectManager =
+            EffectManager.extractEffectManager home
+                |> orCrash ("Could not extract effect manager: " ++ home)
+
+        currentState =
+            Dict.get home context.effectManagerStates
+                |> orCrash ("There's no recorded state for effect manager: " ++ home)
+
+        newStateTask =
+            effectManager.onSelfMsg selfMsg currentState
+                |> fromPlatformTask
+                |> Testable.Task.mapError never
+                |> Testable.Task.andThen (NewEffectManagerState "onSelfMsg" home)
+    in
+        TestContext context
+            |> processTask newStateTask
+
 
 model : TestContext model msg -> model
 model (TestContext context) =
@@ -215,9 +341,12 @@ update msg (TestContext context) =
     let
         ( newModel, newCmds ) =
             context.program.update msg context.model
+
+        newSubs =
+            context.program.subscriptions newModel
     in
         TestContext { context | model = newModel }
-            |> processCmds newCmds
+            |> dispatchEffects newCmds newSubs
 
 
 getPendingTask : String -> MockTask x a -> TestContext model msg -> Result String (Mapper (Task msg msg))
@@ -315,6 +444,16 @@ resolveMockTask mock result (TestContext context) =
                         )
 
 
+isPortSub : TestableSub msg -> Maybe ( String, Mapper msg )
+isPortSub sub =
+    case sub of
+        PortSub name mapper ->
+            Just ( name, mapper )
+
+        _ ->
+            Nothing
+
+
 send :
     ((value -> msg) -> Sub msg)
     -> value
@@ -325,7 +464,7 @@ send subPort value (TestContext context) =
         subs =
             context.program.subscriptions context.model
                 |> extractSubs
-                |> List.map (\(PortSub name mapper) -> ( name, mapper ))
+                |> List.filterMap isPortSub
                 |> Dict.fromList
 
         portName =

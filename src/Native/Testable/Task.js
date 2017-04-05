@@ -16,8 +16,52 @@ _elm_lang$core$Process$spawn = function (task) { // eslint-disable-line no-globa
   var result = { ctor: 'Success', _0: processId }
   var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'NeverTask' } })(task)
   var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'NeverTask' } })(t1)
-  return { ctor: 'SpawnedTask', _0: t2, _1: result }
+  var t = _user$project$Native_Testable_Task.fromPlatformTask(t2)
+  return { ctor: 'SpawnedTask', _0: t, _1: result }
 }
+
+if (typeof _elm_lang$core$Native_Scheduler.spawn === 'undefined') { // eslint-disable-line camelcase
+  throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Native_Scheduler: this shouldn\'t happen because Testable.Task imports Task.  Please report this at https://github.com/avh4/elm-testable/issues')
+}
+
+// TODO: _elm_lang$core$Process$spawn just calls this, so only override this and leave Process.spawn alone
+var realSpawn = _elm_lang$core$Native_Scheduler.spawn
+_elm_lang$core$Native_Scheduler.spawn = function (task) {
+  var real = realSpawn(task)
+  var processId = -1 // TODO: create unique process ids
+  var result = { ctor: 'Success', _0: processId }
+  var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'NeverTask' } })(task)
+  var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'NeverTask' } })(t1)
+  var t = _user$project$Native_Testable_Task.fromPlatformTask(t2)
+  real.elmTestable = { ctor: 'SpawnedTask', _0: t, _1: result }
+  return real
+}
+_elm_lang$core$Process$spawn = _elm_lang$core$Native_Scheduler.spawn // eslint-disable-line no-global-assign, camelcase
+
+var realSendToSelf = _elm_lang$core$Native_Platform.sendToSelf
+_elm_lang$core$Native_Platform.sendToSelf = F2(function (router, msg) {
+  var real = realSendToSelf(router)(msg)
+  real.elmTestable = {
+    ctor: 'ToEffectManager',
+    _0: router.elmTestable.self,
+    _1: msg,
+    _2: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
+  }
+  return real
+})
+_elm_lang$core$Platform$sendToSelf = _elm_lang$core$Native_Platform.sendToSelf // eslint-disable-line no-global-assign, camelcase
+
+var realSendToApp = _elm_lang$core$Native_Platform.sendToApp
+_elm_lang$core$Native_Platform.sendToApp = F2(function (router, msg) {
+  var real = realSendToApp(router)(msg)
+  real.elmTestable = {
+    ctor: 'ToApp',
+    _0: msg,
+    _1: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
+  }
+  return real
+})
+_elm_lang$core$Platform$sendToApp = _elm_lang$core$Native_Platform.sendToApp // eslint-disable-line no-global-assign, camelcase
 
 if (typeof _elm_lang$core$Time$now === 'undefined') { // eslint-disable-line camelcase
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Time: this shouldn\'t happen because Testable.Task imports Time.  Please report this at https://github.com/avh4/elm-testable/issues')
@@ -29,6 +73,14 @@ _elm_lang$core$Time$now.elmTestable = {
     return { ctor: 'Success', _0: v }
   }
 }
+
+var realSetInterval = _elm_lang$core$Time$setInterval // eslint-disable-line camelcase
+_elm_lang$core$Time$setInterval = F2(function (delay, task) { // eslint-disable-line no-global-assign, camelcase
+  var real = realSetInterval(delay)(task)
+  var t = _user$project$Native_Testable_Task.fromPlatformTask(task)
+  real.elmTestable = { ctor: 'Core_Time_setInterval', _0: delay, _1: t }
+  return real
+})
 
 if (typeof _elm_lang$http$Native_Http.toTask === 'undefined') {
   throw new Error('Native.TestContext was loaded before _elm_lang$http$Native_Http: this shouldn\'t happen because Testable.Task imports Http.  Please report this at https://github.com/avh4/elm-testable/issues')
@@ -69,44 +121,37 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
         return fromPlatformTask(next)
 
       case 'Failure':
+      case 'NeverTask':
+      case 'Core_Time_setInterval':
         return task
-
-      case 'MockTask':
-        return {
-          ctor: 'MockTask',
-          _0: task._0,
-          _1: function (v) { return andThen(f, task._1(v)) }
-        }
 
       case 'SleepTask':
+      case 'SpawnedTask':
+      case 'ToApp':
         return {
           ctor: task.ctor,
           _0: task._0,
           _1: andThen(f, task._1)
         }
 
+      case 'MockTask':
       case 'HttpTask':
         return {
-          ctor: 'HttpTask',
+          ctor: task.ctor,
           _0: task._0,
           _1: function (v) { return andThen(f, task._1(v)) }
         }
-
-      case 'SpawnedTask':
-        return {
-          ctor: task.ctor,
-          _0: task._0,
-          _1: andThen(f, task._1)
-        }
-
-      case 'NeverTask':
-        return task
 
       case 'NowTask':
         return {
           ctor: 'NowTask',
           _0: function (v) { return andThen(f, task._0(v)) }
         }
+
+      // TODO: ToEffectManager
+
+      case 'NewEffectManagerState':
+        throw new Error('Invalid Testable.Task value: ' + task.ctor + ' (this task type should never be creatable outside of TestContext)')
 
       default:
         throw new Error('Unknown Testable.Task value: ' + task.ctor)
@@ -156,12 +201,20 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
       case 'NowTask':
         return task
 
+      case 'Core_Time_setInterval':
+        return task
+
+      // TODO: ToApp, ToEffectManager
+
+      case 'NewEffectManagerState':
+        throw new Error('Invalid Testable.Task value: ' + task.ctor + ' (this task type should never be creatable outside of TestContext)')
+
       default:
         throw new Error('Unknown Testable.Task value: ' + task.ctor)
     }
   }
 
-  function fromPlatformTask (task_) {
+  function fromPlatformTask (task) {
     // TODO: at the top of this file, we override many native functions that
     // produce Platform.Tasks.  However, this could actually interfere with
     // the runtime of elm-test itself, which is the case if we try to override
@@ -173,7 +226,7 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
     // The TODO is to change all other overridden native tasks to insert
     // and elmTestable field instead of completely overriding the task.
     // Then this || fallback can go away.
-    var task = task_.elmTestable || task_
+    if (task.elmTestable) return task.elmTestable
 
     switch (task.ctor) {
       case '_Task_succeed':
@@ -195,7 +248,6 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
       case 'HttpTask':
       case 'SpawnedTask':
       case 'NeverTask':
-      case 'NowTask':
         return task
 
       case '_Task_nativeBinding':
