@@ -85,14 +85,19 @@ extractProgram moduleName =
     Native.TestContext.extractProgram moduleName
 
 
+extractBag : (tagger -> leaf -> x) -> (x -> a -> a) -> a -> bag -> a
+extractBag =
+    Native.TestContext.extractBag
+
+
 extractCmds : Cmd msg -> List (TestableCmd msg)
 extractCmds =
-    Native.TestContext.extractCmds
+    extractBag Native.TestContext.extractCmd (::) []
 
 
 extractSubs : Sub msg -> List (TestableSub msg)
 extractSubs =
-    Native.TestContext.extractSubs
+    extractBag Native.TestContext.extractSub (::) []
 
 
 extractSubPortName : ((value -> msg) -> Sub msg) -> String

@@ -56,45 +56,45 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
 
       return app
     }),
-    extractCmds: function (root) {
-      var cmds = []
-      forEachLeaf(identity, root, function (tagger, cmd) {
-        // NOTE: any new cases added here must use tagger or Cmd.map will be broken
-        if (cmd.home === 'Task' && cmd.value.ctor === 'Perform') {
-          var mappedTask = {
-            ctor: '_Task_andThen',
-            callback: function (x) {
-              return { ctor: '_Task_succeed', value: tagger(x) }
-            },
-            task: cmd.value._0
-          }
-          cmds.push({ ctor: 'Task', _0: mappedTask })
-        } else if (/^[A-Z]/.test(cmd.home)) {
-          cmds.push({ ctor: 'EffectManagerCmd', _0: cmd.home, _1: cmd.value })
-        } else {
-          // We can safely ignore tagger because port Cmds can never actually produce messages
-          cmds.push({ ctor: 'Port', _0: cmd.home, _1: cmd.value })
+    extractCmd: F2(function (tagger, cmd) {
+      // NOTE: any new cases added here must use tagger or Cmd.map will be broken
+      if (cmd.home === 'Task' && cmd.value.ctor === 'Perform') {
+        var mappedTask = {
+          ctor: '_Task_andThen',
+          callback: function (x) {
+            return { ctor: '_Task_succeed', value: tagger(x) }
+          },
+          task: cmd.value._0
         }
-      })
-      return _elm_lang$core$Native_List.fromArray(cmds)
-    },
-    extractSubs: function (sub) {
-      var subs = []
-      forEachLeaf(identity, sub, function (tagger, s) {
-        if (/^[A-Z]/.test(s.home)) {
-          // This is an effect manager
-          // TODO: must use tagger or Sub.map will be broken
-          subs.push({ ctor: 'EffectManagerSub', _0: s.home, _1: s.value })
-        } else {
-          // This is a port
-          var mapper = function (x) {
-            return tagger(s.value(x))
-          }
-          subs.push({ ctor: 'PortSub', _0: s.home, _1: mapper })
+        return { ctor: 'Task', _0: mappedTask }
+      } else if (/^[A-Z]/.test(cmd.home)) {
+        // TODO: use tagger
+        return { ctor: 'EffectManagerCmd', _0: cmd.home, _1: cmd.value }
+      } else {
+        // We can safely ignore tagger because port Cmds can never actually produce messages
+        return { ctor: 'Port', _0: cmd.home, _1: cmd.value }
+      }
+    }),
+    extractSub: F2(function (tagger, sub) {
+      if (/^[A-Z]/.test(sub.home)) {
+        // This is an effect manager
+        // TODO: must use tagger or Sub.map will be broken
+        return { ctor: 'EffectManagerSub', _0: sub.home, _1: sub.value }
+      } else {
+        // This is a port
+        var mapper = function (x) {
+          return tagger(sub.value(x))
         }
+        return { ctor: 'PortSub', _0: sub.home, _1: mapper }
+      }
+    }),
+    extractBag: F4(function (extract, reduce, init, bag) {
+      var acc = init
+      forEachLeaf(identity, bag, function (tagger, s) {
+        acc = reduce(extract(tagger)(s))(acc)
       })
-      return _elm_lang$core$Native_List.fromArray(subs)
-    },
+      return acc
+    }),
     extractSubPortName: function (subPort) {
       var fakeMapper = function () {}
       var sub = subPort(fakeMapper)

@@ -6,6 +6,7 @@
     "globals": [
       "F2",
       "F3",
+      "F4",
       "_elm_lang$http$Native_Http",
       "_elm_lang$core$Native_List",
       "_elm_lang$core$Native_Platform",
