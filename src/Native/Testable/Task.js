@@ -114,50 +114,6 @@ _elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) { // es
 })
 
 var _user$project$Native_Testable_Task = (function () { // eslint-disable-line no-unused-vars, camelcase
-  function andThen (f, task) {
-    switch (task.ctor) {
-      case 'Success':
-        var next = f(task._0)
-        return fromPlatformTask(next)
-
-      case 'Failure':
-      case 'NeverTask':
-      case 'Core_Time_setInterval':
-        return task
-
-      case 'SleepTask':
-      case 'SpawnedTask':
-      case 'ToApp':
-        return {
-          ctor: task.ctor,
-          _0: task._0,
-          _1: andThen(f, task._1)
-        }
-
-      case 'MockTask':
-      case 'HttpTask':
-        return {
-          ctor: task.ctor,
-          _0: task._0,
-          _1: function (v) { return andThen(f, task._1(v)) }
-        }
-
-      case 'NowTask':
-        return {
-          ctor: 'NowTask',
-          _0: function (v) { return andThen(f, task._0(v)) }
-        }
-
-      // TODO: ToEffectManager
-
-      case 'NewEffectManagerState':
-        throw new Error('Invalid Testable.Task value: ' + task.ctor + ' (this task type should never be creatable outside of TestContext)')
-
-      default:
-        throw new Error('Unknown Testable.Task value: ' + task.ctor)
-    }
-  }
-
   function onError (f, task) {
     switch (task.ctor) {
       case 'Success':
@@ -237,7 +193,9 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
 
       case '_Task_andThen':
         var next = fromPlatformTask(task.task)
-        return andThen(task.callback, next)
+        return _user$project$Testable_Task$andThen(function (x) {
+          return fromPlatformTask(task.callback(x))
+        })(next)
 
       case '_Task_onError':
         var next_ = fromPlatformTask(task.task)

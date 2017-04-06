@@ -19,7 +19,8 @@
       "_elm_lang$core$Task$andThen",
       "_elm_lang$core$Task$onError",
       "_elm_lang$core$Time$now",
-      "_elm_lang$core$Time$setInterval"
+      "_elm_lang$core$Time$setInterval",
+      "_user$project$Testable_Task$andThen"
     ]
   },
   "devDependencies": {

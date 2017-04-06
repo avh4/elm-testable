@@ -99,42 +99,7 @@ fail error =
 -}
 map : (a -> b) -> Task x a -> Task x b
 map f source =
-    case source of
-        Success a ->
-            Success (f a)
-
-        Failure x ->
-            Failure x
-
-        MockTask label mapper ->
-            MockTask label (mapper |> Mapper.map (map f))
-
-        SleepTask time next ->
-            SleepTask time (next |> map f)
-
-        HttpTask options next ->
-            HttpTask options (next >> map f)
-
-        SpawnedTask task next ->
-            SpawnedTask task (next |> map f)
-
-        NeverTask ->
-            NeverTask
-
-        NowTask next ->
-            NowTask (next >> map f)
-
-        Core_Time_setInterval delay task ->
-            Core_Time_setInterval delay task
-
-        ToApp msg next ->
-            ToApp msg (next |> map f)
-
-        ToEffectManager home msg next ->
-            ToEffectManager home msg (next |> map f)
-
-        NewEffectManagerState junk home msg ->
-            NewEffectManagerState junk home msg
+    andThen (f >> Success) source
 
 
 
