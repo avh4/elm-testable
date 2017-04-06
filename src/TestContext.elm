@@ -9,9 +9,10 @@ module TestContext
         , advanceTime
         , expectHttpRequest
         , resolveHttpRequest
+        , expect
         )
 
-import Expect
+import Expect exposing (Expectation)
 import TestContextWithMocks as WithMocks
 import Time exposing (Time)
 
@@ -51,7 +52,7 @@ send subPort value context =
     WithMocks.send subPort value context
 
 
-expectCmd : Cmd msg -> TestContext model msg -> Expect.Expectation
+expectCmd : Cmd msg -> TestContext model msg -> Expectation
 expectCmd expected context =
     WithMocks.expectCmd expected context
 
@@ -61,7 +62,7 @@ advanceTime dt context =
     WithMocks.advanceTime dt context
 
 
-expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation
+expectHttpRequest : String -> String -> TestContext model msg -> Expectation
 expectHttpRequest method url context =
     WithMocks.expectHttpRequest method url context
 
@@ -69,3 +70,8 @@ expectHttpRequest method url context =
 resolveHttpRequest : String -> String -> String -> TestContext model msg -> Result String (TestContext model msg)
 resolveHttpRequest method url responseBody context =
     WithMocks.resolveHttpRequest method url responseBody context
+
+
+expect : (TestContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
+expect =
+    WithMocks.expect

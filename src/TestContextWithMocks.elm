@@ -14,6 +14,7 @@ module TestContextWithMocks
         , advanceTime
         , expectHttpRequest
         , resolveHttpRequest
+        , expect
         )
 
 {-| This is a TestContext that allows mock Tasks.  You probably want to use
@@ -22,7 +23,7 @@ the `TestContext` module instead unless you are really sure of what you are doin
 
 import Native.TestContext
 import Dict exposing (Dict)
-import Expect
+import Expect exposing (Expectation)
 import Http
 import Json.Encode
 import Mapper exposing (Mapper)
@@ -42,6 +43,7 @@ type alias TestableProgram model msg =
 type TestableCmd msg
     = Task (Platform.Task msg msg)
     | Port String Json.Encode.Value
+    | EffectManagerCmd String EffectManager.MyCmd
 
 
 type TestableSub msg
@@ -74,6 +76,7 @@ type TestContext model msg
         , futureTasks : PairingHeap Time (Task msg msg)
         , now : Time
         , effectManagerStates : Dict String EffectManager.State
+        , transcript : List (Task msg msg)
         }
 
 
@@ -136,14 +139,14 @@ start getProgram =
         model =
             Tuple.first program.init
 
-        effectManagerInit =
+        effectManagerInit home =
             -- TODO: iterate all effectManagers
-            EffectManager.extractEffectManager "Time"
-                |> orCrash "XXX: no effect manager: Time"
+            EffectManager.extractEffectManager home
+                |> orCrash ("XXX: no effect manager: " ++ home)
                 |> .init
                 |> fromPlatformTask
                 |> Testable.Task.mapError never
-                |> Testable.Task.andThen (NewEffectManagerState "start" "Time")
+                |> Testable.Task.andThen (NewEffectManagerState "start" home)
     in
         TestContext
             { program = program
@@ -154,15 +157,17 @@ start getProgram =
             , futureTasks = PairingHeap.empty
             , now = 0
             , effectManagerStates = Dict.empty
+            , transcript = []
             }
-            |> processTask effectManagerInit
+            |> processTask (effectManagerInit "Time")
+            |> processTask (effectManagerInit "Test.EffectManager")
             |> dispatchEffects
                 (Tuple.second program.init)
                 (program.subscriptions model)
 
 
-dispatchEffect : String -> List EffectManager.MySub -> TestContext model msg -> TestContext model msg
-dispatchEffect home subs (TestContext context) =
+dispatchEffect : String -> List EffectManager.MyCmd -> List EffectManager.MySub -> TestContext model msg -> TestContext model msg
+dispatchEffect home cmds subs (TestContext context) =
     let
         effectManager =
             EffectManager.extractEffectManager home
@@ -174,7 +179,7 @@ dispatchEffect home subs (TestContext context) =
                 |> orCrash ("There's no recorded state for effect manager: " ++ home)
 
         task =
-            effectManager.onEffects [] subs currentState
+            effectManager.onEffects cmds subs currentState
                 |> fromPlatformTask
                 |> Testable.Task.mapError never
                 |> Testable.Task.andThen (NewEffectManagerState "onEffects" home)
@@ -186,7 +191,7 @@ dispatchEffect home subs (TestContext context) =
 dispatchEffects : Cmd msg -> Sub msg -> TestContext model msg -> TestContext model msg
 dispatchEffects cmd sub (TestContext context) =
     let
-        isEffectManager s =
+        isEffectManagerSub s =
             case s of
                 EffectManagerSub home mySub ->
                     Just ( home, mySub )
@@ -194,20 +199,43 @@ dispatchEffects cmd sub (TestContext context) =
                 _ ->
                     Nothing
 
-        timeSubs =
+        isEffectManagerCmd s =
+            case s of
+                EffectManagerCmd home myCmd ->
+                    Just ( home, myCmd )
+
+                _ ->
+                    Nothing
+
+        homeCmds home_ =
             -- TODO: group by home and process all homes
-            extractSubs sub
-                |> List.filterMap isEffectManager
+            extractCmds cmd
+                |> List.filterMap isEffectManagerCmd
                 |> List.filterMap
                     (\( home, mySub ) ->
-                        if home == "Time" then
+                        if home == home_ then
+                            Just mySub
+                        else
+                            Nothing
+                    )
+
+        homeSubs home_ =
+            -- TODO: group by home and process all homes
+            extractSubs sub
+                |> List.filterMap isEffectManagerSub
+                |> List.filterMap
+                    (\( home, mySub ) ->
+                        if home == home_ then
                             Just mySub
                         else
                             Nothing
                     )
     in
         TestContext context
-            |> dispatchEffect "Time" timeSubs
+            |> dispatchEffect "Time" [] (homeSubs "Time")
+            |> dispatchEffect "Test.EffectManager"
+                (homeCmds "Test.EffectManager")
+                (homeSubs "Test.EffectManager")
             -- TODO: process cmds through the effect managers
             |> processCmds cmd
 
@@ -226,88 +254,96 @@ processCmd cmd (TestContext context) =
         Task task ->
             processTask (fromPlatformTask task) (TestContext context)
 
+        EffectManagerCmd _ _ ->
+            -- EffectManagerCmd cmds are handled in dispatchEffects
+            TestContext context
+
 
 processTask : Task msg msg -> TestContext model msg -> TestContext model msg
-processTask task (TestContext context) =
-    case task of
-        Success msg ->
-            TestContext context
-                |> update msg
+processTask task (TestContext context_) =
+    let
+        context =
+            { context_ | transcript = task :: context_.transcript }
+    in
+        case task of
+            Success msg ->
+                TestContext context
+                    |> update msg
 
-        Failure msg ->
-            -- (TestContext context)
-            --     |> update msg
-            Debug.crash ("TODO: commented code above is not tested")
+            Failure msg ->
+                -- (TestContext context)
+                --     |> update msg
+                Debug.crash ("TODO: commented code above is not tested")
 
-        MockTask label mapper ->
-            TestContext
-                { context
-                    | mockTasks =
-                        context.mockTasks
-                            |> Dict.insert label (Pending mapper)
-                }
+            MockTask label mapper ->
+                TestContext
+                    { context
+                        | mockTasks =
+                            context.mockTasks
+                                |> Dict.insert label (Pending mapper)
+                    }
 
-        SleepTask delay next ->
-            TestContext
-                { context
-                    | futureTasks =
-                        context.futureTasks
-                            |> PairingHeap.insert (context.now + delay) next
-                }
+            SleepTask delay next ->
+                TestContext
+                    { context
+                        | futureTasks =
+                            context.futureTasks
+                                |> PairingHeap.insert (context.now + delay) next
+                    }
 
-        HttpTask options next ->
-            TestContext
-                { context
-                    | pendingHttpRequests =
-                        context.pendingHttpRequests
-                            |> Dict.insert
-                                ( options.method, options.url )
-                                next
-                }
+            HttpTask options next ->
+                TestContext
+                    { context
+                        | pendingHttpRequests =
+                            context.pendingHttpRequests
+                                |> Dict.insert
+                                    ( options.method, options.url )
+                                    next
+                    }
 
-        SpawnedTask task next ->
-            TestContext context
-                -- ??? which order should these be processed in?
-                -- ??? ideally nothing should depened on the order, but maybe we should
-                -- ??? simulate the same order that the Elm runtime would result in?
-                |> processTask
-                    (task
-                        |> Testable.Task.map never
-                        |> Testable.Task.mapError never
-                    )
-                |> processTask next
+            SpawnedTask task next ->
+                TestContext context
+                    -- ??? which order should these be processed in?
+                    -- ??? ideally nothing should depened on the order, but maybe we should
+                    -- ??? simulate the same order that the Elm runtime would result in?
+                    |> processTask
+                        (task
+                            |> Testable.Task.map never
+                            |> Testable.Task.mapError never
+                        )
+                    |> processTask next
 
-        NeverTask ->
-            TestContext context
+            NeverTask ->
+                TestContext context
 
-        NowTask next ->
-            TestContext context
-                |> processTask (next context.now)
+            NowTask next ->
+                TestContext context
+                    |> processTask (next context.now)
 
-        Core_Time_setInterval delay recurringTask ->
-            TestContext context
-                |> processTask
-                    -- TODO: recur
-                    (SleepTask delay recurringTask
-                        |> Testable.Task.andThen (always NeverTask)
-                        |> Testable.Task.mapError never
-                    )
+            Core_Time_setInterval delay recurringTask ->
+                TestContext context
+                    |> processTask
+                        -- TODO: recur
+                        (SleepTask delay recurringTask
+                            |> Testable.Task.andThen (always NeverTask)
+                            |> Testable.Task.mapError never
+                        )
 
-        ToApp msg next ->
-            TestContext context
-                |> update (EffectManager.unwrapAppMsg msg)
-                |> processTask next
+            ToApp msg next ->
+                TestContext context
+                    |> update (EffectManager.unwrapAppMsg msg)
+                    |> processTask next
 
-        ToEffectManager home selfMsg next ->
-            TestContext context
-                |> dispatchSelfMsg home selfMsg
-                |> processTask next
+            ToEffectManager home selfMsg next ->
+                TestContext context
+                    |> dispatchSelfMsg home selfMsg
+                    |> processTask next
 
-        NewEffectManagerState junk home newState ->
-            TestContext
-                { context
-                    | effectManagerStates = Dict.insert home newState context.effectManagerStates
-                }
+            NewEffectManagerState junk home newState ->
+                TestContext
+                    { context
+                        | effectManagerStates = Dict.insert home newState context.effectManagerStates
+                    }
 
 
 dispatchSelfMsg : String -> EffectManager.SelfMsg -> TestContext model msg -> TestContext model msg
@@ -387,7 +423,7 @@ getPendingTask fnName mock (TestContext context) =
                     |> Err
 
 
-expectMockTask : MockTask x a -> TestContext model msg -> Expect.Expectation
+expectMockTask : MockTask x a -> TestContext model msg -> Expectation
 expectMockTask whichMock context =
     case getPendingTask "expectMockTask" whichMock context of
         Ok _ ->
@@ -497,7 +533,7 @@ hasPendingCmd cmd (TestContext context) =
         List.all (\c -> List.member c context.pendingCmds) testableCmd
 
 
-expectCmd : Cmd msg -> TestContext model msg -> Expect.Expectation
+expectCmd : Cmd msg -> TestContext model msg -> Expectation
 expectCmd expected (TestContext context) =
     if hasPendingCmd expected (TestContext context) then
         Expect.pass
@@ -537,7 +573,7 @@ advanceTimeUntil targetTime (TestContext context) =
                 TestContext { context | now = targetTime }
 
 
-expectHttpRequest : String -> String -> TestContext model msg -> Expect.Expectation
+expectHttpRequest : String -> String -> TestContext model msg -> Expectation
 expectHttpRequest method url (TestContext context) =
     if Dict.member ( method, url ) context.pendingHttpRequests then
         Expect.pass
@@ -583,3 +619,17 @@ resolveHttpRequest method url responseBody (TestContext context) =
 
         Nothing ->
             Err ("No HTTP request was made matching: " ++ method ++ " " ++ url)
+
+
+expect : (TestContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
+expect get check (TestContext context) =
+    case Expect.getFailure (get (TestContext context) |> check) of
+        Nothing ->
+            ( Expect.pass, Debug.log (String.concat (List.reverse context.transcript |> List.map (toString >> (++) "  - " >> flip (++) "\n"))) "" )
+                |> Tuple.first
+
+        Just { given, message } ->
+            Expect.fail <|
+                message
+                    ++ "\n\n\nThe following tasks we processed during the test:\n"
+                    ++ String.concat (List.reverse context.transcript |> List.map (toString >> (++) "  - " >> flip (++) "\n"))
