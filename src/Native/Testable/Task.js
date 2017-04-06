@@ -114,62 +114,6 @@ _elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) { // es
 })
 
 var _user$project$Native_Testable_Task = (function () { // eslint-disable-line no-unused-vars, camelcase
-  function onError (f, task) {
-    switch (task.ctor) {
-      case 'Success':
-        return task
-
-      case 'Failure':
-        var next = f(task._0)
-        return fromPlatformTask(next)
-
-      case 'MockTask':
-        return {
-          ctor: 'MockTask',
-          _0: task._0,
-          _1: function (v) { return onError(f, task._1(v)) }
-        }
-
-      case 'SleepTask':
-        return {
-          ctor: task.ctor,
-          _0: task._0,
-          _1: onError(f, task._1)
-        }
-
-      case 'HttpTask':
-        return {
-          ctor: 'HttpTask',
-          _0: task._0,
-          _1: function (v) { return onError(f, task._1(v)) }
-        }
-
-      case 'SpawnedTask':
-        return {
-          ctor: task.ctor,
-          _0: task._0,
-          _1: onError(f, task._1)
-        }
-
-      case 'NeverTask':
-        return task
-
-      case 'NowTask':
-        return task
-
-      case 'Core_Time_setInterval':
-        return task
-
-      // TODO: ToApp, ToEffectManager
-
-      case 'NewEffectManagerState':
-        throw new Error('Invalid Testable.Task value: ' + task.ctor + ' (this task type should never be creatable outside of TestContext)')
-
-      default:
-        throw new Error('Unknown Testable.Task value: ' + task.ctor)
-    }
-  }
-
   function fromPlatformTask (task) {
     // TODO: at the top of this file, we override many native functions that
     // produce Platform.Tasks.  However, this could actually interfere with
@@ -199,7 +143,9 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
 
       case '_Task_onError':
         var next_ = fromPlatformTask(task.task)
-        return onError(task.callback, next_)
+        return _user$project$Testable_Task$onError(function (x) {
+          return fromPlatformTask(task.callback(x))
+        })(next_)
 
       case 'MockTask':
       case 'SleepTask':

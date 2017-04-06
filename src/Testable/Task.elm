@@ -169,40 +169,45 @@ types to match up.
         sequence [ mapError Http serverTask, mapError WebGL textureTask ]
 -}
 mapError : (x -> y) -> Task x a -> Task y a
-mapError f source =
+mapError f =
+    onError (f >> Failure)
+
+
+onError : (x -> Task y a) -> Task x a -> Task y a
+onError f source =
     case source of
         Success a ->
             Success a
 
         Failure x ->
-            Failure (f x)
+            f x
 
         MockTask tag mapper ->
-            MockTask tag (mapper |> Mapper.map (mapError f))
+            MockTask tag (mapper |> Mapper.map (onError f))
 
         SleepTask time next ->
-            SleepTask time (next |> mapError f)
+            SleepTask time (next |> onError f)
 
         HttpTask options next ->
-            HttpTask options (next >> mapError f)
+            HttpTask options (next >> onError f)
 
         SpawnedTask task next ->
-            SpawnedTask task (next |> mapError f)
+            SpawnedTask task (next |> onError f)
 
         NeverTask ->
             NeverTask
 
         NowTask next ->
-            NowTask (next >> mapError f)
+            NowTask (next >> onError f)
 
         Core_Time_setInterval delay task ->
             Core_Time_setInterval delay task
 
         ToApp msg next ->
-            ToApp msg (next |> mapError f)
+            ToApp msg (next |> onError f)
 
         ToEffectManager home msg next ->
-            ToEffectManager home msg (next |> mapError f)
+            ToEffectManager home msg (next |> onError f)
 
         NewEffectManagerState junk home msg ->
             NewEffectManagerState junk home msg
