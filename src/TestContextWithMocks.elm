@@ -277,18 +277,21 @@ dispatchEffects cmd sub (TestContext context) =
         cmds =
             extractCmds cmd
 
-        homeCmds home_ =
-            -- TODO: group by home and process all homes
-            cmds
-                |> .effectManagers
-                |> Dict.get home_
-                |> Maybe.withDefault []
+        subs =
+            extractSubs sub
+
+        fx =
+            Dict.merge
+                (\home c -> (::) ( home, c, [] ))
+                (\home c s -> (::) ( home, c, s ))
+                (\home s -> (::) ( home, [], s ))
+                cmds.effectManagers
+                subs.effectManagers
+                []
 
         applyEffects c =
-            extractSubs sub
-                |> .effectManagers
-                |> Dict.toList
-                |> List.foldl (\( home, subs ) -> dispatchEffect home [] subs) c
+            fx
+                |> List.foldl (\( home, cmds, subs ) -> dispatchEffect home cmds subs) c
 
         -- TODO: update effect managers that previously had Subs but don't anymore
     in
@@ -304,9 +307,6 @@ dispatchEffects cmd sub (TestContext context) =
                         context.outgoingPortValues
             }
             |> applyEffects
-            |> dispatchEffect "Test.EffectManager"
-                (homeCmds "Test.EffectManager")
-                []
             -- TODO: process cmds through the effect managers
             |> flip (List.foldl processTask) cmds.tasks
 
