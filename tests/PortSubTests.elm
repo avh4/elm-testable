@@ -50,4 +50,15 @@ all =
                     |> TestContext.send TestPorts.stringSub "1"
                     |> Result.map TestContext.model
                     |> Expect.equal (Ok "INIT;z1")
+        , test "send triggers all taggers" <|
+            \() ->
+                subProgram
+                    (Sub.batch
+                        [ TestPorts.stringSub (prefix "a")
+                        , TestPorts.stringSub (prefix "b")
+                        ]
+                    )
+                    |> TestContext.send TestPorts.stringSub "1"
+                    |> Result.map TestContext.model
+                    |> Expect.equal (Ok "INIT;a1;b1")
         ]

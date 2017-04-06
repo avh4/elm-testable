@@ -95,9 +95,44 @@ extractCmds =
     extractBag Native.TestContext.extractCmd (::) []
 
 
-extractSubs : Sub msg -> List (TestableSub msg)
+extractSubs :
+    Sub msg
+    ->
+        { ports : Dict String (List (Mapper msg))
+        , effectManagers : Dict String (List EffectManager.MySub)
+        }
 extractSubs =
-    extractBag Native.TestContext.extractSub (::) []
+    let
+        init =
+            { ports = Dict.empty
+            , effectManagers = Dict.empty
+            }
+
+        reduce sub acc =
+            case sub of
+                PortSub home mapper ->
+                    { acc
+                        | ports =
+                            Dict.update home
+                                (Maybe.withDefault [] >> (::) mapper >> Just)
+                                acc.ports
+                    }
+
+                EffectManagerSub home value ->
+                    { acc
+                        | effectManagers =
+                            Dict.update home
+                                (Maybe.withDefault [] >> (::) value >> Just)
+                                acc.effectManagers
+                    }
+
+        done { ports, effectManagers } =
+            { ports = Dict.map (\_ -> List.reverse) ports
+            , effectManagers = Dict.map (\_ -> List.reverse) effectManagers
+            }
+    in
+        extractBag Native.TestContext.extractSub reduce init
+            >> done
 
 
 extractSubPortName : ((value -> msg) -> Sub msg) -> String
@@ -196,14 +231,6 @@ dispatchEffect home cmds subs (TestContext context) =
 dispatchEffects : Cmd msg -> Sub msg -> TestContext model msg -> TestContext model msg
 dispatchEffects cmd sub (TestContext context) =
     let
-        isEffectManagerSub s =
-            case s of
-                EffectManagerSub home mySub ->
-                    Just ( home, mySub )
-
-                _ ->
-                    Nothing
-
         isEffectManagerCmd s =
             case s of
                 EffectManagerCmd home myCmd ->
@@ -223,24 +250,15 @@ dispatchEffects cmd sub (TestContext context) =
                         else
                             Nothing
                     )
-
-        homeSubs home_ =
-            -- TODO: group by home and process all homes
-            extractSubs sub
-                |> List.filterMap isEffectManagerSub
-                |> List.filterMap
-                    (\( home, mySub ) ->
-                        if home == home_ then
-                            Just mySub
-                        else
-                            Nothing
-                    )
     in
-        TestContext context
-            |> dispatchEffect "Time" [] (homeSubs "Time")
+        extractSubs sub
+            |> .effectManagers
+            |> Dict.toList
+            |> List.foldl (\( home, subs ) -> dispatchEffect home [] subs) (TestContext context)
+            -- TODO: update effect managers that previously had Subs but don't anymore
             |> dispatchEffect "Test.EffectManager"
                 (homeCmds "Test.EffectManager")
-                (homeSubs "Test.EffectManager")
+                []
             -- TODO: process cmds through the effect managers
             |> processCmds cmd
 
@@ -505,19 +523,20 @@ send subPort value (TestContext context) =
         subs =
             context.program.subscriptions context.model
                 |> extractSubs
-                |> List.filterMap isPortSub
-                |> Dict.fromList
+                |> .ports
 
         portName =
             extractSubPortName subPort
     in
-        case Dict.get portName subs of
-            Nothing ->
+        case Dict.get portName subs |> Maybe.withDefault [] of
+            [] ->
                 Err ("Not subscribed to port: " ++ portName)
 
-            Just mapper ->
-                Mapper.apply mapper value
-                    |> Result.map (\msg -> update msg (TestContext context))
+            mappers ->
+                List.foldl
+                    (\mapper c -> Mapper.apply mapper value |> Result.map2 (flip update) c)
+                    (Ok <| TestContext context)
+                    mappers
 
 
 pendingCmds : TestContext model msg -> List (TestableCmd msg)
