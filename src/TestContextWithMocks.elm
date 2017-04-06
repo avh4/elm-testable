@@ -42,7 +42,7 @@ type alias TestableProgram model msg =
 
 type TestableCmd msg
     = Task (Platform.Task msg msg)
-    | Port String Json.Encode.Value
+    | PortCmd String Json.Encode.Value
     | EffectManagerCmd String EffectManager.MyCmd
 
 
@@ -70,7 +70,7 @@ type TestContext model msg
     = TestContext
         { program : TestableProgram model msg
         , model : model
-        , pendingCmds : List (TestableCmd msg)
+        , outgoingPortValues : Dict String (List Json.Encode.Value)
         , mockTasks : Dict String (MockTaskState msg)
         , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task msg msg)
         , futureTasks : PairingHeap Time (Task msg msg)
@@ -90,9 +90,52 @@ extractBag =
     Native.TestContext.extractBag
 
 
-extractCmds : Cmd msg -> List (TestableCmd msg)
+extractCmds :
+    Cmd msg
+    ->
+        { ports : Dict String (List Json.Encode.Value)
+        , effectManagers : Dict String (List EffectManager.MyCmd)
+        , tasks : List (Task msg msg)
+        }
 extractCmds =
-    extractBag Native.TestContext.extractCmd (::) []
+    let
+        init =
+            { ports = Dict.empty
+            , effectManagers = Dict.empty
+            , tasks = []
+            }
+
+        reduce cmd acc =
+            case cmd of
+                PortCmd home value ->
+                    { acc
+                        | ports =
+                            Dict.update home
+                                (Maybe.withDefault [] >> (::) value >> Just)
+                                acc.ports
+                    }
+
+                EffectManagerCmd home value ->
+                    { acc
+                        | effectManagers =
+                            Dict.update home
+                                (Maybe.withDefault [] >> (::) value >> Just)
+                                acc.effectManagers
+                    }
+
+                Task t ->
+                    { acc
+                        | tasks = (fromPlatformTask t) :: acc.tasks
+                    }
+
+        done { ports, effectManagers, tasks } =
+            { ports = Dict.map (\_ -> List.reverse) ports
+            , effectManagers = Dict.map (\_ -> List.reverse) effectManagers
+            , tasks = List.reverse tasks
+            }
+    in
+        extractBag Native.TestContext.extractCmd reduce init
+            >> done
 
 
 extractSubs :
@@ -191,7 +234,7 @@ start getProgram =
         TestContext
             { program = program
             , model = model
-            , pendingCmds = []
+            , outgoingPortValues = Dict.empty
             , mockTasks = Dict.empty
             , pendingHttpRequests = Dict.empty
             , futureTasks = PairingHeap.empty
@@ -231,55 +274,41 @@ dispatchEffect home cmds subs (TestContext context) =
 dispatchEffects : Cmd msg -> Sub msg -> TestContext model msg -> TestContext model msg
 dispatchEffects cmd sub (TestContext context) =
     let
-        isEffectManagerCmd s =
-            case s of
-                EffectManagerCmd home myCmd ->
-                    Just ( home, myCmd )
-
-                _ ->
-                    Nothing
+        cmds =
+            extractCmds cmd
 
         homeCmds home_ =
             -- TODO: group by home and process all homes
-            extractCmds cmd
-                |> List.filterMap isEffectManagerCmd
-                |> List.filterMap
-                    (\( home, mySub ) ->
-                        if home == home_ then
-                            Just mySub
-                        else
-                            Nothing
-                    )
+            cmds
+                |> .effectManagers
+                |> Dict.get home_
+                |> Maybe.withDefault []
+
+        applyEffects c =
+            extractSubs sub
+                |> .effectManagers
+                |> Dict.toList
+                |> List.foldl (\( home, subs ) -> dispatchEffect home [] subs) c
+
+        -- TODO: update effect managers that previously had Subs but don't anymore
     in
-        extractSubs sub
-            |> .effectManagers
-            |> Dict.toList
-            |> List.foldl (\( home, subs ) -> dispatchEffect home [] subs) (TestContext context)
-            -- TODO: update effect managers that previously had Subs but don't anymore
+        TestContext
+            { context
+                | outgoingPortValues =
+                    Dict.merge
+                        (\home old d -> d)
+                        (\home old new d -> Dict.insert home (old ++ new) d)
+                        (\home new d -> Dict.insert home new d)
+                        context.outgoingPortValues
+                        cmds.ports
+                        context.outgoingPortValues
+            }
+            |> applyEffects
             |> dispatchEffect "Test.EffectManager"
                 (homeCmds "Test.EffectManager")
                 []
             -- TODO: process cmds through the effect managers
-            |> processCmds cmd
-
-
-processCmds : Cmd msg -> TestContext model msg -> TestContext model msg
-processCmds cmds context =
-    List.foldl processCmd context (extractCmds <| cmds)
-
-
-processCmd : TestableCmd msg -> TestContext model msg -> TestContext model msg
-processCmd cmd (TestContext context) =
-    case cmd of
-        Port home value ->
-            TestContext { context | pendingCmds = context.pendingCmds ++ [ cmd ] }
-
-        Task task ->
-            processTask (fromPlatformTask task) (TestContext context)
-
-        EffectManagerCmd _ _ ->
-            -- EffectManagerCmd cmds are handled in dispatchEffects
-            TestContext context
+            |> flip (List.foldl processTask) cmds.tasks
 
 
 processTask : Task msg msg -> TestContext model msg -> TestContext model msg
@@ -539,11 +568,6 @@ send subPort value (TestContext context) =
                     mappers
 
 
-pendingCmds : TestContext model msg -> List (TestableCmd msg)
-pendingCmds (TestContext context) =
-    context.pendingCmds
-
-
 {-|
 If `cmd` is a batch, then this will return True only if all Cmds in the batch
 are pending.
@@ -551,10 +575,20 @@ are pending.
 hasPendingCmd : Cmd msg -> TestContext model msg -> Bool
 hasPendingCmd cmd (TestContext context) =
     let
-        testableCmd =
+        expected =
             extractCmds cmd
+                |> .ports
+
+        actual =
+            context.outgoingPortValues
     in
-        List.all (\c -> List.member c context.pendingCmds) testableCmd
+        Dict.merge
+            (\_ exp b -> b && exp == [])
+            (\_ exp act b -> b && List.all (flip List.member act) exp)
+            (\_ act b -> b)
+            expected
+            actual
+            True
 
 
 expectCmd : Cmd msg -> TestContext model msg -> Expectation
@@ -563,11 +597,11 @@ expectCmd expected (TestContext context) =
         Expect.pass
     else
         -- TODO: nicer failure messages like expectHttpRequest
-        [ toString <| context.pendingCmds
+        [ toString <| context.outgoingPortValues
         , "╷"
         , "│ TestContext.expectCmd"
         , "╵"
-        , toString <| extractCmds expected
+        , toString <| .ports <| extractCmds expected
         ]
             |> String.join "\n"
             |> Expect.fail

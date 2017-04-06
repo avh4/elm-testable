@@ -34,7 +34,7 @@ string =
 
 all : Test
 all =
-    describe "Cmds"
+    describe "port Cmds"
         [ testEqual string "verifying an initial Cmd" <|
             \actual expected ->
                 { init = ( (), TestPorts.string actual )

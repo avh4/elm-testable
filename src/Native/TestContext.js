@@ -72,7 +72,7 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
         return { ctor: 'EffectManagerCmd', _0: cmd.home, _1: cmd.value }
       } else {
         // We can safely ignore tagger because port Cmds can never actually produce messages
-        return { ctor: 'Port', _0: cmd.home, _1: cmd.value }
+        return { ctor: 'PortCmd', _0: cmd.home, _1: cmd.value }
       }
     }),
     extractSub: F2(function (tagger, sub) {
