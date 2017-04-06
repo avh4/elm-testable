@@ -1,4 +1,4 @@
-module CmdTests exposing (..)
+module PortCmdTests exposing (..)
 
 import Test exposing (..)
 import Expect

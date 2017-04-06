@@ -1,4 +1,4 @@
-module SubTests exposing (..)
+module PortSubTests exposing (..)
 
 import Test exposing (..)
 import Expect
