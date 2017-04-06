@@ -7,10 +7,10 @@ import TestContext exposing (TestContext)
 import TestPorts
 
 
-subProgram : Sub (Maybe a) -> TestContext (Maybe a) (Maybe a)
+subProgram : Sub String -> TestContext String String
 subProgram subs =
-    { init = ( Nothing, Cmd.none )
-    , update = \msg model -> ( msg, Cmd.none )
+    { init = ( "INIT", Cmd.none )
+    , update = \msg model -> ( model ++ ";" ++ msg, Cmd.none )
     , subscriptions = \_ -> subs
     , view = \_ -> Html.text ""
     }
@@ -18,26 +18,36 @@ subProgram subs =
         |> TestContext.start
 
 
+prefix : String -> String -> String
+prefix pref s =
+    pref ++ s
+
+
 all : Test
 all =
-    describe "Subscriptions"
-        [ test "send triggers an update with the correct Msg" <|
+    describe "port subscriptions"
+        [ test "send triggers an update" <|
             \() ->
-                subProgram (TestPorts.stringSub Just)
+                subProgram (TestPorts.stringSub identity)
                     |> TestContext.send TestPorts.stringSub "1"
                     |> Result.map TestContext.model
-                    |> Expect.equal (Ok <| Just "1")
+                    |> Expect.equal (Ok "INIT;1")
+        , test "the tagger is applied" <|
+            \() ->
+                subProgram
+                    (TestPorts.stringSub (prefix "a"))
+                    |> TestContext.send TestPorts.stringSub "1"
+                    |> Result.map TestContext.model
+                    |> Expect.equal (Ok <| "INIT;a1")
         , test "gives an error when not subscribed" <|
             \() ->
                 subProgram (Sub.none)
                     |> TestContext.send TestPorts.stringSub "VALUE"
                     |> Expect.equal (Err "Not subscribed to port: stringSub")
-        , describe "Sub.map"
-            [ test "with port Sub" <|
-                \() ->
-                    subProgram (Sub.map Just <| TestPorts.stringSub Just)
-                        |> TestContext.send TestPorts.stringSub "1"
-                        |> Result.map TestContext.model
-                        |> Expect.equal (Ok <| Just <| Just "1")
-            ]
+        , test "Sub.map" <|
+            \() ->
+                subProgram (Sub.map (prefix "z") <| TestPorts.stringSub identity)
+                    |> TestContext.send TestPorts.stringSub "1"
+                    |> Result.map TestContext.model
+                    |> Expect.equal (Ok "INIT;z1")
         ]
