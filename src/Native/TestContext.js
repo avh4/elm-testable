@@ -68,8 +68,11 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
         }
         return { ctor: 'Task', _0: mappedTask }
       } else if (/^[A-Z]/.test(cmd.home)) {
-        // TODO: use tagger
-        return { ctor: 'EffectManagerCmd', _0: cmd.home, _1: cmd.value }
+        return {
+          ctor: 'EffectManagerCmd',
+          _0: cmd.home,
+          _1: _elm_lang$core$Native_Platform.effectManagers[cmd.home].cmdMap(tagger)(cmd.value)
+        }
       } else {
         // We can safely ignore tagger because port Cmds can never actually produce messages
         return { ctor: 'PortCmd', _0: cmd.home, _1: cmd.value }

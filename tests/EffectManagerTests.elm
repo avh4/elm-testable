@@ -10,6 +10,7 @@ import Test.EffectManager
 import Time exposing (Time)
 
 
+program : Cmd String -> Sub String -> TestContext String String
 program cmd sub =
     { init =
         ( "INIT"
@@ -31,6 +32,11 @@ program cmd sub =
         |> TestContext.start
 
 
+prefix : String -> String -> String
+prefix pref s =
+    pref ++ s
+
+
 all : Test
 all =
     describe "effect managers"
@@ -49,4 +55,11 @@ all =
                     |> TestContext.update "PING"
                     |> TestContext.expect (TestContext.model)
                         (Expect.equal "INIT;[INIT]")
+        , test "it works with Cmd.map" <|
+            \() ->
+                program
+                    (Cmd.map (prefix "a") <| Test.EffectManager.getState identity)
+                    (Sub.none)
+                    |> TestContext.expect (TestContext.model)
+                        (Expect.equal "INIT;a(INIT)")
         ]
