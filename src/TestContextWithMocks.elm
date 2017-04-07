@@ -222,14 +222,17 @@ start getProgram =
         model =
             Tuple.first program.init
 
-        effectManagerInit home =
-            -- TODO: iterate all effectManagers
-            EffectManager.extractEffectManager home
-                |> orCrash ("XXX: no effect manager: " ++ home)
-                |> .init
+        initEffectManager home em =
+            em.init
                 |> fromPlatformTask
                 |> Testable.Task.mapError never
                 |> Testable.Task.andThen (NewEffectManagerState "start" home)
+
+        initEffectManagers context =
+            Dict.foldl
+                (\home em -> processTask (initEffectManager home em))
+                context
+                (EffectManager.extractEffectManagers ())
     in
         TestContext
             { program = program
@@ -242,8 +245,7 @@ start getProgram =
             , effectManagerStates = Dict.empty
             , transcript = []
             }
-            |> processTask (effectManagerInit "Time")
-            |> processTask (effectManagerInit "Test.EffectManager")
+            |> initEffectManagers
             |> dispatchEffects
                 (Tuple.second program.init)
                 (program.subscriptions model)

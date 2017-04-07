@@ -7,10 +7,12 @@ module Testable.EffectManager
         , MyCmd
         , State
         , extractEffectManager
+        , extractEffectManagers
         , unwrapAppMsg
         )
 
 import Native.Testable.EffectManager
+import Dict exposing (Dict)
 
 
 type MyCmd
@@ -39,6 +41,11 @@ type alias EffectManager =
     , onEffects : List MyCmd -> List MySub -> State -> Platform.Task Never State
     , onSelfMsg : SelfMsg -> State -> Platform.Task Never State
     }
+
+
+extractEffectManagers : () -> Dict String EffectManager
+extractEffectManagers () =
+    Dict.fromList <| Native.Testable.EffectManager.extractEffectManagers ()
 
 
 extractEffectManager : String -> Maybe EffectManager
