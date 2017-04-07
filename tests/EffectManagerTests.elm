@@ -3,11 +3,8 @@ module EffectManagerTests exposing (all)
 import Test exposing (..)
 import Expect
 import Html
-import Process
-import Task
 import TestContext exposing (TestContext)
 import Test.EffectManager
-import Time exposing (Time)
 
 
 program : Cmd String -> Sub String -> TestContext String String
