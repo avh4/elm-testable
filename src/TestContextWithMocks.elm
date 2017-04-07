@@ -309,7 +309,6 @@ dispatchEffects cmd sub (TestContext context) =
                         context.outgoingPortValues
             }
             |> applyEffects
-            -- TODO: process cmds through the effect managers
             |> flip (List.foldl processTask) cmds.tasks
 
 
