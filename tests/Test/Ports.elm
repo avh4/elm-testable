@@ -1,4 +1,4 @@
-port module TestPorts exposing (string, stringSub)
+port module Test.Ports exposing (string, stringSub)
 
 
 port string : String -> Cmd msg
