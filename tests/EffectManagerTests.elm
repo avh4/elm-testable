@@ -62,4 +62,12 @@ all =
                     (Sub.none)
                     |> TestContext.expect (TestContext.model)
                         (Expect.equal "INIT;a(INIT)")
+        , test "it works with Sub.map" <|
+            \() ->
+                program
+                    (Cmd.none)
+                    (Sub.map (prefix "b") <| Test.EffectManager.subState identity)
+                    |> TestContext.update "PING"
+                    |> TestContext.expect (TestContext.model)
+                        (Expect.equal "INIT;b[INIT]")
         ]

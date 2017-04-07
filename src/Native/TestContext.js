@@ -68,6 +68,7 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
         }
         return { ctor: 'Task', _0: mappedTask }
       } else if (/^[A-Z]/.test(cmd.home)) {
+        // This is an effect manager
         return {
           ctor: 'EffectManagerCmd',
           _0: cmd.home,
@@ -81,8 +82,11 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
     extractSub: F2(function (tagger, sub) {
       if (/^[A-Z]/.test(sub.home)) {
         // This is an effect manager
-        // TODO: must use tagger or Sub.map will be broken
-        return { ctor: 'EffectManagerSub', _0: sub.home, _1: sub.value }
+        return {
+          ctor: 'EffectManagerSub',
+          _0: sub.home,
+          _1: _elm_lang$core$Native_Platform.effectManagers[sub.home].subMap(tagger)(sub.value)
+        }
       } else {
         // This is a port
         var mapper = function (x) {
