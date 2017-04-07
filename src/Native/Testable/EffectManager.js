@@ -25,7 +25,6 @@ var _user$project$Native_Testable_EffectManager = // eslint-disable-line no-unus
                  return effectManager.onEffects(router)(cmds)(state)
 
                case 'fx':
-                 // TODO: not tested
                  return effectManager.onEffects(router)(cmds)(subs)(state)
 
                default:
