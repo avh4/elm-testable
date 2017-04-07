@@ -5,6 +5,7 @@ import Task as Task exposing (Task)
 
 type MyCmd msg
     = GetState (String -> msg)
+    | PingSubs
 
 
 getState : (String -> msg) -> Cmd msg
@@ -12,11 +13,19 @@ getState tagger =
     command (GetState tagger)
 
 
+pingSubs : Cmd msg
+pingSubs =
+    command PingSubs
+
+
 cmdMap : (a -> b) -> MyCmd a -> MyCmd b
 cmdMap f cmd =
     case cmd of
         GetState tagger ->
             GetState (tagger >> f)
+
+        PingSubs ->
+            PingSubs
 
 
 type MySub msg
@@ -50,10 +59,22 @@ init =
 
 onEffects : Platform.Router msg SelfMsg -> List (MyCmd msg) -> List (MySub msg) -> State -> Task Never State
 onEffects router cmds subs state =
-    cmds
-        |> List.map (\(GetState msg) -> Platform.sendToApp router <| msg ("(" ++ state ++ ")"))
-        |> Task.sequence
-        |> Task.map (always state)
+    let
+        task cmd =
+            case cmd of
+                GetState tagger ->
+                    Platform.sendToApp router <| tagger ("(" ++ state ++ ")")
+
+                PingSubs ->
+                    subs
+                        |> List.map (\(SubState tagger) -> Platform.sendToApp router <| tagger ("[" ++ state ++ "]"))
+                        |> Task.sequence
+                        |> Task.map (always ())
+    in
+        cmds
+            |> List.map task
+            |> Task.sequence
+            |> Task.map (always state)
 
 
 onSelfMsg : Platform.Router msg SelfMsg -> SelfMsg -> State -> Task Never State

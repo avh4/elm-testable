@@ -17,7 +17,12 @@ program cmd sub =
         )
     , update =
         \msg model ->
-            ( model ++ ";" ++ msg, Cmd.none )
+            case msg of
+                "PING" ->
+                    ( model, Test.EffectManager.pingSubs )
+
+                _ ->
+                    ( model ++ ";" ++ msg, Cmd.none )
     , subscriptions =
         \_ -> sub
     , view = \_ -> Html.text ""
@@ -31,7 +36,17 @@ all =
     describe "effect managers"
         [ test "it can process a Cmd" <|
             \() ->
-                program (Test.EffectManager.getState identity) (Sub.none)
+                program
+                    (Test.EffectManager.getState identity)
+                    (Sub.none)
                     |> TestContext.expect (TestContext.model)
                         (Expect.equal "INIT;(INIT)")
+        , test "it can process a Sub" <|
+            \() ->
+                program
+                    (Cmd.none)
+                    (Test.EffectManager.subState identity)
+                    |> TestContext.update "PING"
+                    |> TestContext.expect (TestContext.model)
+                        (Expect.equal "INIT;[INIT]")
         ]
