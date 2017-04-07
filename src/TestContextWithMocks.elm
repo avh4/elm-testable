@@ -41,7 +41,7 @@ type alias TestableProgram model msg =
 
 
 type TestableCmd msg
-    = Task (Platform.Task msg msg)
+    = Task (Platform.Task Never msg)
     | PortCmd String Json.Encode.Value
     | EffectManagerCmd String EffectManager.MyCmd
 
@@ -52,7 +52,7 @@ type TestableSub msg
 
 
 type MockTaskState msg
-    = Pending (Mapper (Task msg msg))
+    = Pending (Mapper (Task Never msg))
     | Resolved String
 
 
@@ -72,11 +72,11 @@ type TestContext model msg
         , model : model
         , outgoingPortValues : Dict String (List Json.Encode.Value)
         , mockTasks : Dict String (MockTaskState msg)
-        , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task msg msg)
-        , futureTasks : PairingHeap Time (Task msg msg)
+        , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task Never msg)
+        , futureTasks : PairingHeap Time (Task Never msg)
         , now : Time
         , effectManagerStates : Dict String EffectManager.State
-        , transcript : List (Task msg msg)
+        , transcript : List (Task Never msg)
         }
 
 
@@ -95,7 +95,7 @@ extractCmds :
     ->
         { ports : Dict String (List Json.Encode.Value)
         , effectManagers : Dict String (List EffectManager.MyCmd)
-        , tasks : List (Task msg msg)
+        , tasks : List (Task Never msg)
         }
 extractCmds =
     let
@@ -312,7 +312,7 @@ dispatchEffects cmd sub (TestContext context) =
             |> flip (List.foldl processTask) cmds.tasks
 
 
-processTask : Task msg msg -> TestContext model msg -> TestContext model msg
+processTask : Task Never msg -> TestContext model msg -> TestContext model msg
 processTask task (TestContext context_) =
     let
         context =
@@ -323,10 +323,8 @@ processTask task (TestContext context_) =
                 TestContext context
                     |> update msg
 
-            Failure msg ->
-                -- (TestContext context)
-                --     |> update msg
-                Debug.crash ("TODO: commented code above is not tested")
+            Failure x ->
+                never x
 
             MockTask label mapper ->
                 TestContext
@@ -438,7 +436,7 @@ update msg (TestContext context) =
             |> dispatchEffects newCmds newSubs
 
 
-getPendingTask : String -> MockTask x a -> TestContext model msg -> Result String (Mapper (Task msg msg))
+getPendingTask : String -> MockTask x a -> TestContext model msg -> Result String (Mapper (Task Never msg))
 getPendingTask fnName mock (TestContext context) =
     let
         label =
