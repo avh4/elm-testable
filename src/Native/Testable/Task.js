@@ -1,23 +1,40 @@
+
+function setItUp (realImpl, elmTestableTask) {
+  var realImpl_ = realImpl
+  if (elmTestableTask.arity === 2) {
+    return F2(function (a, b) {
+      var real = realImpl_(a)(b)
+      real.elmTestable = elmTestableTask(a)(b)
+      return real
+    })
+  } else if (elmTestableTask.arity === undefined) {
+    return function (a) {
+      var real = realImpl_(a)
+      real.elmTestable = elmTestableTask(a)
+      return real
+    }
+  } else {
+    throw new Error('Unhandled arity: ' + elmTestableTask.arity)
+  }
+}
+
 if (typeof _elm_lang$core$Process$sleep === 'undefined') { // eslint-disable-line camelcase
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: this shouldn\'t happen because Testable.Task imports Process.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
-_elm_lang$core$Process$sleep = function (delay) { // eslint-disable-line no-global-assign, no-native-reassign, camelcase
-  var result = { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
-  return { ctor: 'SleepTask', _0: delay, _1: result }
-}
+_elm_lang$core$Process$sleep = setItUp( // eslint-disable-line no-global-assign, camelcase
+  _elm_lang$core$Process$sleep,
+  function (delay) {
+    return {
+      ctor: 'SleepTask',
+      _0: delay,
+      _1: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
+    }
+  }
+)
 
 if (typeof _elm_lang$core$Process$spawn === 'undefined') { // eslint-disable-line camelcase
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: this shouldn\'t happen because Testable.Task imports Process.  Please report this at https://github.com/avh4/elm-testable/issues')
-}
-
-_elm_lang$core$Process$spawn = function (task) { // eslint-disable-line no-global-assign, no-native-reassign, camelcase
-  var processId = -1 // TODO: create unique process ids
-  var result = { ctor: 'Success', _0: processId }
-  var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'NeverTask' } })(task)
-  var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'NeverTask' } })(t1)
-  var t = _user$project$Native_Testable_Task.fromPlatformTask(t2)
-  return { ctor: 'SpawnedTask', _0: t, _1: result }
 }
 
 if (typeof _elm_lang$core$Native_Scheduler.spawn === 'undefined') { // eslint-disable-line camelcase
@@ -38,29 +55,29 @@ _elm_lang$core$Native_Scheduler.spawn = function (task) {
 }
 _elm_lang$core$Process$spawn = _elm_lang$core$Native_Scheduler.spawn // eslint-disable-line no-global-assign, camelcase
 
-var realSendToSelf = _elm_lang$core$Native_Platform.sendToSelf
-_elm_lang$core$Native_Platform.sendToSelf = F2(function (router, msg) {
-  var real = realSendToSelf(router)(msg)
-  real.elmTestable = {
-    ctor: 'ToEffectManager',
-    _0: router.elmTestable.self,
-    _1: msg,
-    _2: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
-  }
-  return real
-})
+_elm_lang$core$Native_Platform.sendToSelf = setItUp(
+  _elm_lang$core$Native_Platform.sendToSelf,
+  F2(function (router, msg) {
+    return {
+      ctor: 'ToEffectManager',
+      _0: router.elmTestable.self,
+      _1: msg,
+      _2: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
+    }
+  })
+)
 _elm_lang$core$Platform$sendToSelf = _elm_lang$core$Native_Platform.sendToSelf // eslint-disable-line no-global-assign, camelcase
 
-var realSendToApp = _elm_lang$core$Native_Platform.sendToApp
-_elm_lang$core$Native_Platform.sendToApp = F2(function (router, msg) {
-  var real = realSendToApp(router)(msg)
-  real.elmTestable = {
-    ctor: 'ToApp',
-    _0: msg,
-    _1: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
-  }
-  return real
-})
+_elm_lang$core$Native_Platform.sendToApp = setItUp(
+  _elm_lang$core$Native_Platform.sendToApp,
+  F2(function (router, msg) {
+    return {
+      ctor: 'ToApp',
+      _0: msg,
+      _1: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
+    }
+  })
+)
 _elm_lang$core$Platform$sendToApp = _elm_lang$core$Native_Platform.sendToApp // eslint-disable-line no-global-assign, camelcase
 
 if (typeof _elm_lang$core$Time$now === 'undefined') { // eslint-disable-line camelcase
@@ -74,13 +91,16 @@ _elm_lang$core$Time$now.elmTestable = {
   }
 }
 
-var realSetInterval = _elm_lang$core$Time$setInterval // eslint-disable-line camelcase
-_elm_lang$core$Time$setInterval = F2(function (delay, task) { // eslint-disable-line no-global-assign, camelcase
-  var real = realSetInterval(delay)(task)
-  var t = _user$project$Native_Testable_Task.fromPlatformTask(task)
-  real.elmTestable = { ctor: 'Core_Time_setInterval', _0: delay, _1: t }
-  return real
-})
+_elm_lang$core$Time$setInterval = setItUp( // eslint-disable-line no-global-assign, camelcase
+  _elm_lang$core$Time$setInterval,
+  F2(function (delay, task) {
+    return {
+      ctor: 'Core_Time_setInterval',
+      _0: delay,
+      _1: _user$project$Native_Testable_Task.fromPlatformTask(task)
+    }
+  })
+)
 
 if (typeof _elm_lang$http$Native_Http.toTask === 'undefined') {
   throw new Error('Native.TestContext was loaded before _elm_lang$http$Native_Http: this shouldn\'t happen because Testable.Task imports Http.  Please report this at https://github.com/avh4/elm-testable/issues')
