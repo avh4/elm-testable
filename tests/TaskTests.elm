@@ -1,13 +1,13 @@
 module TaskTests exposing (all)
 
 import Test exposing (..)
-import Expect
+import Expect exposing (Expectation)
 import Html
 import TestContext exposing (TestContext)
 import Task
 
 
-testEqual : Gen a -> String -> (a -> a -> Expect.Expectation) -> Test
+testEqual : Gen a -> String -> (a -> a -> Expectation) -> Test
 testEqual ( a, b ) name testCase =
     Test.describe name
         [ Test.test "when equal" <|
