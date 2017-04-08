@@ -2,6 +2,7 @@ module Testable.Task
     exposing
         ( fromPlatformTask
         , Task(..)
+        , ProcessId(..)
         , map
         , mapError
         , andThen
@@ -56,6 +57,10 @@ fromPlatformTask =
     Native.Testable.Task.fromPlatformTask
 
 
+type ProcessId
+    = ProcessId Int
+
+
 {-| Testable.Task values represent the possible future values of a Task, in
 contrast to elm-lang/core Tasks, which store functions that will be evaluated
 later.
@@ -66,8 +71,9 @@ type Task error success
     | SleepTask Time (() -> Task error success)
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
     | MockTask String (Mapper (Task error success))
-    | SpawnedTask (Task Never Never) (Task error success)
+    | SpawnedTask (Task Never Never) (ProcessId -> Task error success)
     | NeverTask
+    | Core_NativeScheduler_kill ProcessId (Task error success)
     | NowTask (Time -> Task error success)
     | Core_Time_setInterval Time (Task Never ())
     | ToApp EffectManager.AppMsg (Task error success)
@@ -116,10 +122,13 @@ andThen f source =
             HttpTask options (next >> andThen f)
 
         SpawnedTask task next ->
-            SpawnedTask task (next |> andThen f)
+            SpawnedTask task (next >> andThen f)
 
         NeverTask ->
             NeverTask
+
+        Core_NativeScheduler_kill processId next ->
+            Core_NativeScheduler_kill processId (next |> andThen f)
 
         NowTask next ->
             NowTask (next >> andThen f)
@@ -174,10 +183,13 @@ onError f source =
             HttpTask options (next >> onError f)
 
         SpawnedTask task next ->
-            SpawnedTask task (next |> onError f)
+            SpawnedTask task (next >> onError f)
 
         NeverTask ->
             NeverTask
+
+        Core_NativeScheduler_kill processId next ->
+            Core_NativeScheduler_kill processId (next |> onError f)
 
         NowTask next ->
             NowTask (next >> onError f)
@@ -237,10 +249,13 @@ toResult source =
             HttpTask options (next >> toResult)
 
         SpawnedTask task next ->
-            SpawnedTask task (next |> toResult)
+            SpawnedTask task (next >> toResult)
 
         NeverTask ->
             NeverTask
+
+        Core_NativeScheduler_kill processId next ->
+            Core_NativeScheduler_kill processId (next |> toResult)
 
         NowTask next ->
             NowTask (next >> toResult)

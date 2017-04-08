@@ -45,15 +45,29 @@ if (typeof _elm_lang$core$Native_Scheduler.spawn === 'undefined') { // eslint-di
 var realSpawn = _elm_lang$core$Native_Scheduler.spawn
 _elm_lang$core$Native_Scheduler.spawn = function (task) {
   var real = realSpawn(task)
-  var processId = -1 // TODO: create unique process ids
-  var result = { ctor: 'Success', _0: processId }
   var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'NeverTask' } })(task)
   var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'NeverTask' } })(t1)
   var t = _user$project$Native_Testable_Task.fromPlatformTask(t2)
-  real.elmTestable = { ctor: 'SpawnedTask', _0: t, _1: result }
+  real.elmTestable = {
+    ctor: 'SpawnedTask',
+    _0: t,
+    _1: function (processId) { return { ctor: 'Success', _0: processId } }
+  }
   return real
 }
 _elm_lang$core$Process$spawn = _elm_lang$core$Native_Scheduler.spawn // eslint-disable-line no-global-assign, camelcase
+
+_elm_lang$core$Native_Scheduler.kill = setItUp(
+  _elm_lang$core$Native_Scheduler.kill,
+  function (processId) {
+    return {
+      ctor: 'Core_NativeScheduler_kill',
+      _0: processId,
+      _1: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
+    }
+  }
+)
+_elm_lang$core$Process$kill = _elm_lang$core$Native_Scheduler.kill // eslint-disable-line no-global-assign, camelcase
 
 _elm_lang$core$Native_Platform.sendToSelf = setItUp(
   _elm_lang$core$Native_Platform.sendToSelf,

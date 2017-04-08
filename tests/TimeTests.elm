@@ -80,6 +80,24 @@ everyProgram =
         |> Html.program
 
 
+onceProgram : Program Never (List Time) Time
+onceProgram =
+    { init = ( [], Cmd.none )
+    , update =
+        \msg model -> ( msg :: model, Cmd.none )
+    , subscriptions =
+        \model ->
+            case model of
+                [] ->
+                    Time.every (sec 1) identity
+
+                _ ->
+                    Sub.none
+    , view = \_ -> Html.text ""
+    }
+        |> Html.program
+
+
 sec : Float -> Time
 sec =
     (*) Time.second
@@ -177,5 +195,13 @@ all =
                         |> TestContext.expect
                             TestContext.model
                             (Expect.equal "INIT;1000;2000")
+            , test "can be unsubscribed" <|
+                \() ->
+                    onceProgram
+                        |> TestContext.start
+                        |> TestContext.advanceTime (sec 2)
+                        |> TestContext.expect
+                            TestContext.model
+                            (Expect.equal [ 1000 ])
             ]
         ]

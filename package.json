@@ -14,6 +14,7 @@
       "_elm_lang$core$Native_Utils",
       "_elm_lang$core$Platform$sendToApp",
       "_elm_lang$core$Platform$sendToSelf",
+      "_elm_lang$core$Process$kill",
       "_elm_lang$core$Process$sleep",
       "_elm_lang$core$Process$spawn",
       "_elm_lang$core$Task$andThen",

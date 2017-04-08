@@ -30,8 +30,9 @@ import Http
 import Json.Encode
 import Mapper exposing (Mapper)
 import PairingHeap exposing (PairingHeap)
+import Set exposing (Set)
 import Testable.EffectManager as EffectManager exposing (EffectManager)
-import Testable.Task exposing (fromPlatformTask, Task(..))
+import Testable.Task exposing (fromPlatformTask, Task(..), ProcessId(..))
 import Time exposing (Time)
 
 
@@ -82,9 +83,11 @@ type TestContext model msg
         , outgoingPortValues : Dict String (List Json.Encode.Value)
         , mockTasks : Dict String (MockTaskState msg)
         , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task Never msg)
-        , futureTasks : PairingHeap Time (Task Never msg)
+        , futureTasks : PairingHeap Time ( ProcessId, Task Never msg )
         , now : Time
         , sequence : Int
+        , nextProcessId : Int
+        , killedProcesses : Set Int
         , processMailboxes : DefaultDict String (Fifo ( Int, EffectManager.Message ))
         , workQueue : Fifo String
         , effectManagerStates : Dict String EffectManager.State
@@ -245,7 +248,7 @@ start getProgram =
 
         initEffectManagers context =
             Dict.foldl
-                (\home em -> processTask (initEffectManager home em))
+                (\home em -> processTask (ProcessId -1) (initEffectManager home em))
                 context
                 (EffectManager.extractEffectManagers ())
     in
@@ -258,6 +261,8 @@ start getProgram =
             , futureTasks = PairingHeap.empty
             , now = 0
             , sequence = 0
+            , nextProcessId = 1
+            , killedProcesses = Set.empty
             , processMailboxes = DefaultDict.empty Fifo.empty
             , workQueue = Fifo.empty
             , effectManagerStates = Dict.empty
@@ -316,7 +321,7 @@ processMessage home message (TestContext context) =
                 |> Testable.Task.andThen (NewEffectManagerState "onSelfMsg" home)
     in
         TestContext context
-            |> processTask newStateTask
+            |> processTask (ProcessId 0) newStateTask
 
 
 enqueueMessage : String -> EffectManager.Message -> TestContext model msg -> TestContext model msg
@@ -344,20 +349,25 @@ dispatchEffects cmd sub (TestContext context) =
         subs =
             extractSubs sub
 
-        fx =
+        fxs =
             Dict.merge
-                (\home c -> (::) ( home, EffectManager.Fx c [] ))
-                (\home c s -> (::) ( home, EffectManager.Fx c s ))
-                (\home s -> (::) ( home, EffectManager.Fx [] s ))
+                (\home c -> Dict.insert home <| EffectManager.Fx c [])
+                (\home c s -> Dict.insert home <| EffectManager.Fx c s)
+                (\home s -> Dict.insert home <| EffectManager.Fx [] s)
                 cmds.effectManagers
                 subs.effectManagers
-                []
+                Dict.empty
 
-        applyEffects c =
-            fx
-                |> List.foldl (\( home, message ) -> enqueueMessage home message) c
-
-        -- TODO: update effect managers that previously had Subs but don't anymore
+        -- We iterate all effect managers (not just the ones we have fx for)
+        -- because there might be some that are no longer subscribed to that
+        -- were previously subscribed to.
+        applyEffects =
+            Dict.merge
+                (\home em -> enqueueMessage home <| EffectManager.Fx [] [])
+                (\home em fx -> enqueueMessage home fx)
+                (\home fx -> Debug.crash <| "Missing effect manager: " ++ home)
+                (EffectManager.extractEffectManagers ())
+                fxs
     in
         TestContext
             { context
@@ -371,7 +381,7 @@ dispatchEffects cmd sub (TestContext context) =
                         context.outgoingPortValues
             }
             |> applyEffects
-            |> flip (List.foldl processTask) cmds.tasks
+            |> flip (List.foldl (processTask (ProcessId -2))) cmds.tasks
 
 
 {-| This is a workaround for https://github.com/elm-lang/elm-compiler/issues/1287
@@ -384,16 +394,16 @@ To avoid this, processTask should call processTask_preventTailCallOptimization
 instead of calling itself, which will prevent the tail call optimization, and
 prevent the bug from being triggered.
 -}
-processTask_preventTailCallOptimization : Task Never msg -> TestContext model msg -> TestContext model msg
+processTask_preventTailCallOptimization : ProcessId -> Task Never msg -> TestContext model msg -> TestContext model msg
 processTask_preventTailCallOptimization =
     processTask
 
 
-processTask : Task Never msg -> TestContext model msg -> TestContext model msg
-processTask task (TestContext context_) =
+processTask : ProcessId -> Task Never msg -> TestContext model msg -> TestContext model msg
+processTask pid task (TestContext context_) =
     let
         _ =
-            debug "processTask" task
+            debug ("processTask:" ++ toString pid) task
 
         context =
             { context_
@@ -422,7 +432,7 @@ processTask task (TestContext context_) =
                     { context
                         | futureTasks =
                             context.futureTasks
-                                |> PairingHeap.insert (context.now + delay) (next ())
+                                |> PairingHeap.insert (context.now + delay) ( pid, next () )
                     }
 
             HttpTask options next ->
@@ -436,23 +446,27 @@ processTask task (TestContext context_) =
                     }
 
             SpawnedTask task next ->
-                TestContext context
-                    -- ??? which order should these be processed in?
-                    -- ??? ideally nothing should depened on the order, but maybe we should
-                    -- ??? simulate the same order that the Elm runtime would result in?
-                    |> processTask
-                        (task
-                            |> Testable.Task.map never
-                            |> Testable.Task.mapError never
-                        )
-                    |> processTask_preventTailCallOptimization next
+                let
+                    spawnedProcessId =
+                        ProcessId context.nextProcessId
+                in
+                    TestContext { context | nextProcessId = context.nextProcessId + 1 }
+                        -- ??? which order should these be processed in?
+                        -- ??? ideally nothing should depened on the order, but maybe we should
+                        -- ??? simulate the same order that the Elm runtime would result in?
+                        |> processTask spawnedProcessId (task |> Testable.Task.map never)
+                        |> processTask_preventTailCallOptimization pid (next spawnedProcessId)
 
             NeverTask ->
                 TestContext context
 
+            Core_NativeScheduler_kill (ProcessId processId) next ->
+                TestContext { context | killedProcesses = Set.insert processId context.killedProcesses }
+                    |> processTask_preventTailCallOptimization pid next
+
             NowTask next ->
                 TestContext context
-                    |> processTask_preventTailCallOptimization (next context.now)
+                    |> processTask_preventTailCallOptimization pid (next context.now)
 
             Core_Time_setInterval delay recurringTask ->
                 let
@@ -462,17 +476,17 @@ processTask task (TestContext context_) =
                             |> Testable.Task.mapError never
                 in
                     TestContext context
-                        |> processTask_preventTailCallOptimization (step ())
+                        |> processTask_preventTailCallOptimization pid (step ())
 
             ToApp msg next ->
                 TestContext context
                     |> update (EffectManager.unwrapAppMsg msg)
-                    |> processTask_preventTailCallOptimization next
+                    |> processTask_preventTailCallOptimization pid next
 
             ToEffectManager home selfMsg next ->
                 TestContext context
                     |> enqueueMessage home (EffectManager.Self selfMsg)
-                    |> processTask_preventTailCallOptimization next
+                    |> processTask_preventTailCallOptimization pid next
 
             NewEffectManagerState junk home newState ->
                 TestContext
@@ -594,7 +608,7 @@ resolveMockTask mock result (TestContext context) =
                                     | mockTasks =
                                         Dict.insert label (Resolved <| toString result) context.mockTasks
                                 }
-                                |> processTask next
+                                |> processTask (ProcessId -3) next
                          -- TODO: drain work queue
                         )
 
@@ -681,18 +695,21 @@ advanceTime dt (TestContext context) =
 
 advanceTimeUntil : Time -> TestContext model msg -> TestContext model msg
 advanceTimeUntil targetTime (TestContext context) =
-    case PairingHeap.findMin context.futureTasks of
+    case PairingHeap.findMin (debug ("advanceTimeUntil:" ++ toString targetTime) context.futureTasks) of
         Nothing ->
             TestContext { context | now = targetTime }
 
-        Just ( time, next ) ->
-            if time <= targetTime then
+        Just ( time, ( ProcessId processId, next ) ) ->
+            if Set.member processId (debug "killedProcesses" context.killedProcesses) then
+                TestContext { context | futureTasks = PairingHeap.deleteMin context.futureTasks }
+                    |> advanceTimeUntil targetTime
+            else if time <= targetTime then
                 TestContext
                     { context
                         | futureTasks = PairingHeap.deleteMin context.futureTasks
                         , now = time
                     }
-                    |> processTask next
+                    |> processTask (ProcessId processId) next
                     |> drainWorkQueue
                     |> advanceTimeUntil targetTime
             else
@@ -728,7 +745,7 @@ resolveHttpRequest method url responseBody (TestContext context) =
         Just next ->
             Ok <|
                 -- TODO: need to drain the work queue
-                processTask
+                processTask (ProcessId -4)
                     (next <|
                         { url = "TODO: not implemented yet"
                         , status = { code = 200, message = "OK" }
