@@ -17,7 +17,7 @@ module TestContextWithMocks
         , expect
         )
 
-{-| This is a TestContext that allows mock Tasks.  You probably want to use
+{-| This is a TestContext that allows mock Tasks. You probably want to use
 the `TestContext` module instead unless you are really sure of what you are doing.
 -}
 
@@ -384,7 +384,7 @@ dispatchEffects cmd sub (TestContext context) =
             |> flip (List.foldl (processTask (ProcessId -2))) cmds.tasks
 
 
-{-| This is a workaround for https://github.com/elm-lang/elm-compiler/issues/1287
+{-| This is a workaround for <https://github.com/elm-lang/elm-compiler/issues/1287>
 
 If processTask gets tail call optimization applied, then due to elm-compiler#1287,
 when resolving tasks that are produced by the callback of another task, the variables
@@ -393,6 +393,7 @@ in the call stack can get mutated and refer to the wrong objects.
 To avoid this, processTask should call processTask_preventTailCallOptimization
 instead of calling itself, which will prevent the tail call optimization, and
 prevent the bug from being triggered.
+
 -}
 processTask_preventTailCallOptimization : ProcessId -> Task Never msg -> TestContext model msg -> TestContext model msg
 processTask_preventTailCallOptimization =
@@ -649,8 +650,7 @@ send subPort value (TestContext context) =
                     mappers
 
 
-{-|
-If `cmd` is a batch, then this will return True only if all Cmds in the batch
+{-| If `cmd` is a batch, then this will return True only if all Cmds in the batch
 are pending.
 -}
 hasPendingCmd : Cmd msg -> TestContext model msg -> Bool

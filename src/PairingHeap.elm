@@ -13,14 +13,21 @@ module PairingHeap
 {-| This is a simple pairing heap implementation written in Elm usable as a priority queue. This code is
 based heavily on the pseudocode available at [the Wikipedia page](https://en.wikipedia.org/wiki/Pairing_heap).
 
+
 # Type and Constructor
+
 @docs PairingHeap, empty
 
+
 # Operations
+
 @docs insert, merge, findMin, deleteMin
 
+
 # Convenience functions
+
 @docs fromList, toSortedList
+
 -}
 
 
@@ -40,7 +47,9 @@ empty =
 
 {-| Find the minimum value in a heap returning Nothing if the heap is empty.
 Complexity: O(1)
+
     findMin (fromList [(10, ()), (3, ()), (8, ())]) == Just 3
+
 -}
 findMin : PairingHeap comparable a -> Maybe ( comparable, a )
 findMin x =

@@ -8,34 +8,19 @@ module Testable.Task
         , andThen
         )
 
-{-|
-`Testable.Task` can be generated from a elm-lang/core Task and is used
+{-| `Testable.Task` can be generated from a elm-lang/core Task and is used
 internally by elm-testable to inspect and simulate Tasks.
 
+
 # Inspecting elm-lang/core tasks
-@docs fromPlatformTask, Task, Binding
 
+@docs fromPlatformTask, Task, ProcessId
 
-# Unnecessary implementation
-
-The following are all an unnecessary reimplementation of most of the Task API.
-This is here simply as a helpful check to make sure everything compiles and
-makes sense when refactoring Testable.Task.
 
 ## Basics
-@docs Task, succeed, fail
 
-## Mapping
-@docs map
+@docs map, andThen, mapError
 
-## Chaining
-@docs andThen
-
-## Errors
-@docs mapError, toMaybe, toResult
-
-## Threads
-@docs sleep
 -}
 
 import Native.Testable.Task
@@ -87,6 +72,7 @@ type Task error success
 {-| Transform a task.
 
     map sqrt (succeed 9) == succeed 3
+
 -}
 map : (a -> b) -> Task x a -> Task x b
 map f source =
@@ -105,6 +91,7 @@ task then gets run.
 
 This is useful for chaining tasks together. Maybe you need to get a user from
 your servers *and then* lookup their picture once you know their name.
+
 -}
 andThen : (a -> Task x b) -> Task x a -> Task x b
 andThen f source =
@@ -156,11 +143,14 @@ andThen f source =
 {-| Transform the error value. This can be useful if you need a bunch of error
 types to match up.
 
-    type Error = Http Http.Error | WebGL WebGL.Error
+    type Error
+        = Http Http.Error
+        | WebGL WebGL.Error
 
     getResources : Task Error Resource
     getResources =
         sequence [ mapError Http serverTask, mapError WebGL textureTask ]
+
 -}
 mapError : (x -> y) -> Task x a -> Task y a
 mapError f =
