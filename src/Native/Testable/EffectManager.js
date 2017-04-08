@@ -13,10 +13,7 @@ var _user$project$Native_Testable_EffectManager = // eslint-disable-line no-unus
        effectManagers[home] = {
          pkg: effectManager.pkg,
          init: effectManager.init,
-         onSelfMsg: F2(function (msg, state) {
-           // TODO: this could be curried
-           return effectManager.onSelfMsg(router)(msg)(state)
-         }),
+         onSelfMsg: effectManager.onSelfMsg(router),
          onEffects: F3(function (cmds, subs, state) {
            switch (effectManager.tag) {
              case 'sub':
