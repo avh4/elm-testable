@@ -464,7 +464,7 @@ processTask pid task (TestContext context_) =
                 TestContext { context | killedProcesses = Set.insert processId context.killedProcesses }
                     |> processTask_preventTailCallOptimization pid next
 
-            NowTask next ->
+            Core_Time_now next ->
                 TestContext context
                     |> processTask_preventTailCallOptimization pid (next context.now)
 

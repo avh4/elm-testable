@@ -99,7 +99,7 @@ if (typeof _elm_lang$core$Time$now === 'undefined') { // eslint-disable-line cam
 }
 
 _elm_lang$core$Time$now.elmTestable = {
-  ctor: 'NowTask',
+  ctor: 'Core_Time_now',
   _0: function (v) {
     return { ctor: 'Success', _0: v }
   }

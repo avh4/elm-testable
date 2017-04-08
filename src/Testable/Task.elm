@@ -74,7 +74,7 @@ type Task error success
     | SpawnedTask (Task Never Never) (ProcessId -> Task error success)
     | NeverTask
     | Core_NativeScheduler_kill ProcessId (Task error success)
-    | NowTask (Time -> Task error success)
+    | Core_Time_now (Time -> Task error success)
     | Core_Time_setInterval Time (Task Never ())
     | ToApp EffectManager.AppMsg (Task error success)
     | ToEffectManager String EffectManager.SelfMsg (Task error success)
@@ -130,8 +130,8 @@ andThen f source =
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> andThen f)
 
-        NowTask next ->
-            NowTask (next >> andThen f)
+        Core_Time_now next ->
+            Core_Time_now (next >> andThen f)
 
         Core_Time_setInterval delay task ->
             Core_Time_setInterval delay task
@@ -191,8 +191,8 @@ onError f source =
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> onError f)
 
-        NowTask next ->
-            NowTask (next >> onError f)
+        Core_Time_now next ->
+            Core_Time_now (next >> onError f)
 
         Core_Time_setInterval delay task ->
             Core_Time_setInterval delay task
@@ -257,8 +257,8 @@ toResult source =
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> toResult)
 
-        NowTask next ->
-            NowTask (next >> toResult)
+        Core_Time_now next ->
+            Core_Time_now (next >> toResult)
 
         Core_Time_setInterval delay task ->
             Core_Time_setInterval delay task
