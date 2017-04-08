@@ -45,8 +45,8 @@ if (typeof _elm_lang$core$Native_Scheduler.spawn === 'undefined') { // eslint-di
 var realSpawn = _elm_lang$core$Native_Scheduler.spawn
 _elm_lang$core$Native_Scheduler.spawn = function (task) {
   var real = realSpawn(task)
-  var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'NeverTask' } })(task)
-  var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'NeverTask' } })(t1)
+  var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'IgnoredTask' } })(task)
+  var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'IgnoredTask' } })(t1)
   var t = _user$project$Native_Testable_Task.fromPlatformTask(t2)
   real.elmTestable = {
     ctor: 'SpawnedTask',
@@ -185,7 +185,7 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
       case 'SleepTask':
       case 'HttpTask':
       case 'SpawnedTask':
-      case 'NeverTask':
+      case 'IgnoredTask':
         return task
 
       case '_Task_nativeBinding':

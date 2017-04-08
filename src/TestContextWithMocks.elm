@@ -457,7 +457,7 @@ processTask pid task (TestContext context_) =
                         |> processTask spawnedProcessId (task |> Testable.Task.map never)
                         |> processTask_preventTailCallOptimization pid (next spawnedProcessId)
 
-            NeverTask ->
+            IgnoredTask ->
                 TestContext context
 
             Core_NativeScheduler_kill (ProcessId processId) next ->

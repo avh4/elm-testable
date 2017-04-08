@@ -72,7 +72,7 @@ type Task error success
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
     | MockTask String (Mapper (Task error success))
     | SpawnedTask (Task Never Never) (ProcessId -> Task error success)
-    | NeverTask
+    | IgnoredTask
     | Core_NativeScheduler_kill ProcessId (Task error success)
     | Core_Time_now (Time -> Task error success)
     | Core_Time_setInterval Time (Task Never ())
@@ -124,8 +124,8 @@ andThen f source =
         SpawnedTask task next ->
             SpawnedTask task (next >> andThen f)
 
-        NeverTask ->
-            NeverTask
+        IgnoredTask ->
+            IgnoredTask
 
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> andThen f)
@@ -185,8 +185,8 @@ onError f source =
         SpawnedTask task next ->
             SpawnedTask task (next >> onError f)
 
-        NeverTask ->
-            NeverTask
+        IgnoredTask ->
+            IgnoredTask
 
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> onError f)
@@ -251,8 +251,8 @@ toResult source =
         SpawnedTask task next ->
             SpawnedTask task (next >> toResult)
 
-        NeverTask ->
-            NeverTask
+        IgnoredTask ->
+            IgnoredTask
 
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> toResult)
