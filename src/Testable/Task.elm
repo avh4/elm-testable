@@ -71,8 +71,8 @@ type Task error success
     | SleepTask Time (() -> Task error success)
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
     | MockTask String (Mapper (Task error success))
-    | SpawnedTask (Task Never Never) (ProcessId -> Task error success)
     | IgnoredTask
+    | Core_NativeScheduler_spawn (Task Never Never) (ProcessId -> Task error success)
     | Core_NativeScheduler_kill ProcessId (Task error success)
     | Core_Time_now (Time -> Task error success)
     | Core_Time_setInterval Time (Task Never ())
@@ -121,11 +121,11 @@ andThen f source =
         HttpTask options next ->
             HttpTask options (next >> andThen f)
 
-        SpawnedTask task next ->
-            SpawnedTask task (next >> andThen f)
-
         IgnoredTask ->
             IgnoredTask
+
+        Core_NativeScheduler_spawn task next ->
+            Core_NativeScheduler_spawn task (next >> andThen f)
 
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> andThen f)
@@ -182,11 +182,11 @@ onError f source =
         HttpTask options next ->
             HttpTask options (next >> onError f)
 
-        SpawnedTask task next ->
-            SpawnedTask task (next >> onError f)
-
         IgnoredTask ->
             IgnoredTask
+
+        Core_NativeScheduler_spawn task next ->
+            Core_NativeScheduler_spawn task (next >> onError f)
 
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> onError f)
@@ -248,11 +248,11 @@ toResult source =
         HttpTask options next ->
             HttpTask options (next >> toResult)
 
-        SpawnedTask task next ->
-            SpawnedTask task (next >> toResult)
-
         IgnoredTask ->
             IgnoredTask
+
+        Core_NativeScheduler_spawn task next ->
+            Core_NativeScheduler_spawn task (next >> toResult)
 
         Core_NativeScheduler_kill processId next ->
             Core_NativeScheduler_kill processId (next |> toResult)

@@ -41,20 +41,18 @@ if (typeof _elm_lang$core$Native_Scheduler.spawn === 'undefined') { // eslint-di
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Native_Scheduler: this shouldn\'t happen because Testable.Task imports Task.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
-// TODO: _elm_lang$core$Process$spawn just calls this, so only override this and leave Process.spawn alone
-var realSpawn = _elm_lang$core$Native_Scheduler.spawn
-_elm_lang$core$Native_Scheduler.spawn = function (task) {
-  var real = realSpawn(task)
-  var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'IgnoredTask' } })(task)
-  var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'IgnoredTask' } })(t1)
-  var t = _user$project$Native_Testable_Task.fromPlatformTask(t2)
-  real.elmTestable = {
-    ctor: 'SpawnedTask',
-    _0: t,
-    _1: function (processId) { return { ctor: 'Success', _0: processId } }
+_elm_lang$core$Native_Scheduler.spawn = setItUp(
+  _elm_lang$core$Native_Scheduler.spawn,
+  function (task) {
+    var t1 = _elm_lang$core$Task$andThen(function (x) { return { ctor: 'IgnoredTask' } })(task)
+    var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'IgnoredTask' } })(t1)
+    return {
+      ctor: 'Core_NativeScheduler_spawn',
+      _0: _user$project$Native_Testable_Task.fromPlatformTask(t2),
+      _1: function (processId) { return { ctor: 'Success', _0: processId } }
+    }
   }
-  return real
-}
+)
 _elm_lang$core$Process$spawn = _elm_lang$core$Native_Scheduler.spawn // eslint-disable-line no-global-assign, camelcase
 
 _elm_lang$core$Native_Scheduler.kill = setItUp(
@@ -182,9 +180,7 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
         })(next_)
 
       case 'MockTask':
-      case 'SleepTask':
       case 'HttpTask':
-      case 'SpawnedTask':
       case 'IgnoredTask':
         return task
 

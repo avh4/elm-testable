@@ -445,7 +445,10 @@ processTask pid task (TestContext context_) =
                                     next
                     }
 
-            SpawnedTask task next ->
+            IgnoredTask ->
+                TestContext context
+
+            Core_NativeScheduler_spawn task next ->
                 let
                     spawnedProcessId =
                         ProcessId context.nextProcessId
@@ -456,9 +459,6 @@ processTask pid task (TestContext context_) =
                         -- ??? simulate the same order that the Elm runtime would result in?
                         |> processTask spawnedProcessId (task |> Testable.Task.map never)
                         |> processTask_preventTailCallOptimization pid (next spawnedProcessId)
-
-            IgnoredTask ->
-                TestContext context
 
             Core_NativeScheduler_kill (ProcessId processId) next ->
                 TestContext { context | killedProcesses = Set.insert processId context.killedProcesses }
