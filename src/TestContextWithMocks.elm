@@ -769,8 +769,7 @@ expect : (TestContext model msg -> a) -> (a -> Expectation) -> TestContext model
 expect get check (TestContext context) =
     case Expect.getFailure (get (TestContext context) |> check) of
         Nothing ->
-            ( Expect.pass, Debug.log (String.concat (List.reverse context.transcript |> List.map (toString >> (++) "  - " >> flip (++) "\n"))) "" )
-                |> Tuple.first
+            Expect.pass
 
         Just { given, message } ->
             Expect.fail <|
