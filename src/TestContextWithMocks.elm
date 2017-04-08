@@ -419,6 +419,9 @@ processTask pid task (TestContext context_) =
             Failure x ->
                 never x
 
+            IgnoredTask ->
+                TestContext context
+
             MockTask label mapper ->
                 TestContext
                     { context
@@ -427,18 +430,21 @@ processTask pid task (TestContext context_) =
                                 |> Dict.insert label (Pending mapper)
                     }
 
-            HttpTask options next ->
+            ToApp msg next ->
+                TestContext context
+                    |> update (EffectManager.unwrapAppMsg msg)
+                    |> processTask_preventTailCallOptimization pid next
+
+            ToEffectManager home selfMsg next ->
+                TestContext context
+                    |> enqueueMessage home (EffectManager.Self selfMsg)
+                    |> processTask_preventTailCallOptimization pid next
+
+            NewEffectManagerState junk home newState ->
                 TestContext
                     { context
-                        | pendingHttpRequests =
-                            context.pendingHttpRequests
-                                |> Dict.insert
-                                    ( options.method, options.url )
-                                    next
+                        | effectManagerStates = Dict.insert home newState context.effectManagerStates
                     }
-
-            IgnoredTask ->
-                TestContext context
 
             Core_NativeScheduler_sleep delay next ->
                 TestContext
@@ -478,20 +484,14 @@ processTask pid task (TestContext context_) =
                     TestContext context
                         |> processTask_preventTailCallOptimization pid (step ())
 
-            ToApp msg next ->
-                TestContext context
-                    |> update (EffectManager.unwrapAppMsg msg)
-                    |> processTask_preventTailCallOptimization pid next
-
-            ToEffectManager home selfMsg next ->
-                TestContext context
-                    |> enqueueMessage home (EffectManager.Self selfMsg)
-                    |> processTask_preventTailCallOptimization pid next
-
-            NewEffectManagerState junk home newState ->
+            Http_NativeHttp_toTask options next ->
                 TestContext
                     { context
-                        | effectManagerStates = Dict.insert home newState context.effectManagerStates
+                        | pendingHttpRequests =
+                            context.pendingHttpRequests
+                                |> Dict.insert
+                                    ( options.method, options.url )
+                                    next
                     }
 
 

@@ -143,7 +143,7 @@ _elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) { // es
         throw new Error('Unknown Http.Expect type: ' + request.expect.responseType)
     }
   }
-  return { ctor: 'HttpTask', _0: options, _1: callback }
+  return { ctor: 'Http_NativeHttp_toTask', _0: options, _1: callback }
 })
 
 var _user$project$Native_Testable_Task = (function () { // eslint-disable-line no-unused-vars, camelcase
@@ -181,7 +181,7 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
         })(next_)
 
       case 'MockTask':
-      case 'HttpTask':
+      case 'Http_NativeHttp_toTask':
       case 'IgnoredTask':
         return task
 

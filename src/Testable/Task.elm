@@ -68,17 +68,20 @@ later.
 type Task error success
     = Success success
     | Failure error
-    | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
-    | MockTask String (Mapper (Task error success))
+      -- Special task types that elm-testable uses internally
     | IgnoredTask
+    | MockTask String (Mapper (Task error success))
+    | ToApp EffectManager.AppMsg (Task error success)
+    | ToEffectManager String EffectManager.SelfMsg (Task error success)
+    | NewEffectManagerState String String EffectManager.State -- first String is for debugging
+      -- Native binding tasks in elm-lang/core
     | Core_NativeScheduler_sleep Time (() -> Task error success)
     | Core_NativeScheduler_spawn (Task Never Never) (ProcessId -> Task error success)
     | Core_NativeScheduler_kill ProcessId (Task error success)
     | Core_Time_now (Time -> Task error success)
     | Core_Time_setInterval Time (Task Never ())
-    | ToApp EffectManager.AppMsg (Task error success)
-    | ToEffectManager String EffectManager.SelfMsg (Task error success)
-    | NewEffectManagerState String String EffectManager.State -- first String is for debugging
+      -- Native binding tasks in elm-lang/http
+    | Http_NativeHttp_toTask { method : String, url : String } (Http.Response String -> Task error success)
 
 
 {-| Transform a task.
@@ -112,14 +115,20 @@ andThen f source =
         Failure x ->
             Failure x
 
+        IgnoredTask ->
+            IgnoredTask
+
         MockTask tag mapper ->
             MockTask tag (mapper |> Mapper.map (andThen f))
 
-        HttpTask options next ->
-            HttpTask options (next >> andThen f)
+        ToApp msg next ->
+            ToApp msg (next |> andThen f)
 
-        IgnoredTask ->
-            IgnoredTask
+        ToEffectManager home msg next ->
+            ToEffectManager home msg (next |> andThen f)
+
+        NewEffectManagerState junk home msg ->
+            NewEffectManagerState junk home msg
 
         Core_NativeScheduler_sleep time next ->
             Core_NativeScheduler_sleep time (next >> andThen f)
@@ -136,14 +145,8 @@ andThen f source =
         Core_Time_setInterval delay task ->
             Core_Time_setInterval delay task
 
-        ToApp msg next ->
-            ToApp msg (next |> andThen f)
-
-        ToEffectManager home msg next ->
-            ToEffectManager home msg (next |> andThen f)
-
-        NewEffectManagerState junk home msg ->
-            NewEffectManagerState junk home msg
+        Http_NativeHttp_toTask options next ->
+            Http_NativeHttp_toTask options (next >> andThen f)
 
 
 
@@ -173,14 +176,20 @@ onError f source =
         Failure x ->
             f x
 
+        IgnoredTask ->
+            IgnoredTask
+
         MockTask tag mapper ->
             MockTask tag (mapper |> Mapper.map (onError f))
 
-        HttpTask options next ->
-            HttpTask options (next >> onError f)
+        ToApp msg next ->
+            ToApp msg (next |> onError f)
 
-        IgnoredTask ->
-            IgnoredTask
+        ToEffectManager home msg next ->
+            ToEffectManager home msg (next |> onError f)
+
+        NewEffectManagerState junk home msg ->
+            NewEffectManagerState junk home msg
 
         Core_NativeScheduler_sleep time next ->
             Core_NativeScheduler_sleep time (next >> onError f)
@@ -197,11 +206,5 @@ onError f source =
         Core_Time_setInterval delay task ->
             Core_Time_setInterval delay task
 
-        ToApp msg next ->
-            ToApp msg (next |> onError f)
-
-        ToEffectManager home msg next ->
-            ToEffectManager home msg (next |> onError f)
-
-        NewEffectManagerState junk home msg ->
-            NewEffectManagerState junk home msg
+        Http_NativeHttp_toTask options next ->
+            Http_NativeHttp_toTask options (next >> onError f)
