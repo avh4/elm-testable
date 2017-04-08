@@ -7,7 +7,7 @@ import TestContext exposing (TestContext)
 import Test.EffectManager
 
 
-program : Cmd String -> Sub String -> TestContext String String
+program : Cmd String -> Sub String -> Program Never String String
 program cmd sub =
     { init =
         ( "INIT"
@@ -29,7 +29,6 @@ program cmd sub =
     , view = \_ -> Html.text ""
     }
         |> Html.program
-        |> TestContext.start
 
 
 prefix : String -> String -> String
@@ -45,6 +44,7 @@ all =
                 program
                     (Test.EffectManager.getState identity)
                     (Sub.none)
+                    |> TestContext.start
                     |> TestContext.expect
                         (TestContext.model)
                         (Expect.equal "INIT;(INIT)")
@@ -53,6 +53,7 @@ all =
                 program
                     (Cmd.none)
                     (Test.EffectManager.subState identity)
+                    |> TestContext.start
                     |> TestContext.update "PING"
                     |> TestContext.expect
                         (TestContext.model)
@@ -62,6 +63,7 @@ all =
                 program
                     (Cmd.map (prefix "a") <| Test.EffectManager.getState identity)
                     (Sub.none)
+                    |> TestContext.start
                     |> TestContext.expect
                         (TestContext.model)
                         (Expect.equal "INIT;a(INIT)")
@@ -70,6 +72,7 @@ all =
                 program
                     (Cmd.none)
                     (Sub.map (prefix "b") <| Test.EffectManager.subState identity)
+                    |> TestContext.start
                     |> TestContext.update "PING"
                     |> TestContext.expect
                         (TestContext.model)
@@ -79,6 +82,7 @@ all =
                 program
                     (Test.EffectManager.updateSelf "UP")
                     (Sub.none)
+                    |> TestContext.start
                     |> TestContext.update "GET"
                     |> TestContext.expect
                         (TestContext.model)

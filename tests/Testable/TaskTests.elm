@@ -1,10 +1,25 @@
 module Testable.TaskTests exposing (all)
 
 import Test exposing (..)
-import Expect
+import Expect exposing (Expectation)
 import Task as PlatformTask
 import Testable.Task exposing (..)
+import Time exposing (Time)
 import Process
+
+
+expectSleepTask : Time -> (Task x a -> Expectation) -> Task x a -> Expectation
+expectSleepTask expectedDelay checkNext task =
+    case task of
+        SleepTask delay next ->
+            Expect.all
+                [ always delay >> Expect.equal expectedDelay
+                , next >> checkNext
+                ]
+                ()
+
+        _ ->
+            Expect.fail ("Expected (SleepTask " ++ toString expectedDelay ++ " ...), but got: " ++ toString task)
 
 
 all : Test
@@ -25,7 +40,7 @@ all =
                 \() ->
                     Process.sleep 5
                         |> fromPlatformTask
-                        |> Expect.equal (SleepTask 5 <| Success ())
+                        |> expectSleepTask 5 (Expect.equal <| Success ())
             , describe "map"
                 [ test "with succeed" <|
                     \() ->
@@ -44,7 +59,7 @@ all =
                         Process.sleep 5
                             |> PlatformTask.map Ok
                             |> fromPlatformTask
-                            |> Expect.equal (SleepTask 5 <| Success <| Ok ())
+                            |> expectSleepTask 5 (Expect.equal <| Success <| Ok ())
                 , test "with chained tasks" <|
                     \() ->
                         Process.sleep 1
@@ -52,7 +67,7 @@ all =
                             |> PlatformTask.andThen (\_ -> Process.sleep 3)
                             |> PlatformTask.map Just
                             |> fromPlatformTask
-                            |> Expect.equal (SleepTask 1 <| SleepTask 2 <| SleepTask 3 <| Success (Just ()))
+                            |> expectSleepTask 1 (expectSleepTask 2 <| expectSleepTask 3 <| Expect.equal <| Success (Just ()))
                 ]
             , describe "andThen"
                 [ test "with succeed" <|
@@ -60,7 +75,7 @@ all =
                         PlatformTask.succeed 7
                             |> PlatformTask.andThen Process.sleep
                             |> fromPlatformTask
-                            |> Expect.equal (SleepTask 7 <| Success ())
+                            |> expectSleepTask 7 (Expect.equal <| Success ())
                 , test "with fail" <|
                     \() ->
                         PlatformTask.fail "X"
@@ -73,7 +88,7 @@ all =
                             |> PlatformTask.map (always 7)
                             |> PlatformTask.andThen Process.sleep
                             |> fromPlatformTask
-                            |> Expect.equal (SleepTask 2 <| SleepTask 7 <| Success ())
+                            |> expectSleepTask 2 (expectSleepTask 7 <| Expect.equal <| Success ())
                 , test "chained tasks" <|
                     \() ->
                         (Process.sleep 2 |> PlatformTask.map (always 7))
@@ -81,7 +96,7 @@ all =
                             |> PlatformTask.andThen (Process.sleep >> PlatformTask.map (always 20))
                             |> PlatformTask.map ((+) 10)
                             |> fromPlatformTask
-                            |> Expect.equal (SleepTask 2 <| SleepTask 17 <| Success 30)
+                            |> expectSleepTask 2 (expectSleepTask 17 <| Expect.equal <| Success 30)
                 ]
             , describe "onError"
                 [ test "with succeed" <|
@@ -95,7 +110,7 @@ all =
                         PlatformTask.fail 9
                             |> PlatformTask.onError Process.sleep
                             |> fromPlatformTask
-                            |> Expect.equal (SleepTask 9 <| Success ())
+                            |> expectSleepTask 9 (Expect.equal <| Success ())
                 ]
             ]
         ]

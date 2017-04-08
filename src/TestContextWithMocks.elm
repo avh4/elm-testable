@@ -37,8 +37,9 @@ import Time exposing (Time)
 
 debug : String -> a -> a
 debug label =
-    -- Debug.log label
-    identity
+    ( identity, Debug.log label )
+        -- Change to Tuple.second to enable debug output
+        |> Tuple.first
 
 
 type alias TestableProgram model msg =
@@ -373,6 +374,21 @@ dispatchEffects cmd sub (TestContext context) =
             |> flip (List.foldl processTask) cmds.tasks
 
 
+{-| This is a workaround for https://github.com/elm-lang/elm-compiler/issues/1287
+
+If processTask gets tail call optimization applied, then due to elm-compiler#1287,
+when resolving tasks that are produced by the callback of another task, the variables
+in the call stack can get mutated and refer to the wrong objects.
+
+To avoid this, processTask should call processTask_preventTailCallOptimization
+instead of calling itself, which will prevent the tail call optimization, and
+prevent the bug from being triggered.
+-}
+processTask_preventTailCallOptimization : Task Never msg -> TestContext model msg -> TestContext model msg
+processTask_preventTailCallOptimization =
+    processTask
+
+
 processTask : Task Never msg -> TestContext model msg -> TestContext model msg
 processTask task (TestContext context_) =
     let
@@ -406,7 +422,7 @@ processTask task (TestContext context_) =
                     { context
                         | futureTasks =
                             context.futureTasks
-                                |> PairingHeap.insert (context.now + delay) next
+                                |> PairingHeap.insert (context.now + delay) (next ())
                     }
 
             HttpTask options next ->
@@ -429,33 +445,34 @@ processTask task (TestContext context_) =
                             |> Testable.Task.map never
                             |> Testable.Task.mapError never
                         )
-                    |> processTask next
+                    |> processTask_preventTailCallOptimization next
 
             NeverTask ->
                 TestContext context
 
             NowTask next ->
                 TestContext context
-                    |> processTask (next context.now)
+                    |> processTask_preventTailCallOptimization (next context.now)
 
             Core_Time_setInterval delay recurringTask ->
-                TestContext context
-                    |> processTask
-                        -- TODO: recur
-                        (SleepTask delay recurringTask
-                            |> Testable.Task.andThen (always NeverTask)
+                let
+                    step () =
+                        SleepTask delay (\() -> recurringTask)
+                            |> Testable.Task.andThen step
                             |> Testable.Task.mapError never
-                        )
+                in
+                    TestContext context
+                        |> processTask_preventTailCallOptimization (step ())
 
             ToApp msg next ->
                 TestContext context
                     |> update (EffectManager.unwrapAppMsg msg)
-                    |> processTask next
+                    |> processTask_preventTailCallOptimization next
 
             ToEffectManager home selfMsg next ->
                 TestContext context
                     |> enqueueMessage home (EffectManager.Self selfMsg)
-                    |> processTask next
+                    |> processTask_preventTailCallOptimization next
 
             NewEffectManagerState junk home newState ->
                 TestContext

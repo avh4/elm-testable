@@ -28,7 +28,7 @@ _elm_lang$core$Process$sleep = setItUp( // eslint-disable-line no-global-assign,
     return {
       ctor: 'SleepTask',
       _0: delay,
-      _1: { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 }
+      _1: function () { return { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 } }
     }
   }
 )

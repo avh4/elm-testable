@@ -63,7 +63,7 @@ later.
 type Task error success
     = Success success
     | Failure error
-    | SleepTask Time (Task error success)
+    | SleepTask Time (() -> Task error success)
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
     | MockTask String (Mapper (Task error success))
     | SpawnedTask (Task Never Never) (Task error success)
@@ -73,24 +73,6 @@ type Task error success
     | ToApp EffectManager.AppMsg (Task error success)
     | ToEffectManager String EffectManager.SelfMsg (Task error success)
     | NewEffectManagerState String String EffectManager.State -- first String is for debugging
-
-
-{-| A task that succeeds immediately when run.
-
-    succeed 42    -- results in 42
--}
-succeed : a -> Task x a
-succeed value =
-    Success value
-
-
-{-| A task that fails immediately when run.
-
-    fail "file not found" : Task String a
--}
-fail : x -> Task x a
-fail error =
-    Failure error
 
 
 {-| Transform a task.
@@ -128,7 +110,7 @@ andThen f source =
             MockTask tag (mapper |> Mapper.map (andThen f))
 
         SleepTask time next ->
-            SleepTask time (next |> andThen f)
+            SleepTask time (next >> andThen f)
 
         HttpTask options next ->
             HttpTask options (next >> andThen f)
@@ -186,7 +168,7 @@ onError f source =
             MockTask tag (mapper |> Mapper.map (onError f))
 
         SleepTask time next ->
-            SleepTask time (next |> onError f)
+            SleepTask time (next >> onError f)
 
         HttpTask options next ->
             HttpTask options (next >> onError f)
@@ -249,7 +231,7 @@ toResult source =
             MockTask tag (mapper |> Mapper.map toResult)
 
         SleepTask time next ->
-            SleepTask time (next |> toResult)
+            SleepTask time (next >> toResult)
 
         HttpTask options next ->
             HttpTask options (next >> toResult)
@@ -274,17 +256,3 @@ toResult source =
 
         NewEffectManagerState junk home msg ->
             NewEffectManagerState junk home msg
-
-
-
--- Threads
-
-
-{-| Make a thread sleep for a certain amount of time. The following example
-sleeps for 1 second and then succeeds with 42.
-
-    sleep 1000 |> andThen \_ -> succeed 42
--}
-sleep : Time -> Task never ()
-sleep milliseconds =
-    SleepTask milliseconds (Success ())

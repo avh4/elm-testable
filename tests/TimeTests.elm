@@ -68,7 +68,7 @@ nowProgram =
         |> TestContext.start
 
 
-everyProgram : TestContext String Time
+everyProgram : Program Never String Time
 everyProgram =
     { init = ( "INIT", Cmd.none )
     , update =
@@ -78,7 +78,6 @@ everyProgram =
     , view = \_ -> Html.text ""
     }
         |> Html.program
-        |> TestContext.start
 
 
 sec : Float -> Time
@@ -166,8 +165,17 @@ all =
             [ test "triggers after initial delay" <|
                 \() ->
                     everyProgram
+                        |> TestContext.start
                         |> TestContext.advanceTime (sec 1)
                         |> TestContext.model
                         |> Expect.equal "INIT;1000"
+            , test "triggers again after the first time" <|
+                \() ->
+                    everyProgram
+                        |> TestContext.start
+                        |> TestContext.advanceTime (sec 2)
+                        |> TestContext.expect
+                            TestContext.model
+                            (Expect.equal "INIT;1000;2000")
             ]
         ]
