@@ -7,6 +7,9 @@ function setItUp (realImpl, elmTestableTask) {
       real.elmTestable = elmTestableTask(a)(b)
       return real
     })
+  } else if (typeof realImpl !== 'function') {
+    realImpl.elmTestable = elmTestableTask
+    return realImpl
   } else if (elmTestableTask.arity === undefined) {
     return function (a) {
       var real = realImpl_(a)
@@ -97,12 +100,15 @@ if (typeof _elm_lang$core$Time$now === 'undefined') { // eslint-disable-line cam
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Time: this shouldn\'t happen because Testable.Task imports Time.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
-_elm_lang$core$Time$now.elmTestable = {
-  ctor: 'Core_Time_now',
-  _0: function (v) {
-    return { ctor: 'Success', _0: v }
+_elm_lang$core$Time$now = setItUp( // eslint-disable-line no-global-assign, camelcase
+  _elm_lang$core$Time$now,
+  {
+    ctor: 'Core_Time_now',
+    _0: function (v) {
+      return { ctor: 'Success', _0: v }
+    }
   }
-}
+)
 
 _elm_lang$core$Time$setInterval = setItUp( // eslint-disable-line no-global-assign, camelcase
   _elm_lang$core$Time$setInterval,
@@ -119,46 +125,38 @@ if (typeof _elm_lang$http$Native_Http.toTask === 'undefined') {
   throw new Error('Native.TestContext was loaded before _elm_lang$http$Native_Http: this shouldn\'t happen because Testable.Task imports Http.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
-_elm_lang$http$Native_Http.toTask = F2(function (request, maybeProgress) { // eslint-disable-line no-global-assign
-  // TODO: handle maybeProgress
-  // TODO: handle request.{headers, body, withCredentials}
-  // TODO: handle request.timeout ?
-  var options = { method: request.method, url: request.url }
-  var callback = function (response) {
-    switch (request.expect.responseType) {
-      case 'text':
-        var result = request.expect.responseToResult(response)
-        switch (result.ctor) {
-          case 'Ok':
-            return { ctor: 'Success', _0: result._0 }
+_elm_lang$http$Native_Http.toTask = setItUp(
+  _elm_lang$http$Native_Http.toTask,
+  F2(function (request, maybeProgress) {
+    // TODO: handle maybeProgress
+    // TODO: handle request.{headers, body, withCredentials}
+    // TODO: handle request.timeout ?
+    var options = { method: request.method, url: request.url }
+    var callback = function (response) {
+      switch (request.expect.responseType) {
+        case 'text':
+          var result = request.expect.responseToResult(response)
+          switch (result.ctor) {
+            case 'Ok':
+              return { ctor: 'Success', _0: result._0 }
 
-          case 'Err':
-            return { ctor: 'Failure', _0: result._0 }
+            case 'Err':
+              return { ctor: 'Failure', _0: result._0 }
 
-          default:
-            throw new Error('Unknown Result type: ' + result.ctor)
-        }
+            default:
+              throw new Error('Unknown Result type: ' + result.ctor)
+          }
 
-      default:
-        throw new Error('Unknown Http.Expect type: ' + request.expect.responseType)
+        default:
+          throw new Error('Unknown Http.Expect type: ' + request.expect.responseType)
+      }
     }
-  }
-  return { ctor: 'Http_NativeHttp_toTask', _0: options, _1: callback }
-})
+    return { ctor: 'Http_NativeHttp_toTask', _0: options, _1: callback }
+  })
+)
 
 var _user$project$Native_Testable_Task = (function () { // eslint-disable-line no-unused-vars, camelcase
   function fromPlatformTask (task) {
-    // TODO: at the top of this file, we override many native functions that
-    // produce Platform.Tasks.  However, this could actually interfere with
-    // the runtime of elm-test itself, which is the case if we try to override
-    // _elm_lang$core$Time$now.
-    //
-    // So instead of overriding _elm_lang$core$Time$now, we just add our own
-    // elmTestable field into the existing Platform.Task object.
-    //
-    // The TODO is to change all other overridden native tasks to insert
-    // and elmTestable field instead of completely overriding the task.
-    // Then this || fallback can go away.
     if (task.elmTestable) return task.elmTestable
 
     switch (task.ctor) {
@@ -181,7 +179,6 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
         })(next_)
 
       case 'MockTask':
-      case 'Http_NativeHttp_toTask':
       case 'IgnoredTask':
         return task
 
