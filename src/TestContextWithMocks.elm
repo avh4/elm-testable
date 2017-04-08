@@ -5,6 +5,7 @@ module TestContextWithMocks
         , toTask
         , mockTask
         , start
+        , startWithFlags
         , model
         , update
         , expectMockTask
@@ -95,9 +96,9 @@ type TestContext model msg
         }
 
 
-extractProgram : String -> Program flags model msg -> TestableProgram model msg
-extractProgram moduleName =
-    Native.TestContext.extractProgram moduleName
+extractProgram : String -> Maybe flags -> Program flags model msg -> TestableProgram model msg
+extractProgram moduleName flags =
+    Native.TestContext.extractProgram moduleName flags
 
 
 extractBag : (tagger -> leaf -> x) -> (x -> a -> a) -> a -> bag -> a
@@ -227,15 +228,25 @@ orCrash message maybe =
             Debug.crash message
 
 
-start : Program flags model msg -> TestContext model msg
-start getProgram =
+startWithFlags : flags -> Program flags model msg -> TestContext model msg
+startWithFlags flags realProgram =
+    start_ (Just flags) realProgram
+
+
+start : Program Never model msg -> TestContext model msg
+start realProgram =
+    start_ Nothing realProgram
+
+
+start_ : Maybe flags -> Program flags model msg -> TestContext model msg
+start_ flags realProgram =
     let
         _ =
-            debug "start" ()
+            debug "start" flags
 
         program =
-            getProgram
-                |> extractProgram "<TestContext fake module>"
+            realProgram
+                |> extractProgram "<TestContext fake module>" flags
 
         model =
             Tuple.first program.init

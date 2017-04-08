@@ -2,6 +2,7 @@ module TestContext
     exposing
         ( TestContext
         , start
+        , startWithFlags
         , model
         , update
         , send
@@ -28,9 +29,14 @@ type alias TestContext model msg =
     WithMocks.TestContext model msg
 
 
-start : Program flags model msg -> TestContext model msg
+start : Program Never model msg -> TestContext model msg
 start realProgram =
     WithMocks.start realProgram
+
+
+startWithFlags : flags -> Program flags model msg -> TestContext model msg
+startWithFlags flags realProgram =
+    WithMocks.startWithFlags flags realProgram
 
 
 model : TestContext model msg -> model

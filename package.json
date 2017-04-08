@@ -4,9 +4,12 @@
       "elm-stuff"
     ],
     "globals": [
+      "A2",
       "F2",
       "F3",
       "F4",
+      "_elm_lang$core$Json_Decode$succeed",
+      "_elm_lang$core$Maybe$Nothing",
       "_elm_lang$http$Native_Http",
       "_elm_lang$core$Native_List",
       "_elm_lang$core$Native_Platform",
@@ -17,10 +20,13 @@
       "_elm_lang$core$Process$kill",
       "_elm_lang$core$Process$sleep",
       "_elm_lang$core$Process$spawn",
+      "_elm_lang$core$Task$attempt",
       "_elm_lang$core$Task$andThen",
       "_elm_lang$core$Task$onError",
       "_elm_lang$core$Time$now",
       "_elm_lang$core$Time$setInterval",
+      "_elm_lang$http$Http$send",
+      "_elm_lang$http$Http$toTask",
       "_user$project$Testable_Task$andThen",
       "_user$project$Testable_Task$onError"
     ]

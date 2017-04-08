@@ -9,6 +9,8 @@ var _user$project$Native_Testable_EffectManager = // eslint-disable-line no-unus
        if (home === 'Task') return
 
        var effectManager = _elm_lang$core$Native_Platform.effectManagers[home]
+       if (effectManager.isForeign) return // This is a port, which we handle elsewhere
+
        var router = { elmTestable: { self: home } }
        effectManagers[home] = {
          pkg: effectManager.pkg,

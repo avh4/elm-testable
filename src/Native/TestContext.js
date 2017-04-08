@@ -44,15 +44,30 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
   }
 
   return {
-    extractProgram: F2(function (moduleName, program) {
+    extractProgram: F3(function (moduleName, flags, program) {
+      var realFlags
+      var flagDecoder
+      switch (flags.ctor) {
+        case 'Nothing':
+          realFlags = undefined
+          flagDecoder = undefined
+          break
+
+        case 'Just':
+          realFlags = flags._0
+          flagDecoder = _elm_lang$core$Json_Decode$succeed(realFlags)
+          break
+
+        default:
+          throw new Error('Unknown Maybe type: ' + flags.ctor)
+      }
       var containerModule = {}
-      var programInstance = program()(containerModule, moduleName) // eslint-disable-line no-unused-vars
+      var programInstance = program(flagDecoder)(containerModule, moduleName) // eslint-disable-line no-unused-vars
       var embedRoot = {}
-      var flags
 
       // This gets the return value from the modified
       // _elm_lang$core$Native_Platform.initialize above
-      var app = containerModule.embed(embedRoot, flags)
+      var app = containerModule.embed(embedRoot, realFlags)
 
       return app
     }),

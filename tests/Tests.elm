@@ -2,6 +2,7 @@ module Tests exposing (all)
 
 import Test exposing (..)
 import EffectManagerTests
+import FlagsTests
 import HttpTests
 import MockTaskTests
 import ModelTests
@@ -19,12 +20,12 @@ all =
 
         -- Core Elm support
         , ModelTests.all
+        , FlagsTests.all
         , TaskTests.all
         , PortCmdTests.all
         , PortSubTests.all
         , EffectManagerTests.all
 
-        -- TODO , describe "Flags" []
         -- Low-level APIs
         , MockTaskTests.all
 
