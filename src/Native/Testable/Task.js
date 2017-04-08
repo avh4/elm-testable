@@ -22,16 +22,17 @@ if (typeof _elm_lang$core$Process$sleep === 'undefined') { // eslint-disable-lin
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: this shouldn\'t happen because Testable.Task imports Process.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
-_elm_lang$core$Process$sleep = setItUp( // eslint-disable-line no-global-assign, camelcase
-  _elm_lang$core$Process$sleep,
+_elm_lang$core$Native_Scheduler.sleep = setItUp(
+  _elm_lang$core$Native_Scheduler.sleep,
   function (delay) {
     return {
-      ctor: 'SleepTask',
+      ctor: 'Core_NativeScheduler_sleep',
       _0: delay,
       _1: function () { return { ctor: 'Success', _0: _elm_lang$core$Native_Utils.Tuple0 } }
     }
   }
 )
+_elm_lang$core$Process$sleep = _elm_lang$core$Native_Scheduler.sleep // eslint-disable-line no-global-assign, camelcase
 
 if (typeof _elm_lang$core$Process$spawn === 'undefined') { // eslint-disable-line camelcase
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: this shouldn\'t happen because Testable.Task imports Process.  Please report this at https://github.com/avh4/elm-testable/issues')

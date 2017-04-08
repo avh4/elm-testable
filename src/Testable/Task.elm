@@ -68,10 +68,10 @@ later.
 type Task error success
     = Success success
     | Failure error
-    | SleepTask Time (() -> Task error success)
     | HttpTask { method : String, url : String } (Http.Response String -> Task error success)
     | MockTask String (Mapper (Task error success))
     | IgnoredTask
+    | Core_NativeScheduler_sleep Time (() -> Task error success)
     | Core_NativeScheduler_spawn (Task Never Never) (ProcessId -> Task error success)
     | Core_NativeScheduler_kill ProcessId (Task error success)
     | Core_Time_now (Time -> Task error success)
@@ -115,14 +115,14 @@ andThen f source =
         MockTask tag mapper ->
             MockTask tag (mapper |> Mapper.map (andThen f))
 
-        SleepTask time next ->
-            SleepTask time (next >> andThen f)
-
         HttpTask options next ->
             HttpTask options (next >> andThen f)
 
         IgnoredTask ->
             IgnoredTask
+
+        Core_NativeScheduler_sleep time next ->
+            Core_NativeScheduler_sleep time (next >> andThen f)
 
         Core_NativeScheduler_spawn task next ->
             Core_NativeScheduler_spawn task (next >> andThen f)
@@ -176,14 +176,14 @@ onError f source =
         MockTask tag mapper ->
             MockTask tag (mapper |> Mapper.map (onError f))
 
-        SleepTask time next ->
-            SleepTask time (next >> onError f)
-
         HttpTask options next ->
             HttpTask options (next >> onError f)
 
         IgnoredTask ->
             IgnoredTask
+
+        Core_NativeScheduler_sleep time next ->
+            Core_NativeScheduler_sleep time (next >> onError f)
 
         Core_NativeScheduler_spawn task next ->
             Core_NativeScheduler_spawn task (next >> onError f)

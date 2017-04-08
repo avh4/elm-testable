@@ -427,14 +427,6 @@ processTask pid task (TestContext context_) =
                                 |> Dict.insert label (Pending mapper)
                     }
 
-            SleepTask delay next ->
-                TestContext
-                    { context
-                        | futureTasks =
-                            context.futureTasks
-                                |> PairingHeap.insert (context.now + delay) ( pid, next () )
-                    }
-
             HttpTask options next ->
                 TestContext
                     { context
@@ -447,6 +439,14 @@ processTask pid task (TestContext context_) =
 
             IgnoredTask ->
                 TestContext context
+
+            Core_NativeScheduler_sleep delay next ->
+                TestContext
+                    { context
+                        | futureTasks =
+                            context.futureTasks
+                                |> PairingHeap.insert (context.now + delay) ( pid, next () )
+                    }
 
             Core_NativeScheduler_spawn task next ->
                 let
@@ -471,7 +471,7 @@ processTask pid task (TestContext context_) =
             Core_Time_setInterval delay recurringTask ->
                 let
                     step () =
-                        SleepTask delay (\() -> recurringTask)
+                        Core_NativeScheduler_sleep delay (\() -> recurringTask)
                             |> Testable.Task.andThen step
                             |> Testable.Task.mapError never
                 in

@@ -11,7 +11,7 @@ import Process
 expectSleepTask : Time -> (Task x a -> Expectation) -> Task x a -> Expectation
 expectSleepTask expectedDelay checkNext task =
     case task of
-        SleepTask delay next ->
+        Core_NativeScheduler_sleep delay next ->
             Expect.all
                 [ always delay >> Expect.equal expectedDelay
                 , next >> checkNext
@@ -19,7 +19,7 @@ expectSleepTask expectedDelay checkNext task =
                 ()
 
         _ ->
-            Expect.fail ("Expected (SleepTask " ++ toString expectedDelay ++ " ...), but got: " ++ toString task)
+            Expect.fail ("Expected (Core_NativeScheduler_sleep " ++ toString expectedDelay ++ " ...), but got: " ++ toString task)
 
 
 all : Test
