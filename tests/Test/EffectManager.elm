@@ -6,6 +6,7 @@ import Task as Task exposing (Task)
 type MyCmd msg
     = GetState (String -> msg)
     | PingSubs
+    | UpdateSelf String
 
 
 getState : (String -> msg) -> Cmd msg
@@ -18,6 +19,11 @@ pingSubs =
     command PingSubs
 
 
+updateSelf : String -> Cmd msg
+updateSelf msg =
+    command (UpdateSelf msg)
+
+
 cmdMap : (a -> b) -> MyCmd a -> MyCmd b
 cmdMap f cmd =
     case cmd of
@@ -26,6 +32,9 @@ cmdMap f cmd =
 
         PingSubs ->
             PingSubs
+
+        UpdateSelf msg ->
+            UpdateSelf msg
 
 
 type MySub msg
@@ -49,7 +58,7 @@ type alias State =
 
 
 type alias SelfMsg =
-    Never
+    String
 
 
 init : Task Never State
@@ -70,6 +79,9 @@ onEffects router cmds subs state =
                         |> List.map (\(SubState tagger) -> Platform.sendToApp router <| tagger ("[" ++ state ++ "]"))
                         |> Task.sequence
                         |> Task.map (always ())
+
+                UpdateSelf msg ->
+                    Platform.sendToSelf router msg
     in
         cmds
             |> List.map task
@@ -79,4 +91,4 @@ onEffects router cmds subs state =
 
 onSelfMsg : Platform.Router msg SelfMsg -> SelfMsg -> State -> Task Never State
 onSelfMsg router msg state =
-    Task.succeed state
+    Task.succeed (state ++ ";" ++ msg)

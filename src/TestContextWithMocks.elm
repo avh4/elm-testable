@@ -22,8 +22,10 @@ the `TestContext` module instead unless you are really sure of what you are doin
 -}
 
 import Native.TestContext
+import DefaultDict exposing (DefaultDict)
 import Dict exposing (Dict)
 import Expect exposing (Expectation)
+import Fifo exposing (Fifo)
 import Http
 import Json.Encode
 import Mapper exposing (Mapper)
@@ -31,6 +33,12 @@ import PairingHeap exposing (PairingHeap)
 import Testable.EffectManager as EffectManager exposing (EffectManager)
 import Testable.Task exposing (fromPlatformTask, Task(..))
 import Time exposing (Time)
+
+
+debug : String -> a -> a
+debug label =
+    -- Debug.log label
+    identity
 
 
 type alias TestableProgram model msg =
@@ -75,8 +83,11 @@ type TestContext model msg
         , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task Never msg)
         , futureTasks : PairingHeap Time (Task Never msg)
         , now : Time
+        , sequence : Int
+        , processMailboxes : DefaultDict String (Fifo ( Int, EffectManager.Message ))
+        , workQueue : Fifo String
         , effectManagerStates : Dict String EffectManager.State
-        , transcript : List (Task Never msg)
+        , transcript : List ( Int, Task Never msg )
         }
 
 
@@ -215,6 +226,9 @@ orCrash message maybe =
 start : Program flags model msg -> TestContext model msg
 start getProgram =
     let
+        _ =
+            debug "start" ()
+
         program =
             getProgram
                 |> extractProgram "<TestContext fake module>"
@@ -242,6 +256,9 @@ start getProgram =
             , pendingHttpRequests = Dict.empty
             , futureTasks = PairingHeap.empty
             , now = 0
+            , sequence = 0
+            , processMailboxes = DefaultDict.empty Fifo.empty
+            , workQueue = Fifo.empty
             , effectManagerStates = Dict.empty
             , transcript = []
             }
@@ -249,10 +266,33 @@ start getProgram =
             |> dispatchEffects
                 (Tuple.second program.init)
                 (program.subscriptions model)
+            |> drainWorkQueue
 
 
-dispatchEffect : String -> List EffectManager.MyCmd -> List EffectManager.MySub -> TestContext model msg -> TestContext model msg
-dispatchEffect home cmds subs (TestContext context) =
+drainWorkQueue : TestContext model msg -> TestContext model msg
+drainWorkQueue (TestContext context) =
+    case Fifo.remove (debug "drainWorkQueue" <| context.workQueue) of
+        ( Nothing, _ ) ->
+            TestContext context
+
+        ( Just home, rest ) ->
+            case Fifo.remove (DefaultDict.get home context.processMailboxes) of
+                ( Nothing, _ ) ->
+                    TestContext { context | workQueue = rest }
+                        |> drainWorkQueue
+
+                ( Just ( _, message ), remaining ) ->
+                    TestContext
+                        { context
+                            | workQueue = rest
+                            , processMailboxes = DefaultDict.insert home remaining context.processMailboxes
+                        }
+                        |> processMessage home message
+                        |> drainWorkQueue
+
+
+processMessage : String -> EffectManager.Message -> TestContext model msg -> TestContext model msg
+processMessage home message (TestContext context) =
     let
         effectManager =
             EffectManager.extractEffectManager home
@@ -260,17 +300,38 @@ dispatchEffect home cmds subs (TestContext context) =
 
         currentState =
             Dict.get home context.effectManagerStates
-                -- TODO: is it possible for this to happen normally?
                 |> orCrash ("There's no recorded state for effect manager: " ++ home)
 
-        task =
-            effectManager.onEffects cmds subs currentState
+        newStateTask =
+            (case message of
+                EffectManager.Self selfMsg ->
+                    effectManager.onSelfMsg selfMsg currentState
+
+                EffectManager.Fx cmds subs ->
+                    effectManager.onEffects cmds subs currentState
+            )
                 |> fromPlatformTask
                 |> Testable.Task.mapError never
-                |> Testable.Task.andThen (NewEffectManagerState "onEffects" home)
+                |> Testable.Task.andThen (NewEffectManagerState "onSelfMsg" home)
     in
         TestContext context
-            |> processTask task
+            |> processTask newStateTask
+
+
+enqueueMessage : String -> EffectManager.Message -> TestContext model msg -> TestContext model msg
+enqueueMessage home message (TestContext context) =
+    let
+        _ =
+            debug "enqueueMessage" ( home, message )
+    in
+        TestContext
+            { context
+                | processMailboxes =
+                    context.processMailboxes
+                        |> DefaultDict.update home (Fifo.insert ( context.sequence, message ))
+                , workQueue =
+                    Fifo.insert home context.workQueue
+            }
 
 
 dispatchEffects : Cmd msg -> Sub msg -> TestContext model msg -> TestContext model msg
@@ -284,16 +345,16 @@ dispatchEffects cmd sub (TestContext context) =
 
         fx =
             Dict.merge
-                (\home c -> (::) ( home, c, [] ))
-                (\home c s -> (::) ( home, c, s ))
-                (\home s -> (::) ( home, [], s ))
+                (\home c -> (::) ( home, EffectManager.Fx c [] ))
+                (\home c s -> (::) ( home, EffectManager.Fx c s ))
+                (\home s -> (::) ( home, EffectManager.Fx [] s ))
                 cmds.effectManagers
                 subs.effectManagers
                 []
 
         applyEffects c =
             fx
-                |> List.foldl (\( home, cmds, subs ) -> dispatchEffect home cmds subs) c
+                |> List.foldl (\( home, message ) -> enqueueMessage home message) c
 
         -- TODO: update effect managers that previously had Subs but don't anymore
     in
@@ -315,8 +376,14 @@ dispatchEffects cmd sub (TestContext context) =
 processTask : Task Never msg -> TestContext model msg -> TestContext model msg
 processTask task (TestContext context_) =
     let
+        _ =
+            debug "processTask" task
+
         context =
-            { context_ | transcript = task :: context_.transcript }
+            { context_
+                | sequence = context_.sequence + 1
+                , transcript = ( context_.sequence + 1, task ) :: context_.transcript
+            }
     in
         case task of
             Success msg ->
@@ -387,7 +454,7 @@ processTask task (TestContext context_) =
 
             ToEffectManager home selfMsg next ->
                 TestContext context
-                    |> dispatchSelfMsg home selfMsg
+                    |> enqueueMessage home (EffectManager.Self selfMsg)
                     |> processTask next
 
             NewEffectManagerState junk home newState ->
@@ -395,27 +462,6 @@ processTask task (TestContext context_) =
                     { context
                         | effectManagerStates = Dict.insert home newState context.effectManagerStates
                     }
-
-
-dispatchSelfMsg : String -> EffectManager.SelfMsg -> TestContext model msg -> TestContext model msg
-dispatchSelfMsg home selfMsg (TestContext context) =
-    let
-        effectManager =
-            EffectManager.extractEffectManager home
-                |> orCrash ("Could not extract effect manager: " ++ home)
-
-        currentState =
-            Dict.get home context.effectManagerStates
-                |> orCrash ("There's no recorded state for effect manager: " ++ home)
-
-        newStateTask =
-            effectManager.onSelfMsg selfMsg currentState
-                |> fromPlatformTask
-                |> Testable.Task.mapError never
-                |> Testable.Task.andThen (NewEffectManagerState "onSelfMsg" home)
-    in
-        TestContext context
-            |> processTask newStateTask
 
 
 model : TestContext model msg -> model
@@ -426,6 +472,9 @@ model (TestContext context) =
 update : msg -> TestContext model msg -> TestContext model msg
 update msg (TestContext context) =
     let
+        _ =
+            debug "update" msg
+
         ( newModel, newCmds ) =
             context.program.update msg context.model
 
@@ -434,6 +483,7 @@ update msg (TestContext context) =
     in
         TestContext { context | model = newModel }
             |> dispatchEffects newCmds newSubs
+            |> drainWorkQueue
 
 
 getPendingTask : String -> MockTask x a -> TestContext model msg -> Result String (Mapper (Task Never msg))
@@ -528,6 +578,7 @@ resolveMockTask mock result (TestContext context) =
                                         Dict.insert label (Resolved <| toString result) context.mockTasks
                                 }
                                 |> processTask next
+                         -- TODO: drain work queue
                         )
 
 
@@ -625,6 +676,7 @@ advanceTimeUntil targetTime (TestContext context) =
                         , now = time
                     }
                     |> processTask next
+                    |> drainWorkQueue
                     |> advanceTimeUntil targetTime
             else
                 TestContext { context | now = targetTime }
@@ -658,6 +710,7 @@ resolveHttpRequest method url responseBody (TestContext context) =
     case Dict.get ( method, url ) context.pendingHttpRequests of
         Just next ->
             Ok <|
+                -- TODO: need to drain the work queue
                 processTask
                     (next <|
                         { url = "TODO: not implemented yet"
@@ -689,4 +742,15 @@ expect get check (TestContext context) =
             Expect.fail <|
                 message
                     ++ "\n\n\nThe following tasks we processed during the test:\n"
-                    ++ String.concat (List.reverse context.transcript |> List.map (toString >> (++) "  - " >> flip (++) "\n"))
+                    ++ show "  - "
+                        (\( i, t ) -> toString i ++ ": " ++ toString t)
+                        (List.reverse context.transcript)
+                    ++ "\nThe following messages were unprocessed:\n"
+                    ++ show "  - "
+                        (\( home, msgs ) -> home ++ "\n" ++ show "      - " toString (Fifo.toList msgs))
+                        (DefaultDict.toList context.processMailboxes)
+
+
+show : String -> (a -> String) -> List a -> String
+show pre f list =
+    String.concat (list |> List.map (f >> (++) pre >> flip (++) "\n"))

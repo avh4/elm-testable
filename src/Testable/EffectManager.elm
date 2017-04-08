@@ -6,6 +6,7 @@ module Testable.EffectManager
         , MySub
         , MyCmd
         , State
+        , Message(..)
         , extractEffectManager
         , extractEffectManagers
         , unwrapAppMsg
@@ -33,6 +34,11 @@ type SelfMsg
 
 type State
     = State_ -- The actual type depends on the effect manager, so this is hidden in a native object
+
+
+type Message
+    = Self SelfMsg
+    | Fx (List MyCmd) (List MySub)
 
 
 type alias EffectManager =
