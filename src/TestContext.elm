@@ -8,8 +8,6 @@ module TestContext
         , send
         , expectCmd
         , advanceTime
-        , expectHttpRequest
-        , resolveHttpRequest
         , expect
         )
 
@@ -59,16 +57,6 @@ expectCmd expected context =
 advanceTime : Time -> TestContext model msg -> TestContext model msg
 advanceTime dt context =
     Internal.advanceTime dt context
-
-
-expectHttpRequest : String -> String -> TestContext model msg -> Expectation
-expectHttpRequest method url context =
-    Internal.expectHttpRequest method url context
-
-
-resolveHttpRequest : String -> String -> String -> TestContext model msg -> Result String (TestContext model msg)
-resolveHttpRequest method url responseBody context =
-    Internal.resolveHttpRequest method url responseBody context
 
 
 expect : (TestContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation

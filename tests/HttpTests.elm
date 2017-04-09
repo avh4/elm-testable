@@ -1,10 +1,11 @@
 module HttpTests exposing (..)
 
-import Test exposing (..)
 import Expect exposing (Expectation)
 import Html
-import TestContext exposing (TestContext)
 import Http
+import Test exposing (..)
+import TestContext exposing (TestContext)
+import Test.Http
 
 
 type LoadingMsg
@@ -39,22 +40,22 @@ all =
         [ test "verifying an initial HTTP request" <|
             \() ->
                 loadingProgram
-                    |> TestContext.expectHttpRequest "GET" "https://example.com/books"
+                    |> Test.Http.expectRequest "GET" "https://example.com/books"
         , test "verifying an unmade request gives an error" <|
             \() ->
                 loadingProgram
-                    |> TestContext.expectHttpRequest "GET" "https://example.com/wrong_url"
+                    |> Test.Http.expectRequest "GET" "https://example.com/wrong_url"
                     |> Expect.getFailure
                     |> Expect.equal
                         (Just
                             { given = ""
-                            , message = "pending HTTP requests:\n    - GET https://example.com/books\n╷\n│ to include (TestContext.expectHttpRequest)\n╵\nGET https://example.com/wrong_url"
+                            , message = "pending HTTP requests:\n    - GET https://example.com/books\n╷\n│ to include (Test.Http.expectRequest)\n╵\nGET https://example.com/wrong_url"
                             }
                         )
         , test "stubbing an HTTP response" <|
             \() ->
                 loadingProgram
-                    |> TestContext.resolveHttpRequest "GET"
+                    |> Test.Http.resolveRequest "GET"
                         "https://example.com/books"
                         "BOOKS1"
                     |> Result.map (TestContext.model)
@@ -62,16 +63,16 @@ all =
         , test "requests should be removed after they are resolve" <|
             \() ->
                 loadingProgram
-                    |> TestContext.resolveHttpRequest "GET"
+                    |> Test.Http.resolveRequest "GET"
                         "https://example.com/books"
                         "BOOKS1"
                     |> Result.withDefault loadingProgram
-                    |> TestContext.expectHttpRequest "GET" "https://example.com/books"
+                    |> Test.Http.expectRequest "GET" "https://example.com/books"
                     |> Expect.getFailure
                     |> Expect.equal
                         (Just
                             { given = ""
-                            , message = "pending HTTP requests (none were made)\n╷\n│ to include (TestContext.expectHttpRequest)\n╵\nGET https://example.com/books"
+                            , message = "pending HTTP requests (none were made)\n╷\n│ to include (Test.Http.expectRequest)\n╵\nGET https://example.com/books"
                             }
                         )
 
