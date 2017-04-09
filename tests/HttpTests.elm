@@ -24,10 +24,13 @@ loadingProgram =
         \msg model ->
             case msg of
                 NewData (Ok data) ->
-                    ( data, Cmd.none )
+                    ( model ++ ";" ++ data, Cmd.none )
 
-                NewData (Err _) ->
-                    ( model, Cmd.none )
+                NewData (Err (Http.BadStatus { status })) ->
+                    ( model ++ ";BadStatus " ++ toString status.code, Cmd.none )
+
+                NewData (Err error) ->
+                    ( model ++ ";" ++ toString error, Cmd.none )
     , subscriptions = \_ -> Sub.none
     , view = toString >> Html.text
     }
@@ -70,7 +73,16 @@ all =
                     |> Test.Http.resolveGet
                         "https://example.com/books"
                         "BOOKS1"
-                    |> TestContext.expectModel (Expect.equal "BOOKS1")
+                    |> TestContext.expectModel
+                        (Expect.equal "INIT;BOOKS1")
+        , test "stubbing an HTTP error" <|
+            \() ->
+                loadingProgram
+                    |> Test.Http.rejectGet
+                        "https://example.com/books"
+                        (Test.Http.badStatus 404)
+                    |> TestContext.expectModel
+                        (Expect.equal "INIT;BadStatus 404")
         , test "requests should be removed after they are resolve" <|
             \() ->
                 loadingProgram
@@ -88,6 +100,8 @@ all =
 
         -- TODO: nicer message when an expected request was previously resolved
         -- TODO: test an HTTP request with a JSON decoder
+        -- TODO: test BadPayload error when JSON doesn't decode
+        -- TODO: required body (for POST request)
         -- TODO: give custom status code in response
         -- TODO: disallow 3xx codes in response, since Http uses XHR, which silently follows redirects
         -- TODO: verify/match HTTP headers

@@ -66,7 +66,7 @@ type Task error success
     | Core_Time_now (Time -> Task error success)
     | Core_Time_setInterval Time (Task Never ())
       -- Native binding tasks in elm-lang/http
-    | Http_NativeHttp_toTask { method : String, url : String } (Http.Response String -> Task error success)
+    | Http_NativeHttp_toTask { method : String, url : String } (Result Http.Error String -> Task error success)
 
 
 {-| Transform a task.

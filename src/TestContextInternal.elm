@@ -80,7 +80,7 @@ type alias ActiveContext model msg =
     , model : model
     , outgoingPortValues : Dict String (List Json.Encode.Value)
     , mockTasks : Dict String (MockTaskState msg)
-    , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task Never msg)
+    , pendingHttpRequests : Dict ( String, String ) (Result Http.Error String -> Task Never msg)
     , futureTasks : PairingHeap Time ( ProcessId, Task Never msg )
     , now : Time
     , sequence : Int
@@ -89,7 +89,8 @@ type alias ActiveContext model msg =
     , processMailboxes : DefaultDict String (Fifo ( Int, EffectManager.Message ))
     , workQueue : Fifo String
     , effectManagerStates : Dict String EffectManager.State
-    , transcript : List ( Int, Task Never msg )
+    , taskTranscript : List ( Int, Task Never msg )
+    , msgTranscript : List ( Int, msg )
     }
 
 
@@ -97,8 +98,10 @@ type TestContext model msg
     = TestContext (ActiveContext model msg)
     | TestError
         { error : String
-        , transcript : List ( Int, Task Never msg )
+        , model : model
         , processMailboxes : Dict String (List ( Int, EffectManager.Message ))
+        , taskTranscript : List ( Int, Task Never msg )
+        , msgTranscript : List ( Int, msg )
         }
 
 
@@ -294,7 +297,8 @@ start_ flags realProgram =
             , processMailboxes = DefaultDict.empty Fifo.empty
             , workQueue = Fifo.empty
             , effectManagerStates = Dict.empty
-            , transcript = []
+            , taskTranscript = []
+            , msgTranscript = []
             }
             |> initEffectManagers
             |> dispatchEffects
@@ -447,7 +451,7 @@ processTask pid task =
                 context =
                     { context_
                         | sequence = context_.sequence + 1
-                        , transcript = ( context_.sequence + 1, task ) :: context_.transcript
+                        , taskTranscript = ( context_.sequence + 1, task ) :: context_.taskTranscript
                     }
             in
                 case task of
@@ -553,7 +557,11 @@ update msg =
                 newSubs =
                     context.program.subscriptions newModel
             in
-                TestContext { context | model = newModel }
+                TestContext
+                    { context
+                        | model = newModel
+                        , msgTranscript = ( context.sequence, msg ) :: context.msgTranscript
+                    }
                     |> dispatchEffects newCmds newSubs
                     |> drainWorkQueue
 
@@ -773,11 +781,13 @@ error : ActiveContext model msg -> String -> TestContext model msg
 error context error =
     TestError
         { error = error
+        , model = context.model
         , processMailboxes =
             context.processMailboxes
                 |> DefaultDict.toDict
                 |> Dict.map (\_ -> Fifo.toList)
-        , transcript = context.transcript
+        , taskTranscript = context.taskTranscript
+        , msgTranscript = context.msgTranscript
         }
 
 
@@ -791,27 +801,35 @@ expect get check context_ =
 
                 Just { given, message } ->
                     Expect.fail <|
-                        message
-                            ++ "\n\n\nThe following tasks we processed during the test:\n"
-                            ++ show "  - "
-                                (\( i, t ) -> toString i ++ ": " ++ toString t)
-                                (List.reverse context.transcript)
-                            ++ "\nThe following messages were unprocessed:\n"
-                            ++ show "  - "
-                                (\( home, msgs ) -> home ++ "\n" ++ show "      - " toString (Fifo.toList msgs))
-                                (DefaultDict.toList context.processMailboxes)
+                        report <|
+                            error context message
 
         TestError details ->
-            Expect.fail <|
-                details.error
-                    ++ "\n\n\nThe following tasks we processed during the test:\n"
-                    ++ show "  - "
-                        (\( i, t ) -> toString i ++ ": " ++ toString t)
-                        (List.reverse details.transcript)
-                    ++ "\nThe following messages were unprocessed:\n"
-                    ++ show "  - "
-                        (\( home, msgs ) -> home ++ "\n" ++ show "      - " toString msgs)
-                        (Dict.toList details.processMailboxes)
+            Expect.fail <| report context_
+
+
+report : TestContext model msg -> String
+report context =
+    case context of
+        TestContext _ ->
+            "No error"
+
+        TestError details ->
+            details.error
+                ++ "\n\n\nThe following tasks were processed during the test:\n"
+                ++ show "  - "
+                    (\( i, t ) -> toString i ++ ": " ++ toString t)
+                    (List.reverse details.taskTranscript)
+                ++ "\nThe following messages were unprocessed:\n"
+                ++ show "  - "
+                    (\( home, msgs ) -> home ++ "\n" ++ show "      - " toString msgs)
+                    (Dict.toList <| Dict.filter (\_ list -> list /= []) details.processMailboxes)
+                ++ "\nThe following msgs were processed during the test:\n"
+                ++ show "  - "
+                    (\( i, t ) -> toString i ++ ": " ++ toString t)
+                    (List.reverse details.msgTranscript)
+                ++ "\nThe final state of the model:\n    "
+                ++ toString details.model
 
 
 show : String -> (a -> String) -> List a -> String
