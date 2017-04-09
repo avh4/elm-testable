@@ -28,6 +28,7 @@
       "_elm_lang$core$Time$setInterval",
       "_elm_lang$http$Http$send",
       "_elm_lang$http$Http$toTask",
+      "_elm_lang$virtual_dom$Native_VirtualDom",
       "_user$project$Testable_Task$andThen",
       "_user$project$Testable_Task$onError"
     ]

@@ -11,6 +11,7 @@ import PortSubTests
 import TaskTests
 import Testable.TaskTests
 import TimeTests
+import ViewTests
 
 
 all : Test
@@ -20,10 +21,11 @@ all =
 
         -- Core Elm support
         , ModelTests.all
+        , ViewTests.all
         , FlagsTests.all
-        , TaskTests.all
         , PortCmdTests.all
         , PortSubTests.all
+        , TaskTests.all
         , EffectManagerTests.all
 
         -- Low-level APIs

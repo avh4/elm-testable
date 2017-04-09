@@ -1,3 +1,28 @@
+function setItUp2 (name, realImpl, elmTestableTask) {
+  var realImpl_ = realImpl
+  if (realImpl === undefined) {
+    throw new Error('Trying to intercept " + name + " but it is undefined')
+  }
+  if (elmTestableTask.arity === 2) {
+    return F2(function (a, b) {
+      var real = realImpl_(a)(b)
+      real.elmTestable = elmTestableTask(a)(b)
+      return real
+    })
+  } else if (typeof realImpl !== 'function') {
+    realImpl.elmTestable = elmTestableTask
+    return realImpl
+  } else if (elmTestableTask.arity === undefined) {
+    return function (a) {
+      var real = realImpl_(a)
+      real.elmTestable = elmTestableTask(a)
+      return real
+    }
+  } else {
+    throw new Error('Unhandled arity: ' + elmTestableTask.arity)
+  }
+}
+
 if (typeof _elm_lang$core$Native_Platform.initialize === 'undefined') {
   throw new Error('Native.TestContext was loaded before _elm_lang$core$Native_Platform: this shouldn\'t happen because Platform is a default import in Elm 0.18.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
@@ -9,6 +34,22 @@ _elm_lang$core$Native_Platform.initialize = function (init, update, subscription
     subscriptions: subscriptions
   }
 }
+
+_elm_lang$virtual_dom$Native_VirtualDom.programWithFlags = setItUp2(
+  '_elm_lang$virtual_dom$Native_VirtualDom.programWithFlags',
+  _elm_lang$virtual_dom$Native_VirtualDom.programWithFlags,
+  F2(function (debugWrap, impl) {
+    return impl
+  })
+)
+
+_elm_lang$virtual_dom$Native_VirtualDom.program = setItUp2(
+  '_elm_lang$virtual_dom$Native_VirtualDom.program',
+  _elm_lang$virtual_dom$Native_VirtualDom.program,
+  F2(function (debugWrap, impl) {
+    return impl
+  })
+)
 
 var _user$project$Native_TestContext = (function () { // eslint-disable-line no-unused-vars, camelcase
   // forEachLeaf : Tagger -> Cmd msg -> (Tagger -> LeafCmd -> IO ()) -> IO ()
@@ -45,6 +86,15 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
 
   return {
     extractProgram: F3(function (moduleName, flags, program) {
+      if (program.elmTestable === undefined) {
+        throw new Error(
+          'Not Implemented Yet: ' +
+          'A function returning a Program was not intercepted for ' + program + '\n' +
+          'The function that creates the program above will need to be overwritten ' +
+          'like _elm_lang$virtual_dom$Native_VirtualDom.program ' +
+          'at the top of Native.TestContext.js'
+        )
+      }
       var realFlags
       var flagDecoder
       switch (flags.ctor) {
@@ -68,6 +118,9 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
       // This gets the return value from the modified
       // _elm_lang$core$Native_Platform.initialize above
       var app = containerModule.embed(embedRoot, realFlags)
+      // TODO: just use the stuff in program.elmTestable instead of intecepting initialize
+      // ... but that would mean we need to manually decode the flags?
+      app.view = program.elmTestable.view
 
       return app
     }),

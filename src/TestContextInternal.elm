@@ -6,7 +6,6 @@ module TestContextInternal
         , mockTask
         , start
         , startWithFlags
-        , expectModel
         , update
         , expectMockTask
         , resolveMockTask
@@ -18,6 +17,8 @@ module TestContextInternal
         , expect
         , processTask
         , withContext
+        , expectModel
+        , expectView
         )
 
 import Native.TestContext
@@ -25,6 +26,7 @@ import DefaultDict exposing (DefaultDict)
 import Dict exposing (Dict)
 import Expect exposing (Expectation)
 import Fifo exposing (Fifo)
+import Html exposing (Html)
 import Http
 import Json.Encode
 import Mapper exposing (Mapper)
@@ -32,6 +34,7 @@ import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
 import Testable.EffectManager as EffectManager exposing (EffectManager)
 import Testable.Task exposing (fromPlatformTask, Task(..), ProcessId(..))
+import Test.Html.Query
 import Time exposing (Time)
 
 
@@ -46,6 +49,7 @@ type alias TestableProgram model msg =
     { init : ( model, Cmd msg )
     , update : msg -> model -> ( model, Cmd msg )
     , subscriptions : model -> Sub msg
+    , view : model -> Html msg
     }
 
 
@@ -538,11 +542,6 @@ processTask pid task =
                             }
 
 
-expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
-expectModel check context =
-    expect .model check context
-
-
 update : msg -> TestContext model msg -> TestContext model msg
 update msg =
     withContext <|
@@ -835,3 +834,13 @@ report context =
 show : String -> (a -> String) -> List a -> String
 show pre f list =
     String.concat (list |> List.map (f >> (++) pre >> flip (++) "\n"))
+
+
+expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
+expectModel check context =
+    expect .model check context
+
+
+expectView : (Test.Html.Query.Single -> Expectation) -> TestContext model msg -> Expectation
+expectView check context =
+    expect (\c -> c.program.view c.model |> Test.Html.Query.fromHtml) check context

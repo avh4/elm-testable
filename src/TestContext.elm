@@ -3,15 +3,17 @@ module TestContext
         ( TestContext
         , start
         , startWithFlags
-        , expectModel
         , update
         , send
         , expectCmd
         , advanceTime
+        , expectModel
+        , expectView
         )
 
 import Expect exposing (Expectation)
 import TestContextInternal as Internal
+import Test.Html.Query
 import Time exposing (Time)
 
 
@@ -27,11 +29,6 @@ start realProgram =
 startWithFlags : flags -> Program flags model msg -> TestContext model msg
 startWithFlags flags realProgram =
     Internal.startWithFlags flags realProgram
-
-
-expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
-expectModel check context =
-    Internal.expectModel check context
 
 
 update : msg -> TestContext model msg -> TestContext model msg
@@ -56,3 +53,13 @@ expectCmd expected context =
 advanceTime : Time -> TestContext model msg -> TestContext model msg
 advanceTime dt context =
     Internal.advanceTime dt context
+
+
+expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
+expectModel check context =
+    Internal.expectModel check context
+
+
+expectView : (Test.Html.Query.Single -> Expectation) -> TestContext model msg -> Expectation
+expectView check context =
+    Internal.expectView check context
