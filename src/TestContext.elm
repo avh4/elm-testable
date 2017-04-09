@@ -14,39 +14,32 @@ module TestContext
         )
 
 import Expect exposing (Expectation)
-import TestContextWithMocks as WithMocks
+import TestContextInternal as Internal
 import Time exposing (Time)
 
 
-type alias TestableProgram model msg =
-    { init : ( model, Cmd msg )
-    , update : msg -> model -> ( model, Cmd msg )
-    , subscriptions : model -> Sub msg
-    }
-
-
 type alias TestContext model msg =
-    WithMocks.TestContext model msg
+    Internal.TestContext model msg
 
 
 start : Program Never model msg -> TestContext model msg
 start realProgram =
-    WithMocks.start realProgram
+    Internal.start realProgram
 
 
 startWithFlags : flags -> Program flags model msg -> TestContext model msg
 startWithFlags flags realProgram =
-    WithMocks.startWithFlags flags realProgram
+    Internal.startWithFlags flags realProgram
 
 
 model : TestContext model msg -> model
 model context =
-    WithMocks.model context
+    Internal.model context
 
 
 update : msg -> TestContext model msg -> TestContext model msg
 update msg context =
-    WithMocks.update msg context
+    Internal.update msg context
 
 
 send :
@@ -55,29 +48,29 @@ send :
     -> TestContext model msg
     -> Result String (TestContext model msg)
 send subPort value context =
-    WithMocks.send subPort value context
+    Internal.send subPort value context
 
 
 expectCmd : Cmd msg -> TestContext model msg -> Expectation
 expectCmd expected context =
-    WithMocks.expectCmd expected context
+    Internal.expectCmd expected context
 
 
 advanceTime : Time -> TestContext model msg -> TestContext model msg
 advanceTime dt context =
-    WithMocks.advanceTime dt context
+    Internal.advanceTime dt context
 
 
 expectHttpRequest : String -> String -> TestContext model msg -> Expectation
 expectHttpRequest method url context =
-    WithMocks.expectHttpRequest method url context
+    Internal.expectHttpRequest method url context
 
 
 resolveHttpRequest : String -> String -> String -> TestContext model msg -> Result String (TestContext model msg)
 resolveHttpRequest method url responseBody context =
-    WithMocks.resolveHttpRequest method url responseBody context
+    Internal.resolveHttpRequest method url responseBody context
 
 
 expect : (TestContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
 expect =
-    WithMocks.expect
+    Internal.expect
