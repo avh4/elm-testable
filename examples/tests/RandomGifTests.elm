@@ -5,6 +5,8 @@ import Expect exposing (Expectation)
 import RandomGif
 import Test exposing (..)
 import Test.Http
+import Test.Html.Query as Query
+import Test.Html.Selector exposing (..)
 
 
 program : TestContext RandomGif.Model RandomGif.Msg
@@ -19,8 +21,9 @@ program =
 assertShownImage : String -> TestContext RandomGif.Model msg -> Expectation
 assertShownImage expectedImageUrl testContext =
     testContext
-        |> expectModel
-            (.gifUrl >> Expect.equal expectedImageUrl)
+        |> expectView
+        |> Query.find [ tag "img" ]
+        |> Query.has [ attribute "src" expectedImageUrl ]
 
 
 expectOk : (a -> Expectation) -> Result x a -> Expectation

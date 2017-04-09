@@ -3,7 +3,7 @@ module RandomGif exposing (..)
 -- From section 5 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial#example-5-random-gif-viewer
 
 import Html exposing (..)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (style, src)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Json
@@ -55,7 +55,7 @@ view : Model -> Html Msg
 view model =
     div [ style [ ( "width", "200px" ) ] ]
         [ h2 [ headerStyle ] [ text model.topic ]
-        , div [ imgStyle model.gifUrl ] []
+        , img [ imgStyle, src model.gifUrl ] []
         , button [ onClick RequestMore ] [ text "More Please!" ]
         ]
 
@@ -68,15 +68,12 @@ headerStyle =
         ]
 
 
-imgStyle : String -> Attribute Msg
-imgStyle url =
+imgStyle : Attribute Msg
+imgStyle =
     style
         [ ( "display", "inline-block" )
         , ( "width", "200px" )
-        , ( "height", "200px" )
-        , ( "background-position", "center center" )
-        , ( "background-size", "cover" )
-        , ( "background-image", ("url('" ++ url ++ "')") )
+        , ( "max-height", "200px" )
         ]
 
 
