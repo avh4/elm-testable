@@ -59,6 +59,9 @@ jsonProgram =
                 NewList (Err (Http.BadStatus { status })) ->
                     ( model ++ ";BadStatus " ++ toString status.code, Cmd.none )
 
+                NewList (Err (Http.BadPayload message _)) ->
+                    ( model ++ ";BadPayload " ++ toString message, Cmd.none )
+
                 NewList (Err error) ->
                     ( model ++ ";" ++ toString error, Cmd.none )
     , subscriptions = \_ -> Sub.none
@@ -135,12 +138,17 @@ all =
                         """["a","b","c"]"""
                     |> TestContext.expectModel
                         (Expect.equal "INIT;a,b,c")
+        , test "fails with BadPayload when the JSON fails to parse" <|
+            \() ->
+                jsonProgram
+                    |> Test.Http.resolveGet
+                        "https://example.com/books"
+                        """@#not JSON"""
+                    |> TestContext.expectModel
+                        (Expect.equal "INIT;BadPayload \"Given an invalid JSON: Unexpected token @ in JSON at position 0\"")
 
         -- TODO: nicer message when an expected request was previously resolved
-        -- TODO: test an HTTP request with a JSON decoder
-        -- TODO: test BadPayload error when JSON doesn't decode
         -- TODO: required body (for POST request)
-        -- TODO: give custom status code in response
         -- TODO: disallow 3xx codes in response, since Http uses XHR, which silently follows redirects
         -- TODO: verify/match HTTP headers
         -- TODO: give headers for stubbed response

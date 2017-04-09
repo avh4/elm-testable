@@ -149,8 +149,10 @@ _elm_lang$http$Native_Http.toTask = setItUp(
                   return { ctor: 'Success', _0: result._0 }
 
                 case 'Err':
-                  // TODO: this should be (Err BadPayload)?
-                  return { ctor: 'Failure', _0: result._0 }
+                  return {
+                    ctor: 'Failure',
+                    _0: { ctor: 'BadPayload', _0: result._0, _1: fullResponse }
+                  }
 
                 default:
                   throw new Error('Unknown Result type: ' + result.ctor)
