@@ -104,18 +104,13 @@ type TestContext model msg
 
 withContext : (ActiveContext model msg -> TestContext model msg) -> TestContext model msg -> TestContext model msg
 withContext f context =
-    withContextOr context f context
-
-
-withContextOr : a -> (ActiveContext model msg -> a) -> TestContext model msg -> a
-withContextOr a f context =
     case context of
         TestContext c ->
             f c
 
         TestError _ ->
             -- TODO: track the steps that didn't run
-            a
+            context
 
 
 extractProgram : String -> Maybe flags -> Program flags model msg -> TestableProgram model msg
