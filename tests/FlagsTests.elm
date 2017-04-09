@@ -27,6 +27,6 @@ all =
             \() ->
                 stringProgram
                     |> TestContext.startWithFlags "Start"
-                    |> TestContext.model
-                    |> Expect.equal "Start"
+                    |> TestContext.expectModel
+                        (Expect.equal "Start")
         ]

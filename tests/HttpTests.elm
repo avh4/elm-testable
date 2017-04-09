@@ -34,6 +34,16 @@ loadingProgram =
         |> TestContext.start
 
 
+expectOk : (a -> Expectation) -> Result x a -> Expectation
+expectOk check result =
+    case result of
+        Ok a ->
+            check a
+
+        Err _ ->
+            Expect.fail ("Expected (Ok _), but got: " ++ toString result)
+
+
 all : Test
 all =
     describe "Http"
@@ -58,8 +68,7 @@ all =
                     |> Test.Http.resolveRequest "GET"
                         "https://example.com/books"
                         "BOOKS1"
-                    |> Result.map (TestContext.model)
-                    |> Expect.equal (Ok "BOOKS1")
+                    |> expectOk (TestContext.expectModel (Expect.equal "BOOKS1"))
         , test "requests should be removed after they are resolve" <|
             \() ->
                 loadingProgram

@@ -45,8 +45,7 @@ all =
                     (Test.EffectManager.getState identity)
                     (Sub.none)
                     |> TestContext.start
-                    |> TestContext.expect
-                        (TestContext.model)
+                    |> TestContext.expectModel
                         (Expect.equal "INIT;(INIT)")
         , test "it can process a Sub" <|
             \() ->
@@ -55,8 +54,7 @@ all =
                     (Test.EffectManager.subState identity)
                     |> TestContext.start
                     |> TestContext.update "PING"
-                    |> TestContext.expect
-                        (TestContext.model)
+                    |> TestContext.expectModel
                         (Expect.equal "INIT;[INIT]")
         , test "it works with Cmd.map" <|
             \() ->
@@ -64,8 +62,7 @@ all =
                     (Cmd.map (prefix "a") <| Test.EffectManager.getState identity)
                     (Sub.none)
                     |> TestContext.start
-                    |> TestContext.expect
-                        (TestContext.model)
+                    |> TestContext.expectModel
                         (Expect.equal "INIT;a(INIT)")
         , test "it works with Sub.map" <|
             \() ->
@@ -74,8 +71,7 @@ all =
                     (Sub.map (prefix "b") <| Test.EffectManager.subState identity)
                     |> TestContext.start
                     |> TestContext.update "PING"
-                    |> TestContext.expect
-                        (TestContext.model)
+                    |> TestContext.expectModel
                         (Expect.equal "INIT;b[INIT]")
         , test "it can process a self msg" <|
             \() ->
@@ -84,7 +80,6 @@ all =
                     (Sub.none)
                     |> TestContext.start
                     |> TestContext.update "GET"
-                    |> TestContext.expect
-                        (TestContext.model)
+                    |> TestContext.expectModel
                         (Expect.equal "INIT;(INIT;UP)")
         ]

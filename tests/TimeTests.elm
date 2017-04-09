@@ -111,36 +111,36 @@ all =
                 \() ->
                     sleepProgram [ ( sec 5, "AWOKE" ) ]
                         |> TestContext.advanceTime (sec 4.999)
-                        |> TestContext.model
-                        |> Expect.equal "INIT"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT")
             , test "triggers when the given delay has elapsed" <|
                 \() ->
                     sleepProgram [ ( sec 5, "AWOKE" ) ]
                         |> TestContext.advanceTime (sec 5)
-                        |> TestContext.model
-                        |> Expect.equal "INIT;AWOKE"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT;AWOKE")
             , test "current time is remembered" <|
                 \() ->
                     sleepProgram [ ( sec 5, "AWOKE" ) ]
                         |> TestContext.advanceTime (sec 3)
                         |> TestContext.advanceTime (sec 2)
-                        |> TestContext.model
-                        |> Expect.equal "INIT;AWOKE"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT;AWOKE")
             , test "task is scheduled relative to the current time" <|
                 \() ->
                     sleepProgram []
                         |> TestContext.advanceTime (sec 2)
                         |> TestContext.update (Sleep (sec 1) "WAKE")
                         |> TestContext.advanceTime (sec 0.999)
-                        |> TestContext.model
-                        |> Expect.equal "INIT"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT")
             , test "tasks are only triggered once" <|
                 \() ->
                     sleepProgram [ ( sec 5, "AWOKE" ) ]
                         |> TestContext.advanceTime (sec 5)
                         |> TestContext.advanceTime (sec 5)
-                        |> TestContext.model
-                        |> Expect.equal "INIT;AWOKE"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT;AWOKE")
             , test "triggers all tasks up to now" <|
                 \() ->
                     sleepProgram
@@ -148,8 +148,8 @@ all =
                         , ( sec 3, "3" )
                         ]
                         |> TestContext.advanceTime (sec 5)
-                        |> TestContext.model
-                        |> Expect.equal "INIT;3;5"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT;3;5")
             , test "task is scheduled from when it starts, not from whe it's created" <|
                 \() ->
                     sleepProgram []
@@ -163,21 +163,21 @@ all =
                                 ]
                             )
                         |> TestContext.advanceTime (sec 5)
-                        |> TestContext.model
-                        |> Expect.equal "INIT;AFTER 5"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT;AFTER 5")
             ]
         , describe "Time.now"
             [ test "initially 0" <|
                 \() ->
                     nowProgram
-                        |> TestContext.model
-                        |> Expect.equal "INIT;0"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT;0")
             , test "tracks current time" <|
                 \() ->
                     nowProgram
                         |> TestContext.advanceTime (sec 5)
-                        |> TestContext.model
-                        |> Expect.equal "INIT;0;3000"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT;0;3000")
             ]
         , describe "Time.every"
             [ test "triggers after initial delay" <|
@@ -185,23 +185,21 @@ all =
                     everyProgram
                         |> TestContext.start
                         |> TestContext.advanceTime (sec 1)
-                        |> TestContext.model
-                        |> Expect.equal "INIT;1000"
+                        |> TestContext.expectModel
+                            (Expect.equal "INIT;1000")
             , test "triggers again after the first time" <|
                 \() ->
                     everyProgram
                         |> TestContext.start
                         |> TestContext.advanceTime (sec 2)
-                        |> TestContext.expect
-                            TestContext.model
+                        |> TestContext.expectModel
                             (Expect.equal "INIT;1000;2000")
             , test "can be unsubscribed" <|
                 \() ->
                     onceProgram
                         |> TestContext.start
                         |> TestContext.advanceTime (sec 2)
-                        |> TestContext.expect
-                            TestContext.model
+                        |> TestContext.expectModel
                             (Expect.equal [ 1000 ])
             ]
         ]

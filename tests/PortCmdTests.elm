@@ -82,7 +82,7 @@ all =
                     }
                         |> Html.program
                         |> TestContext.start
-                        |> TestContext.model
-                        |> Expect.equal (Just "TASK")
+                        |> TestContext.expectModel
+                            (Expect.equal (Just "TASK"))
             ]
         ]

@@ -123,8 +123,8 @@ all =
                     [ TestContext.resolveMockTask listMock
                         (Ok [ 7, 8, 9 ])
                     ]
-                    (TestContext.model
-                        >> Expect.equal [ Just <| Ok [ 7, 8, 9 ] ]
+                    (TestContext.expectModel <|
+                        Expect.equal [ Just <| Ok [ 7, 8, 9 ] ]
                     )
         , test "can resolve a mock task with an error" <|
             \() ->
@@ -134,8 +134,8 @@ all =
                     )
                     [ TestContext.resolveMockTask singleMock (Err "failure")
                     ]
-                    (TestContext.model
-                        >> Expect.equal [ Just <| Err "failure" ]
+                    (TestContext.expectModel <|
+                        Expect.equal [ Just <| Err "failure" ]
                     )
         , test "works with Task.andThen" <|
             \() ->
@@ -148,8 +148,8 @@ all =
                         )
                     )
                     [ TestContext.resolveMockTask singleMock (Ok "good") ]
-                    (TestContext.model
-                        >> Expect.equal [ Ok "andThen!good" ]
+                    (TestContext.expectModel <|
+                        Expect.equal [ Ok "andThen!good" ]
                     )
         , test "works with Task.onError" <|
             \() ->
@@ -162,8 +162,8 @@ all =
                         )
                     )
                     [ TestContext.resolveMockTask singleMock (Err "bad") ]
-                    (TestContext.model
-                        >> Expect.equal [ Ok "onError!bad" ]
+                    (TestContext.expectModel <|
+                        Expect.equal [ Ok "onError!bad" ]
                     )
         , test "works with Cmd.map" <|
             \() ->
@@ -176,8 +176,8 @@ all =
                         )
                     )
                     [ TestContext.resolveMockTask singleMock (Ok "") ]
-                    (TestContext.model
-                        >> (Expect.equal [ ( "mapped", Ok "" ) ])
+                    (TestContext.expectModel <|
+                        (Expect.equal [ ( "mapped", Ok "" ) ])
                     )
         , test "can chain mock tasks" <|
             \() ->
@@ -204,8 +204,8 @@ all =
                     [ TestContext.resolveMockTask mocks.a (Ok 999)
                     , TestContext.resolveMockTask (mocks.b 10999) (Ok 55)
                     ]
-                    (TestContext.model
-                        >> Expect.equal [ Ok 55 ]
+                    (TestContext.expectModel <|
+                        Expect.equal [ Ok 55 ]
                     )
         , test "example of mock task with multiple task types" <|
             \() ->
@@ -220,8 +220,8 @@ all =
                     [ TestContext.resolveMockTask mocks.int (Ok 9)
                     , TestContext.resolveMockTask mocks.string (Ok "good")
                     ]
-                    (TestContext.model
-                        >> Expect.equal
+                    (TestContext.expectModel <|
+                        Expect.equal
                             [ Err <| Ok "good"
                             , Ok <| Ok 9
                             ]
@@ -241,8 +241,8 @@ all =
                         (singleMock |> TestContext.toTask |> Process.spawn |> Task.attempt (Result.map toString))
                     )
                     [ TestContext.resolveMockTask singleMock (Ok "spawned task") ]
-                    (TestContext.model
-                        >> List.filterMap (Result.toMaybe)
-                        >> expectNotInclude "spawned task"
+                    (TestContext.expectModel <|
+                        List.filterMap (Result.toMaybe)
+                            >> expectNotInclude "spawned task"
                     )
         ]

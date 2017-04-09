@@ -22,12 +22,12 @@ all =
         [ test "verifying an initial model" <|
             \() ->
                 stringProgram "Start"
-                    |> TestContext.model
-                    |> Expect.equal "Start"
+                    |> TestContext.expectModel
+                        (Expect.equal "Start")
         , test "verifying an updated model" <|
             \() ->
                 stringProgram "Start"
                     |> TestContext.update "1"
-                    |> TestContext.model
-                    |> Expect.equal "Start;1"
+                    |> TestContext.expectModel
+                        (Expect.equal "Start;1")
         ]

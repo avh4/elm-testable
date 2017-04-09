@@ -46,8 +46,7 @@ all =
                 }
                     |> Html.program
                     |> TestContext.start
-                    |> TestContext.model
-                    |> Expect.equal expected
+                    |> TestContext.expectModel (Expect.equal expected)
         , testEqual string "tasks in update commands should immediately be processed" <|
             \actual expected ->
                 { init = ( "Start", Cmd.none )
@@ -65,8 +64,8 @@ all =
                     |> Html.program
                     |> TestContext.start
                     |> TestContext.update (Err actual)
-                    |> TestContext.model
-                    |> Expect.equal expected
+                    |> TestContext.expectModel
+                        (Expect.equal expected)
         , test "tasks should only be processed once" <|
             \() ->
                 { init = ( 0, Task.succeed 1 |> Task.perform identity )
@@ -78,8 +77,8 @@ all =
                     |> TestContext.start
                     |> TestContext.update 20
                     |> TestContext.update 300
-                    |> TestContext.model
-                    |> Expect.equal 321
+                    |> TestContext.expectModel
+                        (Expect.equal 321)
 
         -- TODO: ensure correct ordering of interleaved Cmds and Tasks
         , testEqual string "Task.fail" <|
@@ -91,6 +90,6 @@ all =
                 }
                     |> Html.program
                     |> TestContext.start
-                    |> TestContext.model
-                    |> Expect.equal (Err expected)
+                    |> TestContext.expectModel
+                        (Expect.equal (Err expected))
         ]

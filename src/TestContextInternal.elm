@@ -6,14 +6,13 @@ module TestContextInternal
         , mockTask
         , start
         , startWithFlags
-        , model
+        , expectModel
         , update
         , expectMockTask
         , resolveMockTask
         , send
         , expectCmd
         , advanceTime
-        , expect
           -- private to elm-testable
         , processTask
         )
@@ -503,9 +502,9 @@ processTask pid task (TestContext context_) =
                     }
 
 
-model : TestContext model msg -> model
-model (TestContext context) =
-    context.model
+expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
+expectModel check context =
+    expect (\(TestContext c) -> c.model) check context
 
 
 update : msg -> TestContext model msg -> TestContext model msg

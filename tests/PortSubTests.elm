@@ -1,7 +1,7 @@
 module PortSubTests exposing (..)
 
 import Test exposing (..)
-import Expect
+import Expect exposing (Expectation)
 import Html
 import TestContext exposing (TestContext)
 import Test.Ports as Ports
@@ -23,6 +23,16 @@ prefix pref s =
     pref ++ s
 
 
+expectOk : (a -> Expectation) -> Result x a -> Expectation
+expectOk check result =
+    case result of
+        Ok a ->
+            check a
+
+        Err _ ->
+            Expect.fail ("Expected (Ok _), but got: " ++ toString result)
+
+
 all : Test
 all =
     describe "port subscriptions"
@@ -30,15 +40,19 @@ all =
             \() ->
                 subProgram (Ports.stringSub identity)
                     |> TestContext.send Ports.stringSub "1"
-                    |> Result.map TestContext.model
-                    |> Expect.equal (Ok "INIT;1")
+                    |> expectOk
+                        (TestContext.expectModel
+                            (Expect.equal "INIT;1")
+                        )
         , test "the tagger is applied" <|
             \() ->
                 subProgram
                     (Ports.stringSub (prefix "a"))
                     |> TestContext.send Ports.stringSub "1"
-                    |> Result.map TestContext.model
-                    |> Expect.equal (Ok <| "INIT;a1")
+                    |> expectOk
+                        (TestContext.expectModel
+                            (Expect.equal "INIT;a1")
+                        )
         , test "gives an error when not subscribed" <|
             \() ->
                 subProgram (Sub.none)
@@ -48,8 +62,10 @@ all =
             \() ->
                 subProgram (Sub.map (prefix "z") <| Ports.stringSub identity)
                     |> TestContext.send Ports.stringSub "1"
-                    |> Result.map TestContext.model
-                    |> Expect.equal (Ok "INIT;z1")
+                    |> expectOk
+                        (TestContext.expectModel
+                            (Expect.equal "INIT;z1")
+                        )
         , test "send triggers all taggers" <|
             \() ->
                 subProgram
@@ -59,6 +75,8 @@ all =
                         ]
                     )
                     |> TestContext.send Ports.stringSub "1"
-                    |> Result.map TestContext.model
-                    |> Expect.equal (Ok "INIT;a1;b1")
+                    |> expectOk
+                        (TestContext.expectModel
+                            (Expect.equal "INIT;a1;b1")
+                        )
         ]

@@ -3,12 +3,11 @@ module TestContext
         ( TestContext
         , start
         , startWithFlags
-        , model
+        , expectModel
         , update
         , send
         , expectCmd
         , advanceTime
-        , expect
         )
 
 import Expect exposing (Expectation)
@@ -30,9 +29,9 @@ startWithFlags flags realProgram =
     Internal.startWithFlags flags realProgram
 
 
-model : TestContext model msg -> model
-model context =
-    Internal.model context
+expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
+expectModel check context =
+    Internal.expectModel check context
 
 
 update : msg -> TestContext model msg -> TestContext model msg
@@ -57,8 +56,3 @@ expectCmd expected context =
 advanceTime : Time -> TestContext model msg -> TestContext model msg
 advanceTime dt context =
     Internal.advanceTime dt context
-
-
-expect : (TestContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
-expect =
-    Internal.expect
