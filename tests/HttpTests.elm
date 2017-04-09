@@ -6,6 +6,7 @@ import Http
 import Test exposing (..)
 import TestContext exposing (TestContext)
 import Test.Http
+import Test.Util exposing (..)
 
 
 type LoadingMsg
@@ -55,13 +56,14 @@ all =
             \() ->
                 loadingProgram
                     |> Test.Http.expectRequest "GET" "https://example.com/wrong_url"
-                    |> Expect.getFailure
-                    |> Expect.equal
-                        (Just
-                            { given = ""
-                            , message = "pending HTTP requests:\n    - GET https://example.com/books\n╷\n│ to include (Test.Http.expectRequest)\n╵\nGET https://example.com/wrong_url"
-                            }
-                        )
+                    |> expectFailure
+                        [ "pending HTTP requests:"
+                        , "    - GET https://example.com/books"
+                        , "╷"
+                        , "│ to include (Test.Http.expectRequest)"
+                        , "╵"
+                        , "GET https://example.com/wrong_url"
+                        ]
         , test "stubbing an HTTP response" <|
             \() ->
                 loadingProgram
@@ -77,13 +79,13 @@ all =
                         "BOOKS1"
                     |> Result.withDefault loadingProgram
                     |> Test.Http.expectRequest "GET" "https://example.com/books"
-                    |> Expect.getFailure
-                    |> Expect.equal
-                        (Just
-                            { given = ""
-                            , message = "pending HTTP requests (none were made)\n╷\n│ to include (Test.Http.expectRequest)\n╵\nGET https://example.com/books"
-                            }
-                        )
+                    |> expectFailure
+                        [ "pending HTTP requests (none were made)"
+                        , "╷"
+                        , "│ to include (Test.Http.expectRequest)"
+                        , "╵"
+                        , "GET https://example.com/books"
+                        ]
 
         -- TODO: nicer message when an expected request was previously resolved
         -- TODO: test an HTTP request with a JSON decoder

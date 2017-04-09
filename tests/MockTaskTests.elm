@@ -3,9 +3,10 @@ module MockTaskTests exposing (all)
 import Test exposing (..)
 import Expect exposing (Expectation)
 import Html
-import TestContextWithMocks as TestContext exposing (TestContext)
-import Task
 import Process
+import Task
+import TestContextWithMocks as TestContext exposing (TestContext)
+import Test.Util exposing (..)
 
 
 cmdProgram :
@@ -19,23 +20,6 @@ cmdProgram cmd =
         , view = \_ -> Html.text ""
         }
         |> TestContext.start
-
-
-expectFailure : List String -> Expectation -> Expectation
-expectFailure expectedMessage expectation =
-    expectation
-        |> Expect.getFailure
-        |> Expect.equal (Just { given = "", message = String.join "\n" expectedMessage })
-
-
-expectOk : (a -> Expectation) -> Result String a -> Expectation
-expectOk expectation result =
-    case result of
-        Err x ->
-            Expect.fail x
-
-        Ok a ->
-            expectation a
 
 
 testResults : a -> List (a -> Result String a) -> (a -> Expectation) -> Expectation

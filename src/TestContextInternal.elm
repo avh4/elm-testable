@@ -14,7 +14,10 @@ module TestContextInternal
         , expectCmd
         , advanceTime
           -- private to elm-testable
+        , expect
         , processTask
+        , withContext
+        , withContextResult
         )
 
 import Native.TestContext
@@ -72,23 +75,59 @@ isPending state =
             False
 
 
+type alias ActiveContext model msg =
+    { program : TestableProgram model msg
+    , model : model
+    , outgoingPortValues : Dict String (List Json.Encode.Value)
+    , mockTasks : Dict String (MockTaskState msg)
+    , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task Never msg)
+    , futureTasks : PairingHeap Time ( ProcessId, Task Never msg )
+    , now : Time
+    , sequence : Int
+    , nextProcessId : Int
+    , killedProcesses : Set Int
+    , processMailboxes : DefaultDict String (Fifo ( Int, EffectManager.Message ))
+    , workQueue : Fifo String
+    , effectManagerStates : Dict String EffectManager.State
+    , transcript : List ( Int, Task Never msg )
+    }
+
+
 type TestContext model msg
-    = TestContext
-        { program : TestableProgram model msg
-        , model : model
-        , outgoingPortValues : Dict String (List Json.Encode.Value)
-        , mockTasks : Dict String (MockTaskState msg)
-        , pendingHttpRequests : Dict ( String, String ) (Http.Response String -> Task Never msg)
-        , futureTasks : PairingHeap Time ( ProcessId, Task Never msg )
-        , now : Time
-        , sequence : Int
-        , nextProcessId : Int
-        , killedProcesses : Set Int
-        , processMailboxes : DefaultDict String (Fifo ( Int, EffectManager.Message ))
-        , workQueue : Fifo String
-        , effectManagerStates : Dict String EffectManager.State
+    = TestContext (ActiveContext model msg)
+    | TestError
+        { error : String
         , transcript : List ( Int, Task Never msg )
+        , processMailboxes : Dict String (List ( Int, EffectManager.Message ))
         }
+
+
+withContext : (ActiveContext model msg -> TestContext model msg) -> TestContext model msg -> TestContext model msg
+withContext f context =
+    withContextOr context f context
+
+
+{-| DEPRECATED: instead use withContext and return TestError instead of Err
+-}
+withContextResult : (ActiveContext model msg -> Result String (TestContext model msg)) -> TestContext model msg -> Result String (TestContext model msg)
+withContextResult f context =
+    case context of
+        TestContext c ->
+            f c
+
+        TestError details ->
+            Err details.error
+
+
+withContextOr : a -> (ActiveContext model msg -> a) -> TestContext model msg -> a
+withContextOr a f context =
+    case context of
+        TestContext c ->
+            f c
+
+        TestError _ ->
+            -- TODO: track the steps that didn't run
+            a
 
 
 extractProgram : String -> Maybe flags -> Program flags model msg -> TestableProgram model msg
@@ -282,112 +321,120 @@ start_ flags realProgram =
 
 
 drainWorkQueue : TestContext model msg -> TestContext model msg
-drainWorkQueue (TestContext context) =
-    case Fifo.remove (debug "drainWorkQueue" <| context.workQueue) of
-        ( Nothing, _ ) ->
-            TestContext context
-
-        ( Just home, rest ) ->
-            case Fifo.remove (DefaultDict.get home context.processMailboxes) of
+drainWorkQueue =
+    withContext <|
+        \context ->
+            case Fifo.remove (debug "drainWorkQueue" <| context.workQueue) of
                 ( Nothing, _ ) ->
-                    TestContext { context | workQueue = rest }
-                        |> drainWorkQueue
+                    TestContext context
 
-                ( Just ( _, message ), remaining ) ->
-                    TestContext
-                        { context
-                            | workQueue = rest
-                            , processMailboxes = DefaultDict.insert home remaining context.processMailboxes
-                        }
-                        |> processMessage home message
-                        |> drainWorkQueue
+                ( Just home, rest ) ->
+                    case Fifo.remove (DefaultDict.get home context.processMailboxes) of
+                        ( Nothing, _ ) ->
+                            TestContext { context | workQueue = rest }
+                                |> drainWorkQueue
+
+                        ( Just ( _, message ), remaining ) ->
+                            TestContext
+                                { context
+                                    | workQueue = rest
+                                    , processMailboxes = DefaultDict.insert home remaining context.processMailboxes
+                                }
+                                |> processMessage home message
+                                |> drainWorkQueue
 
 
 processMessage : String -> EffectManager.Message -> TestContext model msg -> TestContext model msg
-processMessage home message (TestContext context) =
-    let
-        effectManager =
-            EffectManager.extractEffectManager home
-                |> orCrash ("Could not extract effect manager: " ++ home)
+processMessage home message =
+    withContext <|
+        \context ->
+            let
+                effectManager =
+                    EffectManager.extractEffectManager home
+                        |> orCrash ("Could not extract effect manager: " ++ home)
 
-        currentState =
-            Dict.get home context.effectManagerStates
-                |> orCrash ("There's no recorded state for effect manager: " ++ home)
+                currentState =
+                    Dict.get home context.effectManagerStates
+                        |> orCrash ("There's no recorded state for effect manager: " ++ home)
 
-        newStateTask =
-            (case message of
-                EffectManager.Self selfMsg ->
-                    effectManager.onSelfMsg selfMsg currentState
+                newStateTask =
+                    (case message of
+                        EffectManager.Self selfMsg ->
+                            effectManager.onSelfMsg selfMsg currentState
 
-                EffectManager.Fx cmds subs ->
-                    effectManager.onEffects cmds subs currentState
-            )
-                |> fromPlatformTask
-                |> Testable.Task.mapError never
-                |> Testable.Task.andThen (NewEffectManagerState "onSelfMsg" home)
-    in
-        TestContext context
-            |> processTask (ProcessId 0) newStateTask
+                        EffectManager.Fx cmds subs ->
+                            effectManager.onEffects cmds subs currentState
+                    )
+                        |> fromPlatformTask
+                        |> Testable.Task.mapError never
+                        |> Testable.Task.andThen (NewEffectManagerState "onSelfMsg" home)
+            in
+                TestContext context
+                    |> processTask (ProcessId 0) newStateTask
 
 
 enqueueMessage : String -> EffectManager.Message -> TestContext model msg -> TestContext model msg
-enqueueMessage home message (TestContext context) =
-    let
-        _ =
-            debug "enqueueMessage" ( home, message )
-    in
-        TestContext
-            { context
-                | processMailboxes =
-                    context.processMailboxes
-                        |> DefaultDict.update home (Fifo.insert ( context.sequence, message ))
-                , workQueue =
-                    Fifo.insert home context.workQueue
-            }
+enqueueMessage home message =
+    withContext <|
+        \context ->
+            let
+                _ =
+                    debug "enqueueMessage" ( home, message )
+            in
+                TestContext
+                    { context
+                        | processMailboxes =
+                            context.processMailboxes
+                                |> DefaultDict.update home (Fifo.insert ( context.sequence, message ))
+                        , workQueue =
+                            Fifo.insert home context.workQueue
+                    }
 
 
 dispatchEffects : Cmd msg -> Sub msg -> TestContext model msg -> TestContext model msg
-dispatchEffects cmd sub (TestContext context) =
-    let
-        cmds =
-            extractCmds cmd
+dispatchEffects cmd sub =
+    withContext <|
+        \context ->
+            let
+                cmds =
+                    extractCmds cmd
 
-        subs =
-            extractSubs sub
+                subs =
+                    extractSubs sub
 
-        fxs =
-            Dict.merge
-                (\home c -> Dict.insert home <| EffectManager.Fx c [])
-                (\home c s -> Dict.insert home <| EffectManager.Fx c s)
-                (\home s -> Dict.insert home <| EffectManager.Fx [] s)
-                cmds.effectManagers
-                subs.effectManagers
-                Dict.empty
-
-        -- We iterate all effect managers (not just the ones we have fx for)
-        -- because there might be some that are no longer subscribed to that
-        -- were previously subscribed to.
-        applyEffects =
-            Dict.merge
-                (\home em -> enqueueMessage home <| EffectManager.Fx [] [])
-                (\home em fx -> enqueueMessage home fx)
-                (\home fx -> Debug.crash <| "Missing effect manager: " ++ home)
-                (EffectManager.extractEffectManagers ())
-                fxs
-    in
-        TestContext
-            { context
-                | outgoingPortValues =
+                fxs =
                     Dict.merge
-                        (\home old d -> d)
-                        (\home old new d -> Dict.insert home (old ++ new) d)
-                        (\home new d -> Dict.insert home new d)
-                        context.outgoingPortValues
-                        cmds.ports
-                        context.outgoingPortValues
-            }
-            |> applyEffects
-            |> flip (List.foldl (processTask (ProcessId -2))) cmds.tasks
+                        (\home c -> Dict.insert home <| EffectManager.Fx c [])
+                        (\home c s -> Dict.insert home <| EffectManager.Fx c s)
+                        (\home s -> Dict.insert home <| EffectManager.Fx [] s)
+                        cmds.effectManagers
+                        subs.effectManagers
+                        Dict.empty
+
+                -- We iterate all effect managers (not just the ones we have fx for)
+                -- because there might be some that are no longer subscribed to that
+                -- were previously subscribed to.
+                applyEffects =
+                    Dict.merge
+                        (\home em -> enqueueMessage home <| EffectManager.Fx [] [])
+                        (\home em fx -> enqueueMessage home fx)
+                        (\home fx -> Debug.crash <| "Missing effect manager: " ++ home)
+                        (EffectManager.extractEffectManagers ())
+                        fxs
+            in
+                TestContext
+                    { context
+                        | outgoingPortValues =
+                            Dict.merge
+                                (\home old d -> d)
+                                (\home old new d -> Dict.insert home (old ++ new) d)
+                                (\home new d -> Dict.insert home new d)
+                                context.outgoingPortValues
+                                cmds.ports
+                                context.outgoingPortValues
+                    }
+                    |> applyEffects
+                    |> flip (List.foldl (processTask (ProcessId -2))) cmds.tasks
 
 
 {-| This is a workaround for <https://github.com/elm-lang/elm-compiler/issues/1287>
@@ -407,125 +454,129 @@ processTask_preventTailCallOptimization =
 
 
 processTask : ProcessId -> Task Never msg -> TestContext model msg -> TestContext model msg
-processTask pid task (TestContext context_) =
-    let
-        _ =
-            debug ("processTask:" ++ toString pid) task
+processTask pid task =
+    withContext <|
+        \context_ ->
+            let
+                _ =
+                    debug ("processTask:" ++ toString pid) task
 
-        context =
-            { context_
-                | sequence = context_.sequence + 1
-                , transcript = ( context_.sequence + 1, task ) :: context_.transcript
-            }
-    in
-        case task of
-            Success msg ->
-                TestContext context
-                    |> update msg
-
-            Failure x ->
-                never x
-
-            IgnoredTask ->
-                TestContext context
-
-            MockTask label mapper ->
-                TestContext
-                    { context
-                        | mockTasks =
-                            context.mockTasks
-                                |> Dict.insert label (Pending mapper)
+                context =
+                    { context_
+                        | sequence = context_.sequence + 1
+                        , transcript = ( context_.sequence + 1, task ) :: context_.transcript
                     }
+            in
+                case task of
+                    Success msg ->
+                        TestContext context
+                            |> update msg
 
-            ToApp msg next ->
-                TestContext context
-                    |> update (EffectManager.unwrapAppMsg msg)
-                    |> processTask_preventTailCallOptimization pid next
+                    Failure x ->
+                        never x
 
-            ToEffectManager home selfMsg next ->
-                TestContext context
-                    |> enqueueMessage home (EffectManager.Self selfMsg)
-                    |> processTask_preventTailCallOptimization pid next
+                    IgnoredTask ->
+                        TestContext context
 
-            NewEffectManagerState junk home newState ->
-                TestContext
-                    { context
-                        | effectManagerStates = Dict.insert home newState context.effectManagerStates
-                    }
+                    MockTask label mapper ->
+                        TestContext
+                            { context
+                                | mockTasks =
+                                    context.mockTasks
+                                        |> Dict.insert label (Pending mapper)
+                            }
 
-            Core_NativeScheduler_sleep delay next ->
-                TestContext
-                    { context
-                        | futureTasks =
-                            context.futureTasks
-                                |> PairingHeap.insert (context.now + delay) ( pid, next () )
-                    }
+                    ToApp msg next ->
+                        TestContext context
+                            |> update (EffectManager.unwrapAppMsg msg)
+                            |> processTask_preventTailCallOptimization pid next
 
-            Core_NativeScheduler_spawn task next ->
-                let
-                    spawnedProcessId =
-                        ProcessId context.nextProcessId
-                in
-                    TestContext { context | nextProcessId = context.nextProcessId + 1 }
-                        -- ??? which order should these be processed in?
-                        -- ??? ideally nothing should depened on the order, but maybe we should
-                        -- ??? simulate the same order that the Elm runtime would result in?
-                        |> processTask spawnedProcessId (task |> Testable.Task.map never)
-                        |> processTask_preventTailCallOptimization pid (next spawnedProcessId)
+                    ToEffectManager home selfMsg next ->
+                        TestContext context
+                            |> enqueueMessage home (EffectManager.Self selfMsg)
+                            |> processTask_preventTailCallOptimization pid next
 
-            Core_NativeScheduler_kill (ProcessId processId) next ->
-                TestContext { context | killedProcesses = Set.insert processId context.killedProcesses }
-                    |> processTask_preventTailCallOptimization pid next
+                    NewEffectManagerState junk home newState ->
+                        TestContext
+                            { context
+                                | effectManagerStates = Dict.insert home newState context.effectManagerStates
+                            }
 
-            Core_Time_now next ->
-                TestContext context
-                    |> processTask_preventTailCallOptimization pid (next context.now)
+                    Core_NativeScheduler_sleep delay next ->
+                        TestContext
+                            { context
+                                | futureTasks =
+                                    context.futureTasks
+                                        |> PairingHeap.insert (context.now + delay) ( pid, next () )
+                            }
 
-            Core_Time_setInterval delay recurringTask ->
-                let
-                    step () =
-                        Core_NativeScheduler_sleep delay (\() -> recurringTask)
-                            |> Testable.Task.andThen step
-                            |> Testable.Task.mapError never
-                in
-                    TestContext context
-                        |> processTask_preventTailCallOptimization pid (step ())
+                    Core_NativeScheduler_spawn task next ->
+                        let
+                            spawnedProcessId =
+                                ProcessId context.nextProcessId
+                        in
+                            TestContext { context | nextProcessId = context.nextProcessId + 1 }
+                                -- ??? which order should these be processed in?
+                                -- ??? ideally nothing should depened on the order, but maybe we should
+                                -- ??? simulate the same order that the Elm runtime would result in?
+                                |> processTask spawnedProcessId (task |> Testable.Task.map never)
+                                |> processTask_preventTailCallOptimization pid (next spawnedProcessId)
 
-            Http_NativeHttp_toTask options next ->
-                TestContext
-                    { context
-                        | pendingHttpRequests =
-                            context.pendingHttpRequests
-                                |> Dict.insert
-                                    ( options.method, options.url )
-                                    next
-                    }
+                    Core_NativeScheduler_kill (ProcessId processId) next ->
+                        TestContext { context | killedProcesses = Set.insert processId context.killedProcesses }
+                            |> processTask_preventTailCallOptimization pid next
+
+                    Core_Time_now next ->
+                        TestContext context
+                            |> processTask_preventTailCallOptimization pid (next context.now)
+
+                    Core_Time_setInterval delay recurringTask ->
+                        let
+                            step () =
+                                Core_NativeScheduler_sleep delay (\() -> recurringTask)
+                                    |> Testable.Task.andThen step
+                                    |> Testable.Task.mapError never
+                        in
+                            TestContext context
+                                |> processTask_preventTailCallOptimization pid (step ())
+
+                    Http_NativeHttp_toTask options next ->
+                        TestContext
+                            { context
+                                | pendingHttpRequests =
+                                    context.pendingHttpRequests
+                                        |> Dict.insert
+                                            ( options.method, options.url )
+                                            next
+                            }
 
 
 expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
 expectModel check context =
-    expect (\(TestContext c) -> c.model) check context
+    expect .model check context
 
 
 update : msg -> TestContext model msg -> TestContext model msg
-update msg (TestContext context) =
-    let
-        _ =
-            debug "update" msg
+update msg =
+    withContext <|
+        \context ->
+            let
+                _ =
+                    debug "update" msg
 
-        ( newModel, newCmds ) =
-            context.program.update msg context.model
+                ( newModel, newCmds ) =
+                    context.program.update msg context.model
 
-        newSubs =
-            context.program.subscriptions newModel
-    in
-        TestContext { context | model = newModel }
-            |> dispatchEffects newCmds newSubs
-            |> drainWorkQueue
+                newSubs =
+                    context.program.subscriptions newModel
+            in
+                TestContext { context | model = newModel }
+                    |> dispatchEffects newCmds newSubs
+                    |> drainWorkQueue
 
 
-getPendingTask : String -> MockTask x a -> TestContext model msg -> Result String (Mapper (Task Never msg))
-getPendingTask fnName mock (TestContext context) =
+getPendingTask : String -> MockTask x a -> ActiveContext model msg -> Result String (Mapper (Task Never msg))
+getPendingTask fnName mock context =
     let
         label =
             mock |> getId
@@ -563,13 +614,16 @@ getPendingTask fnName mock (TestContext context) =
 
 
 expectMockTask : MockTask x a -> TestContext model msg -> Expectation
-expectMockTask whichMock context =
-    case getPendingTask "expectMockTask" whichMock context of
-        Ok _ ->
-            Expect.pass
+expectMockTask whichMock =
+    expect (getPendingTask "expectMockTask" whichMock)
+        (\result ->
+            case result of
+                Ok _ ->
+                    Expect.pass
 
-        Err message ->
-            Expect.fail message
+                Err message ->
+                    Expect.fail message
+        )
 
 
 listFailure : String -> String -> List a -> (a -> String) -> String -> a -> List String -> String
@@ -597,27 +651,29 @@ listFailure collectionName emptyIndicator actuals view expectationName expected 
 
 
 resolveMockTask : MockTask x a -> Result x a -> TestContext model msg -> Result String (TestContext model msg)
-resolveMockTask mock result (TestContext context) =
-    let
-        label =
-            mock |> getId
-    in
-        case getPendingTask "resolveMockTask" mock (TestContext context) of
-            Err message ->
-                Err message
+resolveMockTask mock result =
+    withContextResult <|
+        \context ->
+            let
+                label =
+                    mock |> getId
+            in
+                case getPendingTask "resolveMockTask" mock context of
+                    Err message ->
+                        Err message
 
-            Ok mapper ->
-                Mapper.apply mapper result
-                    |> Result.map
-                        (\next ->
-                            TestContext
-                                { context
-                                    | mockTasks =
-                                        Dict.insert label (Resolved <| toString result) context.mockTasks
-                                }
-                                |> processTask (ProcessId -3) next
-                         -- TODO: drain work queue
-                        )
+                    Ok mapper ->
+                        Mapper.apply mapper result
+                            |> Result.map
+                                (\next ->
+                                    TestContext
+                                        { context
+                                            | mockTasks =
+                                                Dict.insert label (Resolved <| toString result) context.mockTasks
+                                        }
+                                        |> processTask (ProcessId -3) next
+                                 -- TODO: drain work queue
+                                )
 
 
 isPortSub : TestableSub msg -> Maybe ( String, Mapper msg )
@@ -635,32 +691,34 @@ send :
     -> value
     -> TestContext model msg
     -> Result String (TestContext model msg)
-send subPort value (TestContext context) =
-    let
-        subs =
-            context.program.subscriptions context.model
-                |> extractSubs
-                |> .ports
+send subPort value =
+    withContextResult <|
+        \context ->
+            let
+                subs =
+                    context.program.subscriptions context.model
+                        |> extractSubs
+                        |> .ports
 
-        portName =
-            extractSubPortName subPort
-    in
-        case Dict.get portName subs |> Maybe.withDefault [] of
-            [] ->
-                Err ("Not subscribed to port: " ++ portName)
+                portName =
+                    extractSubPortName subPort
+            in
+                case Dict.get portName subs |> Maybe.withDefault [] of
+                    [] ->
+                        Err ("Not subscribed to port: " ++ portName)
 
-            mappers ->
-                List.foldl
-                    (\mapper c -> Mapper.apply mapper value |> Result.map2 (flip update) c)
-                    (Ok <| TestContext context)
-                    mappers
+                    mappers ->
+                        List.foldl
+                            (\mapper c -> Mapper.apply mapper value |> Result.map2 (flip update) c)
+                            (Ok <| TestContext context)
+                            mappers
 
 
 {-| If `cmd` is a batch, then this will return True only if all Cmds in the batch
 are pending.
 -}
-hasPendingCmd : Cmd msg -> TestContext model msg -> Bool
-hasPendingCmd cmd (TestContext context) =
+hasPendingCmd : Cmd msg -> ActiveContext model msg -> Bool
+hasPendingCmd cmd context =
     let
         expected =
             extractCmds cmd
@@ -679,66 +737,87 @@ hasPendingCmd cmd (TestContext context) =
 
 
 expectCmd : Cmd msg -> TestContext model msg -> Expectation
-expectCmd expected (TestContext context) =
-    if hasPendingCmd expected (TestContext context) then
-        Expect.pass
-    else
-        -- TODO: nicer failure messages like expectHttpRequest
-        [ toString <| context.outgoingPortValues
-        , "╷"
-        , "│ TestContext.expectCmd"
-        , "╵"
-        , toString <| .ports <| extractCmds expected
-        ]
-            |> String.join "\n"
-            |> Expect.fail
+expectCmd expected =
+    expect identity
+        (\context ->
+            if hasPendingCmd expected context then
+                Expect.pass
+            else
+                -- TODO: nicer failure messages like expectHttpRequest
+                [ toString <| context.outgoingPortValues
+                , "╷"
+                , "│ TestContext.expectCmd"
+                , "╵"
+                , toString <| .ports <| extractCmds expected
+                ]
+                    |> String.join "\n"
+                    |> Expect.fail
+        )
 
 
 advanceTime : Time -> TestContext model msg -> TestContext model msg
-advanceTime dt (TestContext context) =
-    advanceTimeUntil (context.now + dt) (TestContext context)
+advanceTime dt context =
+    flip withContext context <|
+        \c ->
+            advanceTimeUntil (c.now + dt) context
 
 
 advanceTimeUntil : Time -> TestContext model msg -> TestContext model msg
-advanceTimeUntil targetTime (TestContext context) =
-    case PairingHeap.findMin (debug ("advanceTimeUntil:" ++ toString targetTime) context.futureTasks) of
-        Nothing ->
-            TestContext { context | now = targetTime }
+advanceTimeUntil targetTime =
+    withContext <|
+        \context ->
+            case PairingHeap.findMin (debug ("advanceTimeUntil:" ++ toString targetTime) context.futureTasks) of
+                Nothing ->
+                    TestContext { context | now = targetTime }
 
-        Just ( time, ( ProcessId processId, next ) ) ->
-            if Set.member processId (debug "killedProcesses" context.killedProcesses) then
-                TestContext { context | futureTasks = PairingHeap.deleteMin context.futureTasks }
-                    |> advanceTimeUntil targetTime
-            else if time <= targetTime then
-                TestContext
-                    { context
-                        | futureTasks = PairingHeap.deleteMin context.futureTasks
-                        , now = time
-                    }
-                    |> processTask (ProcessId processId) next
-                    |> drainWorkQueue
-                    |> advanceTimeUntil targetTime
-            else
-                TestContext { context | now = targetTime }
+                Just ( time, ( ProcessId processId, next ) ) ->
+                    if Set.member processId (debug "killedProcesses" context.killedProcesses) then
+                        TestContext { context | futureTasks = PairingHeap.deleteMin context.futureTasks }
+                            |> advanceTimeUntil targetTime
+                    else if time <= targetTime then
+                        TestContext
+                            { context
+                                | futureTasks = PairingHeap.deleteMin context.futureTasks
+                                , now = time
+                            }
+                            |> processTask (ProcessId processId) next
+                            |> drainWorkQueue
+                            |> advanceTimeUntil targetTime
+                    else
+                        TestContext { context | now = targetTime }
 
 
-expect : (TestContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
-expect get check (TestContext context) =
-    case Expect.getFailure (get (TestContext context) |> check) of
-        Nothing ->
-            Expect.pass
+expect : (ActiveContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
+expect get check context_ =
+    case context_ of
+        TestContext context ->
+            case Expect.getFailure (get context |> check) of
+                Nothing ->
+                    Expect.pass
 
-        Just { given, message } ->
+                Just { given, message } ->
+                    Expect.fail <|
+                        message
+                            ++ "\n\n\nThe following tasks we processed during the test:\n"
+                            ++ show "  - "
+                                (\( i, t ) -> toString i ++ ": " ++ toString t)
+                                (List.reverse context.transcript)
+                            ++ "\nThe following messages were unprocessed:\n"
+                            ++ show "  - "
+                                (\( home, msgs ) -> home ++ "\n" ++ show "      - " toString (Fifo.toList msgs))
+                                (DefaultDict.toList context.processMailboxes)
+
+        TestError details ->
             Expect.fail <|
-                message
+                details.error
                     ++ "\n\n\nThe following tasks we processed during the test:\n"
                     ++ show "  - "
                         (\( i, t ) -> toString i ++ ": " ++ toString t)
-                        (List.reverse context.transcript)
+                        (List.reverse details.transcript)
                     ++ "\nThe following messages were unprocessed:\n"
                     ++ show "  - "
-                        (\( home, msgs ) -> home ++ "\n" ++ show "      - " toString (Fifo.toList msgs))
-                        (DefaultDict.toList context.processMailboxes)
+                        (\( home, msgs ) -> home ++ "\n" ++ show "      - " toString msgs)
+                        (Dict.toList details.processMailboxes)
 
 
 show : String -> (a -> String) -> List a -> String
