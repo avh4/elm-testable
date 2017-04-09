@@ -145,7 +145,7 @@ all =
                         "https://example.com/books"
                         """@#not JSON"""
                     |> TestContext.expectModel
-                        (Expect.equal "INIT;BadPayload \"Given an invalid JSON: Unexpected token @ in JSON at position 0\"")
+                        (expectContains "INIT;BadPayload \"Given an invalid JSON: Unexpected token @")
 
         -- TODO: nicer message when an expected request was previously resolved
         -- TODO: required body (for POST request)
