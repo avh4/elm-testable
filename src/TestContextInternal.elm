@@ -18,7 +18,6 @@ module TestContextInternal
         , expect
         , processTask
         , withContext
-        , withContextResult
         )
 
 import Native.TestContext
@@ -106,18 +105,6 @@ type TestContext model msg
 withContext : (ActiveContext model msg -> TestContext model msg) -> TestContext model msg -> TestContext model msg
 withContext f context =
     withContextOr context f context
-
-
-{-| DEPRECATED: instead use withContext and return TestError instead of Err
--}
-withContextResult : (ActiveContext model msg -> Result String (TestContext model msg)) -> TestContext model msg -> Result String (TestContext model msg)
-withContextResult f context =
-    case context of
-        TestContext c ->
-            f c
-
-        TestError details ->
-            Err details.error
 
 
 withContextOr : a -> (ActiveContext model msg -> a) -> TestContext model msg -> a
@@ -690,9 +677,9 @@ send :
     ((value -> msg) -> Sub msg)
     -> value
     -> TestContext model msg
-    -> Result String (TestContext model msg)
+    -> TestContext model msg
 send subPort value =
-    withContextResult <|
+    withContext <|
         \context ->
             let
                 subs =
@@ -705,14 +692,13 @@ send subPort value =
             in
                 case Dict.get portName subs |> Maybe.withDefault [] of
                     [] ->
-                        Err ("Not subscribed to port: " ++ portName)
+                        error context ("Not subscribed to port: " ++ portName)
 
                     mappers ->
                         List.foldl
                             (\mapper c -> Mapper.apply mapper value |> flip update c)
                             (TestContext context)
                             mappers
-                            |> Ok
 
 
 {-| If `cmd` is a batch, then this will return True only if all Cmds in the batch

@@ -76,7 +76,7 @@ send :
     ((value -> msg) -> Sub msg)
     -> value
     -> TestContext model msg
-    -> Result String (TestContext model msg)
+    -> TestContext model msg
 send subPort value context =
     Internal.send subPort value context
 
