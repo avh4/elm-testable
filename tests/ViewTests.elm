@@ -1,7 +1,6 @@
 module ViewTests exposing (all)
 
 import Test exposing (..)
-import Expect
 import Html
 import TestContext exposing (TestContext)
 import Test.Html.Query as Query
@@ -32,13 +31,12 @@ all =
             \() ->
                 htmlProgram
                     |> TestContext.expectView
-                        (Query.find [ Selector.tag "h1" ]
-                            >> Query.has [ Selector.text "Title!" ]
-                        )
+                    |> Query.find [ Selector.tag "h1" ]
+                    |> Query.has [ Selector.text "Title!" ]
         , test "view changes after update" <|
             \() ->
                 htmlProgram
                     |> TestContext.update "strong"
                     |> TestContext.expectView
-                        (Query.has [ Selector.tag "strong" ])
+                    |> Query.has [ Selector.tag "strong" ]
         ]

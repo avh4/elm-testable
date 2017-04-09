@@ -847,6 +847,13 @@ expectModel check context =
     expect "TestContext.expectModel" .model check context
 
 
-expectView : (Test.Html.Query.Single -> Expectation) -> TestContext model msg -> Expectation
-expectView check context =
-    expect "TestContext.expectView" (\c -> c.program.view c.model |> Test.Html.Query.fromHtml) check context
+expectView : TestContext model msg -> Test.Html.Query.Single
+expectView context =
+    case context of
+        TestContext c ->
+            c.program.view c.model |> Test.Html.Query.fromHtml
+
+        TestError details ->
+            -- TODO: ideally there would be a way we could create a Query.Single
+            -- that is already in an error state with our custom message
+            Html.text (report "expectView" context) |> Test.Html.Query.fromHtml
