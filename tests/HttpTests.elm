@@ -51,11 +51,11 @@ all =
         [ test "verifying an initial HTTP request" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.expectRequest "GET" "https://example.com/books"
+                    |> Test.Http.expectGet "https://example.com/books"
         , test "verifying an unmade request gives an error" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.expectRequest "GET" "https://example.com/wrong_url"
+                    |> Test.Http.expectGet "https://example.com/wrong_url"
                     |> expectFailure
                         [ "pending HTTP requests:"
                         , "    - GET https://example.com/books"
@@ -67,17 +67,17 @@ all =
         , test "stubbing an HTTP response" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.resolveRequest "GET"
+                    |> Test.Http.resolveGet
                         "https://example.com/books"
                         "BOOKS1"
                     |> TestContext.expectModel (Expect.equal "BOOKS1")
         , test "requests should be removed after they are resolve" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.resolveRequest "GET"
+                    |> Test.Http.resolveGet
                         "https://example.com/books"
                         "BOOKS1"
-                    |> Test.Http.expectRequest "GET" "https://example.com/books"
+                    |> Test.Http.expectGet "https://example.com/books"
                     |> expectFailure
                         [ "pending HTTP requests (none were made)"
                         , "╷"
