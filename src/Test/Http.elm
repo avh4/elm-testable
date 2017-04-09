@@ -31,15 +31,20 @@ expectRequest method url =
                     |> Expect.fail
 
 
-resolveRequest : String -> String -> String -> TestContext model msg -> Result String (TestContext model msg)
+resolveRequest : String -> String -> String -> TestContext model msg -> TestContext model msg
 resolveRequest method url responseBody =
-    Internal.withContextResult <|
+    Internal.withContext <|
         \context ->
             case Dict.get ( method, url ) context.pendingHttpRequests of
                 Just next ->
-                    Ok <|
-                        -- TODO: need to drain the work queue
-                        Internal.processTask (ProcessId -4)
+                    -- TODO: need to drain the work queue
+                    TestContext
+                        { context
+                            | pendingHttpRequests =
+                                Dict.remove ( method, url )
+                                    context.pendingHttpRequests
+                        }
+                        |> Internal.processTask (ProcessId -4)
                             (next <|
                                 { url = "TODO: not implemented yet"
                                 , status = { code = 200, message = "OK" }
@@ -47,13 +52,7 @@ resolveRequest method url responseBody =
                                 , body = responseBody
                                 }
                             )
-                            (TestContext
-                                { context
-                                    | pendingHttpRequests =
-                                        Dict.remove ( method, url )
-                                            context.pendingHttpRequests
-                                }
-                            )
 
                 Nothing ->
-                    Err ("No HTTP request was made matching: " ++ method ++ " " ++ url)
+                    Internal.error context
+                        ("No HTTP request was made matching: " ++ method ++ " " ++ url)

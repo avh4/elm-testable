@@ -14,6 +14,7 @@ module TestContextInternal
         , expectCmd
         , advanceTime
           -- private to elm-testable
+        , error
         , expect
         , processTask
         , withContext
@@ -785,6 +786,18 @@ advanceTimeUntil targetTime =
                             |> advanceTimeUntil targetTime
                     else
                         TestContext { context | now = targetTime }
+
+
+error : ActiveContext model msg -> String -> TestContext model msg
+error context error =
+    TestError
+        { error = error
+        , processMailboxes =
+            context.processMailboxes
+                |> DefaultDict.toDict
+                |> Dict.map (\_ -> Fifo.toList)
+        , transcript = context.transcript
+        }
 
 
 expect : (ActiveContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation

@@ -70,14 +70,13 @@ all =
                     |> Test.Http.resolveRequest "GET"
                         "https://example.com/books"
                         "BOOKS1"
-                    |> expectOk (TestContext.expectModel (Expect.equal "BOOKS1"))
+                    |> TestContext.expectModel (Expect.equal "BOOKS1")
         , test "requests should be removed after they are resolve" <|
             \() ->
                 loadingProgram
                     |> Test.Http.resolveRequest "GET"
                         "https://example.com/books"
                         "BOOKS1"
-                    |> Result.withDefault loadingProgram
                     |> Test.Http.expectRequest "GET" "https://example.com/books"
                     |> expectFailure
                         [ "pending HTTP requests (none were made)"

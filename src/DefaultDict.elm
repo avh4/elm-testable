@@ -1,4 +1,4 @@
-module DefaultDict exposing (DefaultDict, empty, insert, update, get, toList)
+module DefaultDict exposing (DefaultDict, empty, insert, update, get, toList, toDict)
 
 import Dict exposing (Dict)
 
@@ -31,3 +31,8 @@ get key (DD default dict) =
 toList : DefaultDict comparable value -> List ( comparable, value )
 toList (DD _ dict) =
     Dict.toList dict
+
+
+toDict : DefaultDict key value -> Dict key value
+toDict (DD _ dict) =
+    dict
