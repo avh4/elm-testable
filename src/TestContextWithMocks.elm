@@ -67,7 +67,7 @@ expectMockTask whichMock context =
     Internal.expectMockTask whichMock context
 
 
-resolveMockTask : MockTask x a -> Result x a -> TestContext model msg -> Result String (TestContext model msg)
+resolveMockTask : MockTask x a -> Result x a -> TestContext model msg -> TestContext model msg
 resolveMockTask mock result context =
     Internal.resolveMockTask mock result context
 

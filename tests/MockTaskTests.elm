@@ -22,12 +22,6 @@ cmdProgram cmd =
         |> TestContext.start
 
 
-testResults : a -> List (a -> Result String a) -> (a -> Expectation) -> Expectation
-testResults init steps expect =
-    List.foldl (\f a -> Result.andThen f a) (Ok init) steps
-        |> expectOk expect
-
-
 expectNotInclude : a -> List a -> Expectation
 expectNotInclude what list =
     if List.member what list then
@@ -82,151 +76,117 @@ all =
                         ]
         , test "a resolved task is no longer pending" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (singleMock |> TestContext.toTask |> Task.attempt (always ()))
-                    )
-                    [ TestContext.resolveMockTask singleMock (Ok "") ]
-                    (TestContext.expectMockTask singleMock
-                        >> expectFailure
-                            [ "pending mock tasks (none were initiated)"
-                            , "╷"
-                            , "│ to include (TestContext.expectMockTask)"
-                            , "╵"
-                            , "mockTask \"singleton\""
-                            , ""
-                            , "but mockTask \"singleton\" was previously resolved with value Ok \"\""
-                            ]
-                    )
+                cmdProgram
+                    (singleMock |> TestContext.toTask |> Task.attempt (always ()))
+                    |> TestContext.resolveMockTask singleMock (Ok "")
+                    |> TestContext.expectMockTask singleMock
+                    |> expectFailure
+                        [ "pending mock tasks (none were initiated)"
+                        , "╷"
+                        , "│ to include (TestContext.expectMockTask)"
+                        , "╵"
+                        , "mockTask \"singleton\""
+                        , ""
+                        , "but mockTask \"singleton\" was previously resolved with value Ok \"\""
+                        ]
         , test "can resolve a mock task with success" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (listMock |> TestContext.toTask |> Task.attempt Just)
-                    )
-                    [ TestContext.resolveMockTask listMock
+                cmdProgram
+                    (listMock |> TestContext.toTask |> Task.attempt Just)
+                    |> TestContext.resolveMockTask listMock
                         (Ok [ 7, 8, 9 ])
-                    ]
-                    (TestContext.expectModel <|
-                        Expect.equal [ Just <| Ok [ 7, 8, 9 ] ]
-                    )
+                    |> TestContext.expectModel
+                        (Expect.equal [ Just <| Ok [ 7, 8, 9 ] ])
         , test "can resolve a mock task with an error" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (singleMock |> TestContext.toTask |> Task.attempt Just)
-                    )
-                    [ TestContext.resolveMockTask singleMock (Err "failure")
-                    ]
-                    (TestContext.expectModel <|
-                        Expect.equal [ Just <| Err "failure" ]
-                    )
+                cmdProgram
+                    (singleMock |> TestContext.toTask |> Task.attempt Just)
+                    |> TestContext.resolveMockTask singleMock (Err "failure")
+                    |> TestContext.expectModel
+                        (Expect.equal [ Just <| Err "failure" ])
         , test "works with Task.andThen" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (singleMock
-                            |> TestContext.toTask
-                            |> Task.andThen ((++) "andThen!" >> Task.succeed)
-                            |> Task.attempt identity
-                        )
+                cmdProgram
+                    (singleMock
+                        |> TestContext.toTask
+                        |> Task.andThen ((++) "andThen!" >> Task.succeed)
+                        |> Task.attempt identity
                     )
-                    [ TestContext.resolveMockTask singleMock (Ok "good") ]
-                    (TestContext.expectModel <|
-                        Expect.equal [ Ok "andThen!good" ]
-                    )
+                    |> TestContext.resolveMockTask singleMock (Ok "good")
+                    |> TestContext.expectModel
+                        (Expect.equal [ Ok "andThen!good" ])
         , test "works with Task.onError" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (singleMock
-                            |> TestContext.toTask
-                            |> Task.onError ((++) "onError!" >> Task.succeed)
-                            |> Task.attempt identity
-                        )
+                cmdProgram
+                    (singleMock
+                        |> TestContext.toTask
+                        |> Task.onError ((++) "onError!" >> Task.succeed)
+                        |> Task.attempt identity
                     )
-                    [ TestContext.resolveMockTask singleMock (Err "bad") ]
-                    (TestContext.expectModel <|
-                        Expect.equal [ Ok "onError!bad" ]
-                    )
+                    |> TestContext.resolveMockTask singleMock (Err "bad")
+                    |> TestContext.expectModel
+                        (Expect.equal [ Ok "onError!bad" ])
         , test "works with Cmd.map" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (singleMock
-                            |> TestContext.toTask
-                            |> Task.attempt identity
-                            |> Cmd.map ((,) "mapped")
-                        )
+                cmdProgram
+                    (singleMock
+                        |> TestContext.toTask
+                        |> Task.attempt identity
+                        |> Cmd.map ((,) "mapped")
                     )
-                    [ TestContext.resolveMockTask singleMock (Ok "") ]
-                    (TestContext.expectModel <|
+                    |> TestContext.resolveMockTask singleMock (Ok "")
+                    |> TestContext.expectModel
                         (Expect.equal [ ( "mapped", Ok "" ) ])
-                    )
         , test "can chain mock tasks" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (mocks.a
-                            |> TestContext.toTask
-                            |> Task.andThen (mocks.b >> TestContext.toTask)
-                            |> Task.attempt identity
-                        )
+                cmdProgram
+                    (mocks.a
+                        |> TestContext.toTask
+                        |> Task.andThen (mocks.b >> TestContext.toTask)
+                        |> Task.attempt identity
                     )
-                    [ TestContext.resolveMockTask mocks.a (Ok 999) ]
-                    (TestContext.expectMockTask (mocks.b 999))
+                    |> TestContext.resolveMockTask mocks.a (Ok 999)
+                    |> TestContext.expectMockTask (mocks.b 999)
         , test "can resolve chained mock tasks" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (mocks.a
-                            |> TestContext.toTask
-                            |> Task.andThen ((+) 10000 >> mocks.b >> TestContext.toTask)
-                            |> Task.attempt identity
-                        )
+                cmdProgram
+                    (mocks.a
+                        |> TestContext.toTask
+                        |> Task.andThen ((+) 10000 >> mocks.b >> TestContext.toTask)
+                        |> Task.attempt identity
                     )
-                    [ TestContext.resolveMockTask mocks.a (Ok 999)
-                    , TestContext.resolveMockTask (mocks.b 10999) (Ok 55)
-                    ]
-                    (TestContext.expectModel <|
-                        Expect.equal [ Ok 55 ]
-                    )
+                    |> TestContext.resolveMockTask mocks.a (Ok 999)
+                    |> TestContext.resolveMockTask (mocks.b 10999) (Ok 55)
+                    |> TestContext.expectModel
+                        (Expect.equal [ Ok 55 ])
         , test "example of mock task with multiple task types" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (Cmd.batch
-                            [ mocks.int |> TestContext.toTask |> Task.attempt Ok
-                            , mocks.string |> TestContext.toTask |> Task.attempt Err
-                            ]
-                        )
+                cmdProgram
+                    (Cmd.batch
+                        [ mocks.int |> TestContext.toTask |> Task.attempt Ok
+                        , mocks.string |> TestContext.toTask |> Task.attempt Err
+                        ]
                     )
-                    [ TestContext.resolveMockTask mocks.int (Ok 9)
-                    , TestContext.resolveMockTask mocks.string (Ok "good")
-                    ]
-                    (TestContext.expectModel <|
-                        Expect.equal
+                    |> TestContext.resolveMockTask mocks.int (Ok 9)
+                    |> TestContext.resolveMockTask mocks.string (Ok "good")
+                    |> TestContext.expectModel
+                        (Expect.equal
                             [ Err <| Ok "good"
                             , Ok <| Ok 9
                             ]
-                    )
+                        )
         , test "inspecting spawned tasks" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (singleMock |> TestContext.toTask |> Process.spawn |> Task.attempt identity)
-                    )
-                    []
-                    (TestContext.expectMockTask singleMock)
+                cmdProgram
+                    (singleMock |> TestContext.toTask |> Process.spawn |> Task.attempt identity)
+                    |> TestContext.expectMockTask singleMock
         , test "resolving a spawned task does nothing" <|
             \() ->
-                testResults
-                    (cmdProgram
-                        (singleMock |> TestContext.toTask |> Process.spawn |> Task.attempt (Result.map toString))
-                    )
-                    [ TestContext.resolveMockTask singleMock (Ok "spawned task") ]
-                    (TestContext.expectModel <|
-                        List.filterMap (Result.toMaybe)
+                cmdProgram
+                    (singleMock |> TestContext.toTask |> Process.spawn |> Task.attempt (Result.map toString))
+                    |> TestContext.resolveMockTask singleMock (Ok "spawned task")
+                    |> TestContext.expectModel
+                        (List.filterMap (Result.toMaybe)
                             >> expectNotInclude "spawned task"
-                    )
+                        )
         ]

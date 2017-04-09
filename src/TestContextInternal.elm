@@ -651,9 +651,9 @@ listFailure collectionName emptyIndicator actuals view expectationName expected 
         |> String.join "\n"
 
 
-resolveMockTask : MockTask x a -> Result x a -> TestContext model msg -> Result String (TestContext model msg)
+resolveMockTask : MockTask x a -> Result x a -> TestContext model msg -> TestContext model msg
 resolveMockTask mock result =
-    withContextResult <|
+    withContext <|
         \context ->
             let
                 label =
@@ -661,7 +661,7 @@ resolveMockTask mock result =
             in
                 case getPendingTask "resolveMockTask" mock context of
                     Err message ->
-                        Err message
+                        error context message
 
                     Ok mapper ->
                         Mapper.apply mapper result
@@ -674,7 +674,6 @@ resolveMockTask mock result =
                                         |> processTask (ProcessId -3) next
                                 -- TODO: drain work queue
                                )
-                            |> Ok
 
 
 isPortSub : TestableSub msg -> Maybe ( String, Mapper msg )
