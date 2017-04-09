@@ -28,11 +28,7 @@ if (typeof _elm_lang$core$Native_Platform.initialize === 'undefined') {
 }
 
 _elm_lang$core$Native_Platform.initialize = function (init, update, subscriptions, renderer) {
-  return {
-    init: init,
-    update: update,
-    subscriptions: subscriptions
-  }
+  return { init: init }
 }
 
 _elm_lang$virtual_dom$Native_VirtualDom.programWithFlags = setItUp2(
@@ -118,11 +114,15 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
       // This gets the return value from the modified
       // _elm_lang$core$Native_Platform.initialize above
       var app = containerModule.embed(embedRoot, realFlags)
-      // TODO: just use the stuff in program.elmTestable instead of intecepting initialize
-      // ... but that would mean we need to manually decode the flags?
-      app.view = program.elmTestable.view
 
-      return app
+      return {
+        // TODO: just use the init in program.elmTestable instead of intecepting initialize
+        // ... but that would mean we need to manually decode the flags?
+        init: app.init,
+        update: program.elmTestable.update,
+        subscriptions: program.elmTestable.subscriptions,
+        view: program.elmTestable.view
+      }
     }),
     extractCmd: F2(function (tagger, cmd) {
       // NOTE: any new cases added here must use tagger or Cmd.map will be broken
