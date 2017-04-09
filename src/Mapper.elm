@@ -30,11 +30,12 @@ type Mapper msg
     = Mapper_Native_
 
 
-{-| Returns Err if the native code can somehow determine that `value` is not the
-correct type that the Mapper is expecting.
-(But do not rely on this--you are responsible for making sure the types match.)
+{-| WARNING: this will only work for values of the type that the Mapper is
+expecting. You are responsible for making sure the types match. If you don't
+do this correctly, you may get a runtime error or you might just get corrupted
+data.
 -}
-apply : Mapper msg -> value -> Result String msg
+apply : Mapper msg -> value -> msg
 apply =
     Native.Mapper.apply
 

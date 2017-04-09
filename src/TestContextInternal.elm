@@ -665,16 +665,16 @@ resolveMockTask mock result =
 
                     Ok mapper ->
                         Mapper.apply mapper result
-                            |> Result.map
-                                (\next ->
+                            |> (\next ->
                                     TestContext
                                         { context
                                             | mockTasks =
                                                 Dict.insert label (Resolved <| toString result) context.mockTasks
                                         }
                                         |> processTask (ProcessId -3) next
-                                 -- TODO: drain work queue
-                                )
+                                -- TODO: drain work queue
+                               )
+                            |> Ok
 
 
 isPortSub : TestableSub msg -> Maybe ( String, Mapper msg )
@@ -710,9 +710,10 @@ send subPort value =
 
                     mappers ->
                         List.foldl
-                            (\mapper c -> Mapper.apply mapper value |> Result.map2 (flip update) c)
-                            (Ok <| TestContext context)
+                            (\mapper c -> Mapper.apply mapper value |> flip update c)
+                            (TestContext context)
                             mappers
+                            |> Ok
 
 
 {-| If `cmd` is a batch, then this will return True only if all Cmds in the batch
