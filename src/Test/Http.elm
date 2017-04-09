@@ -43,7 +43,7 @@ expectGet url =
 
 expectRequest : RequestMatcher -> TestContext model msg -> Expectation
 expectRequest { method, url } =
-    Internal.expect identity <|
+    Internal.expect "Test.Http.expectRequest" identity <|
         \context ->
             if Dict.member ( method, url ) context.pendingHttpRequests then
                 Expect.pass

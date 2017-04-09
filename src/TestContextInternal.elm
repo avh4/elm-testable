@@ -605,7 +605,8 @@ getPendingTask fnName mock context =
 
 expectMockTask : MockTask x a -> TestContext model msg -> Expectation
 expectMockTask whichMock =
-    expect (getPendingTask "expectMockTask" whichMock)
+    expect "TestContext.expectMockTask"
+        (getPendingTask "expectMockTask" whichMock)
         (\result ->
             case result of
                 Ok _ ->
@@ -727,7 +728,8 @@ hasPendingCmd cmd context =
 
 expectCmd : Cmd msg -> TestContext model msg -> Expectation
 expectCmd expected =
-    expect identity
+    expect "TestContext.expectCmd"
+        identity
         (\context ->
             if hasPendingCmd expected context then
                 Expect.pass
@@ -790,8 +792,8 @@ error context error =
         }
 
 
-expect : (ActiveContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
-expect get check context_ =
+expect : String -> (ActiveContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
+expect entryName get check context_ =
     case context_ of
         TestContext context ->
             case Expect.getFailure (get context |> check) of
@@ -800,24 +802,26 @@ expect get check context_ =
 
                 Just { given, message } ->
                     Expect.fail <|
-                        report <|
+                        report entryName <|
                             error context message
 
         TestError details ->
-            Expect.fail <| report context_
+            Expect.fail <| report entryName context_
 
 
-report : TestContext model msg -> String
-report context =
+report : String -> TestContext model msg -> String
+report entryName context =
     case context of
         TestContext _ ->
             "No error"
 
         TestError details ->
-            details.error
-                ++ "\n\n\nThe following tasks were processed during the test:\n"
-                ++ show "  - "
-                    (\( i, t ) -> toString i ++ ": " ++ toString t)
+            "▼ "
+                ++ entryName
+                ++ "\n\n"
+                ++ "The following tasks were processed during the test:\n"
+                ++ show "  "
+                    (\( i, t ) -> toString i ++ ". " ++ toString t)
                     (List.reverse details.taskTranscript)
                 ++ "\nThe following messages were unprocessed:\n"
                 ++ show "  - "
@@ -829,6 +833,8 @@ report context =
                     (List.reverse details.msgTranscript)
                 ++ "\nThe final state of the model:\n    "
                 ++ toString details.model
+                ++ "\n\n\n"
+                ++ details.error
 
 
 show : String -> (a -> String) -> List a -> String
@@ -838,9 +844,9 @@ show pre f list =
 
 expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
 expectModel check context =
-    expect .model check context
+    expect "TestContext.expectModel" .model check context
 
 
 expectView : (Test.Html.Query.Single -> Expectation) -> TestContext model msg -> Expectation
 expectView check context =
-    expect (\c -> c.program.view c.model |> Test.Html.Query.fromHtml) check context
+    expect "TestContext.expectView" (\c -> c.program.view c.model |> Test.Html.Query.fromHtml) check context
