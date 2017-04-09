@@ -3,6 +3,7 @@ module HttpTests exposing (..)
 import Expect exposing (Expectation)
 import Html
 import Http
+import Json.Decode as Decode
 import Test exposing (..)
 import TestContext exposing (TestContext)
 import Test.Http
@@ -30,6 +31,35 @@ loadingProgram =
                     ( model ++ ";BadStatus " ++ toString status.code, Cmd.none )
 
                 NewData (Err error) ->
+                    ( model ++ ";" ++ toString error, Cmd.none )
+    , subscriptions = \_ -> Sub.none
+    , view = toString >> Html.text
+    }
+        |> Html.program
+        |> TestContext.start
+
+
+type JsonMsg
+    = NewList (Result Http.Error (List String))
+
+
+jsonProgram : TestContext String JsonMsg
+jsonProgram =
+    { init =
+        ( "INIT"
+        , Http.get "https://example.com/books" (Decode.list Decode.string)
+            |> Http.send NewList
+        )
+    , update =
+        \msg model ->
+            case msg of
+                NewList (Ok data) ->
+                    ( model ++ ";" ++ String.join "," data, Cmd.none )
+
+                NewList (Err (Http.BadStatus { status })) ->
+                    ( model ++ ";BadStatus " ++ toString status.code, Cmd.none )
+
+                NewList (Err error) ->
                     ( model ++ ";" ++ toString error, Cmd.none )
     , subscriptions = \_ -> Sub.none
     , view = toString >> Html.text
@@ -97,6 +127,14 @@ all =
                         , "╵"
                         , "GET https://example.com/books"
                         ]
+        , test "decodes JSON" <|
+            \() ->
+                jsonProgram
+                    |> Test.Http.resolveGet
+                        "https://example.com/books"
+                        """["a","b","c"]"""
+                    |> TestContext.expectModel
+                        (Expect.equal "INIT;a,b,c")
 
         -- TODO: nicer message when an expected request was previously resolved
         -- TODO: test an HTTP request with a JSON decoder

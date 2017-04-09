@@ -8,6 +8,7 @@
       "F2",
       "F3",
       "F4",
+      "_elm_lang$core$Dict$empty",
       "_elm_lang$core$Json_Decode$succeed",
       "_elm_lang$core$Maybe$Nothing",
       "_elm_lang$http$Native_Http",

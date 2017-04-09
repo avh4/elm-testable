@@ -135,27 +135,30 @@ _elm_lang$http$Native_Http.toTask = setItUp(
     var callback = function (response) {
       switch (response.ctor) {
         case 'Ok':
-          var responseBody = response._0
-          return { ctor: 'Success', _0: responseBody }
-          // TODO: parse JSON using request.expect.responseToResult
-          // switch (request.expect.responseType) {
-          //   case 'text':
-          //     var result = request.expect.responseToResult(response)
-          //     switch (result.ctor) {
-          //       case 'Ok':
-          //         return { ctor: 'Success', _0: result._0 }
-          //
-          //       case 'Err':
-          //         // TODO: this should be (Err BadPayload)?
-          //         return { ctor: 'Failure', _0: result._0 }
-          //
-          //       default:
-          //         throw new Error('Unknown Result type: ' + result.ctor)
-          //     }
-          //
-          //   default:
-          //     throw new Error('Unknown Http.Expect type: ' + request.expect.responseType)
-          // }
+          var fullResponse = {
+            url: request.url,
+            status: { code: 200, message: 'OK' },
+            headers: _elm_lang$core$Dict$empty,
+            body: response._0
+          }
+          switch (request.expect.responseType) {
+            case 'text':
+              var result = request.expect.responseToResult(fullResponse)
+              switch (result.ctor) {
+                case 'Ok':
+                  return { ctor: 'Success', _0: result._0 }
+
+                case 'Err':
+                  // TODO: this should be (Err BadPayload)?
+                  return { ctor: 'Failure', _0: result._0 }
+
+                default:
+                  throw new Error('Unknown Result type: ' + result.ctor)
+              }
+
+            default:
+              throw new Error('Unknown Http.Expect type: ' + request.expect.responseType)
+          }
 
         case 'Err':
           return { ctor: 'Failure', _0: response._0 }
