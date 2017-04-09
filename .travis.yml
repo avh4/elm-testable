@@ -7,9 +7,16 @@ install:
   - npm install -f
   - export PATH="`pwd`/node_modules/.bin:$PATH"
   - elm-package install --yes
+  - rsync -a elm-stuff/ tests/elm-stuff/
   - (cd tests; elm-package install --yes)
+  - rsync -a elm-stuff/ examples/elm-stuff/
+  - (cd examples; elm-package install --yes)
+  - rsync -a elm-stuff/ examples/tests/elm-stuff/
+  - (cd examples/tests; elm-package install --yes)
 
 script:
   - elm-make --yes
   - rsync -a elm-stuff/build-artifacts/ tests/elm-stuff/build-artifacts/
+  - rsync -a elm-stuff/build-artifacts/ examples/elm-stuff/build-artifacts/
+  - rsync -a elm-stuff/build-artifacts/ examples/tests/elm-stuff/build-artifacts/
   - npm test
