@@ -8,7 +8,7 @@ import Test.Html.Query as Query
 import Test.Html.Selector as Selector
 
 
-htmlProgram : TestContext (List ( String, String )) ( String, String )
+htmlProgram : TestContext (List String) String
 htmlProgram =
     { model = []
     , update = \msg model -> msg :: model
@@ -17,7 +17,7 @@ htmlProgram =
             Html.section []
                 [ Html.h1 [] [ Html.text "Title!" ]
                 , model
-                    |> List.map (\( tag, text ) -> Html.node tag [] [ Html.text text ])
+                    |> List.map (\tag -> Html.node tag [] [])
                     |> Html.div []
                 ]
     }
@@ -35,4 +35,10 @@ all =
                         (Query.find [ Selector.tag "h1" ]
                             >> Query.has [ Selector.text "Title!" ]
                         )
+        , test "view changes after update" <|
+            \() ->
+                htmlProgram
+                    |> TestContext.update "strong"
+                    |> TestContext.expectView
+                        (Query.has [ Selector.tag "strong" ])
         ]
