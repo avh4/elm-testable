@@ -38,6 +38,6 @@
     "standard": "*"
   },
   "scripts": {
-    "test": "elm-make --yes && elm-test && standard --verbose"
+    "test": "elm-make --yes && elm-test && (cd examples && elm-make --yes RandomGif.elm && elm-test) && standard --verbose"
   }
 }
