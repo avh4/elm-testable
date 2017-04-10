@@ -172,19 +172,6 @@ _elm_lang$http$Native_Http.toTask = setItUp(
     return { ctor: 'Http_NativeHttp_toTask', _0: options, _1: callback }
   })
 )
-_elm_lang$http$Http$toTask = function (_p0) { // eslint-disable-line no-global-assign, camelcase
-  var _p1 = _p0
-  return A2(_elm_lang$http$Native_Http.toTask, _p1._0, _elm_lang$core$Maybe$Nothing)
-}
-_elm_lang$http$Http$send = F2( // eslint-disable-line no-global-assign, camelcase
-  function (resultToMessage, request) {
-    return A2(
-      _elm_lang$core$Task$attempt,
-      resultToMessage,
-      _elm_lang$http$Http$toTask(request)
-    )
-  }
-)
 
 _elm_lang$websocket$Native_WebSocket.open = setItUp(
   _elm_lang$websocket$Native_WebSocket.open,
