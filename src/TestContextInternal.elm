@@ -707,7 +707,7 @@ send subPort value =
 {-| If `cmd` is a batch, then this will return True only if all Cmds in the batch
 are pending.
 -}
-hasPendingCmd : Cmd msg -> ActiveContext model msg -> Bool
+hasPendingCmd : Cmd msg -> ActiveContext model msg -> Result String Bool
 hasPendingCmd cmd context =
     let
         expected =
@@ -717,13 +717,17 @@ hasPendingCmd cmd context =
         actual =
             context.outgoingPortValues
     in
-        Dict.merge
-            (\_ exp b -> b && exp == [])
-            (\_ exp act b -> b && List.all (flip List.member act) exp)
-            (\_ act b -> b)
-            expected
-            actual
-            True
+        if Dict.isEmpty expected then
+            Err ("The given Cmd " ++ toString cmd ++ " is not supported by expectCmd.\n(Only Cmd ports defined in port modules are supported.)")
+        else
+            Dict.merge
+                (\_ exp b -> b && exp == [])
+                (\_ exp act b -> b && List.all (flip List.member act) exp)
+                (\_ act b -> b)
+                expected
+                actual
+                True
+                |> Ok
 
 
 expectCmd : Cmd msg -> TestContext model msg -> Expectation
@@ -731,18 +735,23 @@ expectCmd expected =
     expect "TestContext.expectCmd"
         identity
         (\context ->
-            if hasPendingCmd expected context then
-                Expect.pass
-            else
-                -- TODO: nicer failure messages like expectHttpRequest
-                [ toString <| context.outgoingPortValues
-                , "╷"
-                , "│ TestContext.expectCmd"
-                , "╵"
-                , toString <| .ports <| extractCmds expected
-                ]
-                    |> String.join "\n"
-                    |> Expect.fail
+            case hasPendingCmd expected context of
+                Err message ->
+                    Expect.fail message
+
+                Ok True ->
+                    Expect.pass
+
+                Ok False ->
+                    -- TODO: nicer failure messages like expectHttpRequest
+                    [ toString <| context.outgoingPortValues
+                    , "╷"
+                    , "│ TestContext.expectCmd"
+                    , "╵"
+                    , toString <| .ports <| extractCmds expected
+                    ]
+                        |> String.join "\n"
+                        |> Expect.fail
         )
 
 
