@@ -12,13 +12,15 @@ module TestContextInternal
         , send
         , expectCmd
         , advanceTime
+        , expectModel
+        , expectView
+        , done
           -- private to elm-testable
         , error
         , expect
         , processTask
+        , drainWorkQueue
         , withContext
-        , expectModel
-        , expectView
         )
 
 import Native.TestContext
@@ -36,6 +38,7 @@ import Testable.EffectManager as EffectManager exposing (EffectManager)
 import Testable.Task exposing (fromPlatformTask, Task(..), ProcessId(..))
 import Test.Html.Query
 import Time exposing (Time)
+import WebSocket.LowLevel
 
 
 debug : String -> a -> a
@@ -93,6 +96,12 @@ type alias ActiveContext model msg =
     , processMailboxes : DefaultDict String (Fifo ( Int, EffectManager.Message ))
     , workQueue : Fifo String
     , effectManagerStates : Dict String EffectManager.State
+
+    -- websockets
+    , pendingWebSocketConnections : Dict String (Result WebSocket.LowLevel.BadOpen () -> Task Never msg)
+    , pendingWebSocketMessages : DefaultDict String (Fifo String)
+
+    -- reporting info
     , taskTranscript : List ( Int, Task Never msg )
     , msgTranscript : List ( Int, msg )
     }
@@ -301,6 +310,12 @@ start_ flags realProgram =
             , processMailboxes = DefaultDict.empty Fifo.empty
             , workQueue = Fifo.empty
             , effectManagerStates = Dict.empty
+
+            -- websockets
+            , pendingWebSocketConnections = Dict.empty
+            , pendingWebSocketMessages = DefaultDict.empty Fifo.empty
+
+            -- reporting
             , taskTranscript = []
             , msgTranscript = []
             }
@@ -540,6 +555,24 @@ processTask pid task =
                                             ( options.method, options.url )
                                             next
                             }
+
+                    WebSocket_NativeWebSocket_open url settings next ->
+                        TestContext
+                            { context
+                                | pendingWebSocketConnections =
+                                    context.pendingWebSocketConnections
+                                        |> Dict.insert url next
+                            }
+
+                    WebSocket_NativeWebSocket_send url string next ->
+                        -- TODO: verify that the connection is open
+                        TestContext
+                            { context
+                                | pendingWebSocketMessages =
+                                    context.pendingWebSocketMessages
+                                        |> DefaultDict.update url (Fifo.insert string)
+                            }
+                            |> processTask_preventTailCallOptimization pid (next Nothing)
 
 
 update : msg -> TestContext model msg -> TestContext model msg
@@ -866,3 +899,8 @@ expectView context =
             -- TODO: ideally there would be a way we could create a Query.Single
             -- that is already in an error state with our custom message
             Html.text (report "expectView" context) |> Test.Html.Query.fromHtml
+
+
+done : TestContext model msg -> Expectation
+done =
+    expect "TestContext.done" (always ()) (always Expect.pass)

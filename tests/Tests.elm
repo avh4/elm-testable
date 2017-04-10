@@ -36,7 +36,7 @@ all =
         , TimeTests.all
 
         -- TODO: Random
-        -- TODO: Websocket
+        -- TODO: Add Websocket tests (see examples/tests/WebsocketChatTests)
         -- TODO: Window
         -- TODO: RAF
         ]

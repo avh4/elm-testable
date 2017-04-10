@@ -176,7 +176,7 @@ _elm_lang$http$Http$toTask = function (_p0) { // eslint-disable-line no-global-a
   var _p1 = _p0
   return A2(_elm_lang$http$Native_Http.toTask, _p1._0, _elm_lang$core$Maybe$Nothing)
 }
-_elm_lang$http$Http$send = F2(// eslint-disable-line no-global-assign, camelcase
+_elm_lang$http$Http$send = F2( // eslint-disable-line no-global-assign, camelcase
   function (resultToMessage, request) {
     return A2(
       _elm_lang$core$Task$attempt,
@@ -185,6 +185,49 @@ _elm_lang$http$Http$send = F2(// eslint-disable-line no-global-assign, camelcase
     )
   }
 )
+
+_elm_lang$websocket$Native_WebSocket.open = setItUp(
+  _elm_lang$websocket$Native_WebSocket.open,
+  F2(function (url, settings) {
+    return {
+      ctor: 'WebSocket_NativeWebSocket_open',
+      _0: url,
+      _1: settings,
+      _2: function (result) {
+        switch (result.ctor) {
+          case 'Ok':
+            return { ctor: 'Success', _0: { ctor: '_elm_testable_WebSocket', _0: url } }
+
+          case 'Err':
+            return { ctor: 'Failure', _0: result._0 }
+
+          default:
+            throw new Error('Unknown Result type: ' + result.ctor)
+        }
+      }
+    }
+  })
+)
+_elm_lang$websocket$WebSocket_LowLevel$open = _elm_lang$websocket$Native_WebSocket.open // eslint-disable-line no-global-assign, camelcase
+
+_elm_lang$websocket$Native_WebSocket.send = setItUp(
+  _elm_lang$websocket$Native_WebSocket.send,
+  F2(function (socket, string) {
+    if (socket.ctor !== '_elm_testable_WebSocket') {
+      throw new Error('Unexpected WebSocket value: ' + socket.ctor)
+    }
+    var url = socket._0
+    return {
+      ctor: 'WebSocket_NativeWebSocket_send',
+      _0: url,
+      _1: string,
+      _2: function (result) {
+        return { ctor: 'Success', _0: result }
+      }
+    }
+  })
+)
+_elm_lang$websocket$WebSocket_LowLevel$send = _elm_lang$websocket$Native_WebSocket.send // eslint-disable-line no-global-assign, camelcase
 
 var _user$project$Native_Testable_Task = (function () { // eslint-disable-line no-unused-vars, camelcase
   function fromPlatformTask (task) {

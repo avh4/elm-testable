@@ -9,6 +9,7 @@ module TestContext
         , advanceTime
         , expectModel
         , expectView
+        , done
         )
 
 import Expect exposing (Expectation)
@@ -63,3 +64,8 @@ expectModel check context =
 expectView : TestContext model msg -> Test.Html.Query.Single
 expectView context =
     Internal.expectView context
+
+
+done : TestContext model msg -> Expectation
+done =
+    Internal.done

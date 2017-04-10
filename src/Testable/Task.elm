@@ -29,6 +29,7 @@ import Task as PlatformTask
 import Http
 import Mapper exposing (Mapper)
 import Testable.EffectManager as EffectManager
+import WebSocket.LowLevel
 
 
 -- This "unused" import is required because Native.Testable.Task needs
@@ -67,6 +68,9 @@ type Task error success
     | Core_Time_setInterval Time (Task Never ())
       -- Native binding tasks in elm-lang/http
     | Http_NativeHttp_toTask { method : String, url : String } (Result Http.Error String -> Task error success)
+      -- Native bindings for tasks in elm-lang/Websocket
+    | WebSocket_NativeWebSocket_open String WebSocket.LowLevel.Settings (Result WebSocket.LowLevel.BadOpen () -> Task error success)
+    | WebSocket_NativeWebSocket_send String String (Maybe WebSocket.LowLevel.BadSend -> Task error success)
 
 
 {-| Transform a task.
@@ -135,6 +139,12 @@ andThen f source =
         Http_NativeHttp_toTask options next ->
             Http_NativeHttp_toTask options (next >> andThen f)
 
+        WebSocket_NativeWebSocket_open url settings next ->
+            WebSocket_NativeWebSocket_open url settings (next >> andThen f)
+
+        WebSocket_NativeWebSocket_send url string next ->
+            WebSocket_NativeWebSocket_send url string (next >> andThen f)
+
 
 
 -- Errors
@@ -198,3 +208,9 @@ onError f source =
 
         Http_NativeHttp_toTask options next ->
             Http_NativeHttp_toTask options (next >> onError f)
+
+        WebSocket_NativeWebSocket_open url settings next ->
+            WebSocket_NativeWebSocket_open url settings (next >> onError f)
+
+        WebSocket_NativeWebSocket_send url string next ->
+            WebSocket_NativeWebSocket_send url string (next >> onError f)

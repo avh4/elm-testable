@@ -29,6 +29,9 @@
       "_elm_lang$http$Http$send",
       "_elm_lang$http$Http$toTask",
       "_elm_lang$virtual_dom$Native_VirtualDom",
+      "_elm_lang$websocket$Native_WebSocket",
+      "_elm_lang$websocket$WebSocket_LowLevel$open",
+      "_elm_lang$websocket$WebSocket_LowLevel$send",
       "_user$project$Testable_Task$andThen",
       "_user$project$Testable_Task$onError"
     ]
