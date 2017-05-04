@@ -1,10 +1,12 @@
 module ViewTests exposing (all)
 
-import Test exposing (..)
 import Html
-import TestContext exposing (TestContext)
+import Html.Events exposing (onClick)
+import Test exposing (..)
+import Test.Html.Events as Events
 import Test.Html.Query as Query
 import Test.Html.Selector as Selector
+import TestContext exposing (TestContext)
 
 
 htmlProgram : TestContext (List String) String
@@ -18,6 +20,7 @@ htmlProgram =
                 , model
                     |> List.map (\tag -> Html.node tag [] [])
                     |> Html.div []
+                , Html.button [ onClick "p" ] []
                 ]
     }
         |> Html.beginnerProgram
@@ -39,4 +42,13 @@ all =
                     |> TestContext.update "strong"
                     |> TestContext.expectView
                     |> Query.has [ Selector.tag "strong" ]
+        , test "triggers events" <|
+            \() ->
+                htmlProgram
+                    |> TestContext.updateWith
+                        (Query.find [ Selector.tag "button" ]
+                            >> Events.eventResult Events.Click
+                        )
+                    |> TestContext.expectView
+                    |> Query.has [ Selector.tag "p" ]
         ]

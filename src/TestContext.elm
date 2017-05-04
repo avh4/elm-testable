@@ -4,6 +4,7 @@ module TestContext
         , start
         , startWithFlags
         , update
+        , updateWith
         , send
         , expectCmd
         , advanceTime
@@ -64,6 +65,13 @@ expectModel check context =
 expectView : TestContext model msg -> Test.Html.Query.Single
 expectView context =
     Internal.expectView context
+
+
+updateWith : (Test.Html.Query.Single -> Result String msg) -> TestContext model msg -> TestContext model msg
+updateWith eventTrigger context =
+    eventTrigger (expectView context)
+        |> Result.map ((flip update) context)
+        |> Result.withDefault (context)
 
 
 done : TestContext model msg -> Expectation
