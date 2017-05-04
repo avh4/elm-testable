@@ -4,18 +4,23 @@ module TestContext
         , start
         , startWithFlags
         , update
-        , updateWith
+        , query
+        , queryToAll
+        , queryFromAll
+        , trigger
         , send
         , expectCmd
         , advanceTime
         , expectModel
         , expectView
+        , expectViewAll
         , done
         )
 
 import Expect exposing (Expectation)
 import TestContextInternal as Internal
 import Test.Html.Query
+import Test.Html.Events
 import Time exposing (Time)
 
 
@@ -62,16 +67,34 @@ expectModel check context =
     Internal.expectModel check context
 
 
-expectView : TestContext model msg -> Test.Html.Query.Single
-expectView context =
-    Internal.expectView context
+expectView : (Test.Html.Query.Single -> Expectation) -> TestContext model msg -> Expectation
+expectView check context =
+    Internal.expectView check context
 
 
-updateWith : (Test.Html.Query.Single -> Result String msg) -> TestContext model msg -> TestContext model msg
-updateWith eventTrigger context =
-    eventTrigger (expectView context)
-        |> Result.map ((flip update) context)
-        |> Result.withDefault (context)
+expectViewAll : (Test.Html.Query.Multiple -> Expectation) -> TestContext model msg -> Expectation
+expectViewAll check context =
+    Internal.expectViewAll check context
+
+
+query : (Test.Html.Query.Single -> Test.Html.Query.Single) -> TestContext model msg -> TestContext model msg
+query singleQuery context =
+    Internal.query singleQuery context
+
+
+queryFromAll : (Test.Html.Query.Multiple -> Test.Html.Query.Single) -> TestContext model msg -> TestContext model msg
+queryFromAll multipleQuery context =
+    Internal.queryFromAll multipleQuery context
+
+
+queryToAll : (Test.Html.Query.Single -> Test.Html.Query.Multiple) -> TestContext model msg -> TestContext model msg
+queryToAll multipleQuery context =
+    Internal.queryToAll multipleQuery context
+
+
+trigger : Test.Html.Events.Event -> TestContext model msg -> TestContext model msg
+trigger event context =
+    Internal.trigger event context
 
 
 done : TestContext model msg -> Expectation

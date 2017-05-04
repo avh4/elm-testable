@@ -14,6 +14,11 @@ module TestContextInternal
         , advanceTime
         , expectModel
         , expectView
+        , expectViewAll
+        , query
+        , queryFromAll
+        , queryToAll
+        , trigger
         , done
           -- private to elm-testable
         , error
@@ -23,7 +28,6 @@ module TestContextInternal
         , withContext
         )
 
-import Native.TestContext
 import DefaultDict exposing (DefaultDict)
 import Dict exposing (Dict)
 import Expect exposing (Expectation)
@@ -32,11 +36,13 @@ import Html exposing (Html)
 import Http
 import Json.Encode
 import Mapper exposing (Mapper)
+import Native.TestContext
 import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
+import Test.Html.Events
+import Test.Html.Query exposing (fromHtml)
 import Testable.EffectManager as EffectManager exposing (EffectManager)
-import Testable.Task exposing (fromPlatformTask, Task(..), ProcessId(..))
-import Test.Html.Query
+import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 import Time exposing (Time)
 import WebSocket.LowLevel
 
@@ -45,7 +51,8 @@ debug : String -> a -> a
 debug label =
     ( identity, Debug.log label )
         -- Change to Tuple.second to enable debug output
-        |> Tuple.first
+        |>
+            Tuple.first
 
 
 type alias TestableProgram model msg =
@@ -72,6 +79,11 @@ type MockTaskState msg
     | Resolved String
 
 
+type HtmlQuery
+    = SingleQuery Test.Html.Query.Single
+    | MultipleQuery Test.Html.Query.Multiple
+
+
 isPending : MockTaskState msg -> Bool
 isPending state =
     case state of
@@ -95,15 +107,18 @@ type alias ActiveContext model msg =
     , killedProcesses : Set Int
     , processMailboxes : DefaultDict String (Fifo ( Int, EffectManager.Message ))
     , workQueue : Fifo String
-    , effectManagerStates : Dict String EffectManager.State
-
-    -- websockets
+    , effectManagerStates :
+        Dict String EffectManager.State
+        -- websockets
     , pendingWebSocketConnections : Dict String (Result WebSocket.LowLevel.BadOpen () -> Task Never msg)
-    , pendingWebSocketMessages : DefaultDict String (Fifo String)
-
-    -- reporting info
+    , pendingWebSocketMessages :
+        DefaultDict String (Fifo String)
+        -- reporting info
     , taskTranscript : List ( Int, Task Never msg )
-    , msgTranscript : List ( Int, msg )
+    , msgTranscript :
+        List ( Int, msg )
+        -- query
+    , query : HtmlQuery
     }
 
 
@@ -141,11 +156,10 @@ extractBag =
 
 extractCmds :
     Cmd msg
-    ->
-        { ports : Dict String (List Json.Encode.Value)
-        , effectManagers : Dict String (List EffectManager.MyCmd)
-        , tasks : List (Task Never msg)
-        }
+    -> { ports : Dict String (List Json.Encode.Value)
+       , effectManagers : Dict String (List EffectManager.MyCmd)
+       , tasks : List (Task Never msg)
+       }
 extractCmds =
     let
         init =
@@ -189,10 +203,9 @@ extractCmds =
 
 extractSubs :
     Sub msg
-    ->
-        { ports : Dict String (List (Mapper msg))
-        , effectManagers : Dict String (List EffectManager.MySub)
-        }
+    -> { ports : Dict String (List (Mapper msg))
+       , effectManagers : Dict String (List EffectManager.MySub)
+       }
 extractSubs =
     let
         init =
@@ -309,15 +322,16 @@ start_ flags realProgram =
             , killedProcesses = Set.empty
             , processMailboxes = DefaultDict.empty Fifo.empty
             , workQueue = Fifo.empty
-            , effectManagerStates = Dict.empty
-
-            -- websockets
+            , effectManagerStates =
+                Dict.empty
+                -- websockets
             , pendingWebSocketConnections = Dict.empty
-            , pendingWebSocketMessages = DefaultDict.empty Fifo.empty
-
-            -- reporting
+            , pendingWebSocketMessages =
+                DefaultDict.empty Fifo.empty
+                -- reporting
             , taskTranscript = []
             , msgTranscript = []
+            , query = SingleQuery <| fromHtml (program.view model)
             }
             |> initEffectManagers
             |> dispatchEffects
@@ -525,7 +539,8 @@ processTask pid task =
                                 -- ??? which order should these be processed in?
                                 -- ??? ideally nothing should depened on the order, but maybe we should
                                 -- ??? simulate the same order that the Elm runtime would result in?
-                                |> processTask spawnedProcessId (task |> Testable.Task.map never)
+                                |>
+                                    processTask spawnedProcessId (task |> Testable.Task.map never)
                                 |> processTask_preventTailCallOptimization pid (next spawnedProcessId)
 
                     Core_NativeScheduler_kill (ProcessId processId) next ->
@@ -593,6 +608,7 @@ update msg =
                     { context
                         | model = newModel
                         , msgTranscript = ( context.sequence, msg ) :: context.msgTranscript
+                        , query = SingleQuery <| fromHtml (context.program.view newModel)
                     }
                     |> dispatchEffects newCmds newSubs
                     |> drainWorkQueue
@@ -889,18 +905,114 @@ expectModel check context =
     expect "TestContext.expectModel" .model check context
 
 
-expectView : TestContext model msg -> Test.Html.Query.Single
-expectView context =
-    case context of
-        TestContext c ->
-            c.program.view c.model |> Test.Html.Query.fromHtml
-
-        TestError details ->
-            -- TODO: ideally there would be a way we could create a Query.Single
-            -- that is already in an error state with our custom message
-            Html.text (report "expectView" context) |> Test.Html.Query.fromHtml
-
-
 done : TestContext model msg -> Expectation
 done =
     expect "TestContext.done" (always ()) (always Expect.pass)
+
+
+
+-- Query
+
+
+expectView : (Test.Html.Query.Single -> Expectation) -> TestContext model msg -> Expectation
+expectView check context =
+    case context of
+        TestContext activeContext ->
+            case activeContext.query of
+                SingleQuery query ->
+                    check query
+
+                MultipleQuery _ ->
+                    Expect.fail (report "multiple query where is should be single query" context)
+
+        TestError details ->
+            Expect.fail (report "expectView" context)
+
+
+expectViewAll : (Test.Html.Query.Multiple -> Expectation) -> TestContext model msg -> Expectation
+expectViewAll check context =
+    case context of
+        TestContext activeContext ->
+            case activeContext.query of
+                SingleQuery _ ->
+                    Expect.fail (report "single query where is should be multiple query" context)
+
+                MultipleQuery query ->
+                    check query
+
+        TestError details ->
+            Expect.fail (report "expectViewAll" context)
+
+
+query : (Test.Html.Query.Single -> Test.Html.Query.Single) -> TestContext model msg -> TestContext model msg
+query singleQuery =
+    withContext
+        (\activeContext ->
+            withSingleQuery
+                (\query ->
+                    TestContext { activeContext | query = SingleQuery (singleQuery query) }
+                )
+                activeContext
+        )
+
+
+queryFromAll : (Test.Html.Query.Multiple -> Test.Html.Query.Single) -> TestContext model msg -> TestContext model msg
+queryFromAll multipleQuery =
+    withContext
+        (\activeContext ->
+            withMultipleQuery
+                (\query ->
+                    TestContext { activeContext | query = SingleQuery (multipleQuery query) }
+                )
+                activeContext
+        )
+
+
+queryToAll : (Test.Html.Query.Single -> Test.Html.Query.Multiple) -> TestContext model msg -> TestContext model msg
+queryToAll multipleQuery =
+    withContext
+        (\activeContext ->
+            withSingleQuery
+                (\query ->
+                    TestContext { activeContext | query = MultipleQuery (multipleQuery query) }
+                )
+                activeContext
+        )
+
+
+trigger : Test.Html.Events.Event -> TestContext model msg -> TestContext model msg
+trigger event context =
+    withContext
+        (\activeContext ->
+            withSingleQuery
+                (\query ->
+                    case Test.Html.Events.eventResult event query of
+                        Ok msg ->
+                            update msg context
+
+                        Err err ->
+                            error activeContext err
+                )
+                activeContext
+        )
+        context
+
+
+withSingleQuery : (Test.Html.Query.Single -> TestContext model msg) -> ActiveContext model msg -> TestContext model msg
+withSingleQuery f activeContext =
+    case activeContext.query of
+        SingleQuery query ->
+            f query
+
+        MultipleQuery _ ->
+            error activeContext "A multiple query operation was called while having a single node available"
+
+
+withMultipleQuery : (Test.Html.Query.Multiple -> TestContext model msg) -> ActiveContext model msg -> TestContext model msg
+withMultipleQuery f activeContext =
+    case activeContext.query of
+        SingleQuery _ ->
+            error activeContext "A single query operation was called when there are multiple nodes found"
+
+        MultipleQuery query ->
+            f query

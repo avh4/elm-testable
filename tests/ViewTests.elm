@@ -4,9 +4,10 @@ import Html
 import Html.Events exposing (onClick)
 import Test exposing (..)
 import Test.Html.Events as Events
-import Test.Html.Query as Query
+import Test.Html.Query as Query exposing (..)
 import Test.Html.Selector as Selector
 import TestContext exposing (TestContext)
+import Expect
 
 
 htmlProgram : TestContext (List String) String
@@ -33,22 +34,25 @@ all =
         [ test "verifying an initial view" <|
             \() ->
                 htmlProgram
-                    |> TestContext.expectView
-                    |> Query.find [ Selector.tag "h1" ]
-                    |> Query.has [ Selector.text "Title!" ]
+                    |> TestContext.query (find [ Selector.tag "h1" ])
+                    |> TestContext.expectView (has [ Selector.text "Title!" ])
         , test "view changes after update" <|
             \() ->
                 htmlProgram
                     |> TestContext.update "strong"
-                    |> TestContext.expectView
-                    |> Query.has [ Selector.tag "strong" ]
+                    |> TestContext.expectView (has [ Selector.tag "strong" ])
         , test "triggers events" <|
             \() ->
                 htmlProgram
-                    |> TestContext.updateWith
-                        (Query.find [ Selector.tag "button" ]
-                            >> Events.eventResult Events.Click
-                        )
-                    |> TestContext.expectView
-                    |> Query.has [ Selector.tag "p" ]
+                    |> TestContext.query (find [ Selector.tag "button" ])
+                    |> TestContext.trigger Events.Click
+                    |> TestContext.expectView (has [ Selector.tag "p" ])
+        , test "query for multiple nodes" <|
+            \() ->
+                htmlProgram
+                    |> TestContext.query (find [ Selector.tag "button" ])
+                    |> TestContext.trigger Events.Click
+                    |> TestContext.queryToAll (findAll [ Selector.tag "p" ])
+                    |> TestContext.query (find [ Selector.tag "button" ])
+                    |> TestContext.expectViewAll (count (Expect.equal 1))
         ]
