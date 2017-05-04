@@ -1,44 +1,64 @@
 module Test.View
     exposing
-        ( query
-        , queryToAll
-        , queryFromAll
+        ( find
+        , findAll
         , trigger
-        , expectView
-        , expectViewAll
+        , has
+        , count
         )
 
 import Expect exposing (Expectation)
 import TestContextInternal as Internal exposing (TestContext(..), SingleQuery, MultipleQuery)
 import Test.Html.Query
+import Test.Html.Selector exposing (Selector)
 import Test.Html.Events
 
 
-expectView : (Test.Html.Query.Single -> Expectation) -> TestContext SingleQuery model msg -> Expectation
-expectView check context =
-    Internal.expectView check context
+find : List Selector -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
+find =
+    Test.Html.Query.find >> Internal.query
 
 
-expectViewAll : (Test.Html.Query.Multiple -> Expectation) -> TestContext MultipleQuery model msg -> Expectation
-expectViewAll check context =
-    Internal.expectViewAll check context
+findAll : List Selector -> TestContext SingleQuery model msg -> TestContext MultipleQuery model msg
+findAll =
+    Test.Html.Query.findAll >> Internal.queryToAll
 
 
-query : (Test.Html.Query.Single -> Test.Html.Query.Single) -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
-query singleQuery context =
-    Internal.query singleQuery context
+children : List Selector -> TestContext SingleQuery model msg -> TestContext MultipleQuery model msg
+children =
+    Test.Html.Query.children >> Internal.queryToAll
 
 
-queryFromAll : (Test.Html.Query.Multiple -> Test.Html.Query.Single) -> TestContext MultipleQuery model msg -> TestContext SingleQuery model msg
-queryFromAll multipleQuery context =
-    Internal.queryFromAll multipleQuery context
+first : TestContext MultipleQuery model msg -> TestContext SingleQuery model msg
+first =
+    Test.Html.Query.first |> Internal.queryFromAll
 
 
-queryToAll : (Test.Html.Query.Single -> Test.Html.Query.Multiple) -> TestContext SingleQuery model msg -> TestContext MultipleQuery model msg
-queryToAll multipleQuery context =
-    Internal.queryToAll multipleQuery context
+index : Int -> TestContext MultipleQuery model msg -> TestContext SingleQuery model msg
+index =
+    Test.Html.Query.index >> Internal.queryFromAll
+
+
+count : (Int -> Expectation) -> TestContext MultipleQuery model msg -> Expectation
+count =
+    Test.Html.Query.count >> Internal.expectViewAll
+
+
+has : List Selector -> TestContext SingleQuery model msg -> Expectation
+has =
+    Test.Html.Query.has >> Internal.expectView
+
+
+hasNot : List Selector -> TestContext SingleQuery model msg -> Expectation
+hasNot =
+    Test.Html.Query.hasNot >> Internal.expectView
+
+
+each : (SingleQuery -> Expectation) -> TestContext MultipleQuery model msg -> Expectation
+each =
+    Test.Html.Query.each >> Internal.expectViewAll
 
 
 trigger : Test.Html.Events.Event -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
-trigger event context =
-    Internal.trigger event context
+trigger event =
+    Internal.trigger event

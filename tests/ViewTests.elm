@@ -5,7 +5,6 @@ import Html.Events exposing (onClick)
 import Html.Attributes
 import Test exposing (..)
 import Test.Html.Events as Events
-import Test.Html.Query as Query exposing (..)
 import Test.Html.Selector as Selector
 import TestContext exposing (TestContext, SingleQuery)
 import Test.View exposing (..)
@@ -37,33 +36,33 @@ all =
         [ test "verifying an initial view" <|
             \() ->
                 htmlProgram
-                    |> query (find [ Selector.tag "h1" ])
-                    |> expectView (has [ Selector.text "Title!" ])
+                    |> find [ Selector.tag "h1" ]
+                    |> has [ Selector.text "Title!" ]
         , test "view changes after update" <|
             \() ->
                 htmlProgram
                     |> TestContext.update "strong"
-                    |> expectView (has [ Selector.tag "strong" ])
+                    |> has [ Selector.tag "strong" ]
         , test "triggers events" <|
             \() ->
                 htmlProgram
-                    |> query (find [ Selector.class "first-button" ])
+                    |> find [ Selector.class "first-button" ]
                     |> trigger Events.Click
-                    |> expectView (has [ Selector.tag "p" ])
+                    |> has [ Selector.tag "p" ]
         , test "query for multiple nodes" <|
             \() ->
                 htmlProgram
-                    |> query (find [ Selector.class "first-button" ])
+                    |> find [ Selector.class "first-button" ]
                     |> trigger Events.Click
-                    |> queryToAll (findAll [ Selector.tag "p" ])
-                    |> expectViewAll (count (Expect.equal 1))
+                    |> findAll [ Selector.tag "p" ]
+                    |> count (Expect.equal 1)
         , test "triggers multiple events" <|
             \() ->
                 htmlProgram
-                    |> query (find [ Selector.class "first-button" ])
+                    |> find [ Selector.class "first-button" ]
                     |> trigger Events.Click
-                    |> query (find [ Selector.class "second-button" ])
+                    |> find [ Selector.class "second-button" ]
                     |> trigger Events.Click
-                    |> queryToAll (findAll [ Selector.tag "p" ])
-                    |> expectViewAll (count (Expect.equal 2))
+                    |> findAll [ Selector.tag "p" ]
+                    |> count (Expect.equal 2)
         ]
