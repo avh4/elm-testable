@@ -1,6 +1,8 @@
 module TestContextInternal
     exposing
         ( TestContext(..)
+        , SingleQuery
+        , MultipleQuery
         , MockTask
         , toTask
         , mockTask
@@ -79,9 +81,12 @@ type MockTaskState msg
     | Resolved String
 
 
-type HtmlQuery
-    = SingleQuery Test.Html.Query.Single
-    | MultipleQuery Test.Html.Query.Multiple
+type alias SingleQuery =
+    Test.Html.Query.Single
+
+
+type alias MultipleQuery =
+    Test.Html.Query.Multiple
 
 
 isPending : MockTaskState msg -> Bool
@@ -117,13 +122,11 @@ type alias ActiveContext model msg =
     , taskTranscript : List ( Int, Task Never msg )
     , msgTranscript :
         List ( Int, msg )
-        -- query
-    , query : HtmlQuery
     }
 
 
-type TestContext model msg
-    = TestContext (ActiveContext model msg)
+type TestContext query model msg
+    = TestContext query (ActiveContext model msg)
     | TestError
         { error : String
         , model : model
@@ -133,15 +136,15 @@ type TestContext model msg
         }
 
 
-withContext : (ActiveContext model msg -> TestContext model msg) -> TestContext model msg -> TestContext model msg
+withContext : (query -> ActiveContext model msg -> TestContext query_ model msg) -> TestContext query model msg -> TestContext query_ model msg
 withContext f context =
     case context of
-        TestContext c ->
-            f c
+        TestContext query activeContext ->
+            f query activeContext
 
-        TestError _ ->
+        TestError description ->
             -- TODO: track the steps that didn't run
-            context
+            TestError description
 
 
 extractProgram : String -> Maybe flags -> Program flags model msg -> TestableProgram model msg
@@ -274,17 +277,17 @@ orCrash message maybe =
             Debug.crash message
 
 
-startWithFlags : flags -> Program flags model msg -> TestContext model msg
+startWithFlags : flags -> Program flags model msg -> TestContext SingleQuery model msg
 startWithFlags flags realProgram =
     start_ (Just flags) realProgram
 
 
-start : Program Never model msg -> TestContext model msg
+start : Program Never model msg -> TestContext SingleQuery model msg
 start realProgram =
     start_ Nothing realProgram
 
 
-start_ : Maybe flags -> Program flags model msg -> TestContext model msg
+start_ : Maybe flags -> Program flags model msg -> TestContext SingleQuery model msg
 start_ flags realProgram =
     let
         _ =
@@ -310,6 +313,7 @@ start_ flags realProgram =
                 (EffectManager.extractEffectManagers ())
     in
         TestContext
+            (fromHtml <| program.view model)
             { program = program
             , model = model
             , outgoingPortValues = Dict.empty
@@ -331,7 +335,6 @@ start_ flags realProgram =
                 -- reporting
             , taskTranscript = []
             , msgTranscript = []
-            , query = SingleQuery <| fromHtml (program.view model)
             }
             |> initEffectManagers
             |> dispatchEffects
@@ -340,22 +343,23 @@ start_ flags realProgram =
             |> drainWorkQueue
 
 
-drainWorkQueue : TestContext model msg -> TestContext model msg
+drainWorkQueue : TestContext query model msg -> TestContext SingleQuery model msg
 drainWorkQueue =
     withContext <|
-        \context ->
+        \query context ->
             case Fifo.remove (debug "drainWorkQueue" <| context.workQueue) of
                 ( Nothing, _ ) ->
-                    TestContext context
+                    TestContext (newQuery context) context
 
                 ( Just home, rest ) ->
                     case Fifo.remove (DefaultDict.get home context.processMailboxes) of
                         ( Nothing, _ ) ->
-                            TestContext { context | workQueue = rest }
+                            TestContext query { context | workQueue = rest }
                                 |> drainWorkQueue
 
                         ( Just ( _, message ), remaining ) ->
                             TestContext
+                                query
                                 { context
                                     | workQueue = rest
                                     , processMailboxes = DefaultDict.insert home remaining context.processMailboxes
@@ -364,10 +368,10 @@ drainWorkQueue =
                                 |> drainWorkQueue
 
 
-processMessage : String -> EffectManager.Message -> TestContext model msg -> TestContext model msg
+processMessage : String -> EffectManager.Message -> TestContext query model msg -> TestContext SingleQuery model msg
 processMessage home message =
     withContext <|
-        \context ->
+        \query context ->
             let
                 effectManager =
                     EffectManager.extractEffectManager home
@@ -389,19 +393,20 @@ processMessage home message =
                         |> Testable.Task.mapError never
                         |> Testable.Task.andThen (NewEffectManagerState "onSelfMsg" home)
             in
-                TestContext context
+                TestContext query context
                     |> processTask (ProcessId 0) newStateTask
 
 
-enqueueMessage : String -> EffectManager.Message -> TestContext model msg -> TestContext model msg
+enqueueMessage : String -> EffectManager.Message -> TestContext query model msg -> TestContext query model msg
 enqueueMessage home message =
     withContext <|
-        \context ->
+        \query context ->
             let
                 _ =
                     debug "enqueueMessage" ( home, message )
             in
                 TestContext
+                    query
                     { context
                         | processMailboxes =
                             context.processMailboxes
@@ -411,10 +416,10 @@ enqueueMessage home message =
                     }
 
 
-dispatchEffects : Cmd msg -> Sub msg -> TestContext model msg -> TestContext model msg
+dispatchEffects : Cmd msg -> Sub msg -> TestContext query model msg -> TestContext SingleQuery model msg
 dispatchEffects cmd sub =
     withContext <|
-        \context ->
+        \query context ->
             let
                 cmds =
                     extractCmds cmd
@@ -443,6 +448,7 @@ dispatchEffects cmd sub =
                         fxs
             in
                 TestContext
+                    (newQuery context)
                     { context
                         | outgoingPortValues =
                             Dict.merge
@@ -468,15 +474,15 @@ instead of calling itself, which will prevent the tail call optimization, and
 prevent the bug from being triggered.
 
 -}
-processTask_preventTailCallOptimization : ProcessId -> Task Never msg -> TestContext model msg -> TestContext model msg
+processTask_preventTailCallOptimization : ProcessId -> Task Never msg -> TestContext query model msg -> TestContext SingleQuery model msg
 processTask_preventTailCallOptimization =
     processTask
 
 
-processTask : ProcessId -> Task Never msg -> TestContext model msg -> TestContext model msg
+processTask : ProcessId -> Task Never msg -> TestContext query model msg -> TestContext SingleQuery model msg
 processTask pid task =
     withContext <|
-        \context_ ->
+        \query context_ ->
             let
                 _ =
                     debug ("processTask:" ++ toString pid) task
@@ -486,20 +492,24 @@ processTask pid task =
                         | sequence = context_.sequence + 1
                         , taskTranscript = ( context_.sequence + 1, task ) :: context_.taskTranscript
                     }
+
+                newQuery_ =
+                    (newQuery context)
             in
                 case task of
                     Success msg ->
-                        TestContext context
+                        TestContext query context
                             |> update msg
 
                     Failure x ->
                         never x
 
                     IgnoredTask ->
-                        TestContext context
+                        TestContext newQuery_ context
 
                     MockTask label mapper ->
                         TestContext
+                            newQuery_
                             { context
                                 | mockTasks =
                                     context.mockTasks
@@ -507,23 +517,24 @@ processTask pid task =
                             }
 
                     ToApp msg next ->
-                        TestContext context
+                        TestContext query context
                             |> update (EffectManager.unwrapAppMsg msg)
                             |> processTask_preventTailCallOptimization pid next
 
                     ToEffectManager home selfMsg next ->
-                        TestContext context
+                        TestContext query context
                             |> enqueueMessage home (EffectManager.Self selfMsg)
                             |> processTask_preventTailCallOptimization pid next
 
                     NewEffectManagerState junk home newState ->
                         TestContext
+                            newQuery_
                             { context
                                 | effectManagerStates = Dict.insert home newState context.effectManagerStates
                             }
 
                     Core_NativeScheduler_sleep delay next ->
-                        TestContext
+                        TestContext newQuery_
                             { context
                                 | futureTasks =
                                     context.futureTasks
@@ -535,7 +546,7 @@ processTask pid task =
                             spawnedProcessId =
                                 ProcessId context.nextProcessId
                         in
-                            TestContext { context | nextProcessId = context.nextProcessId + 1 }
+                            TestContext newQuery_ { context | nextProcessId = context.nextProcessId + 1 }
                                 -- ??? which order should these be processed in?
                                 -- ??? ideally nothing should depened on the order, but maybe we should
                                 -- ??? simulate the same order that the Elm runtime would result in?
@@ -544,11 +555,11 @@ processTask pid task =
                                 |> processTask_preventTailCallOptimization pid (next spawnedProcessId)
 
                     Core_NativeScheduler_kill (ProcessId processId) next ->
-                        TestContext { context | killedProcesses = Set.insert processId context.killedProcesses }
+                        TestContext newQuery_ { context | killedProcesses = Set.insert processId context.killedProcesses }
                             |> processTask_preventTailCallOptimization pid next
 
                     Core_Time_now next ->
-                        TestContext context
+                        TestContext newQuery_ context
                             |> processTask_preventTailCallOptimization pid (next context.now)
 
                     Core_Time_setInterval delay recurringTask ->
@@ -558,11 +569,11 @@ processTask pid task =
                                     |> Testable.Task.andThen step
                                     |> Testable.Task.mapError never
                         in
-                            TestContext context
+                            TestContext newQuery_ context
                                 |> processTask_preventTailCallOptimization pid (step ())
 
                     Http_NativeHttp_toTask options next ->
-                        TestContext
+                        TestContext newQuery_
                             { context
                                 | pendingHttpRequests =
                                     context.pendingHttpRequests
@@ -572,7 +583,7 @@ processTask pid task =
                             }
 
                     WebSocket_NativeWebSocket_open url settings next ->
-                        TestContext
+                        TestContext newQuery_
                             { context
                                 | pendingWebSocketConnections =
                                     context.pendingWebSocketConnections
@@ -581,7 +592,7 @@ processTask pid task =
 
                     WebSocket_NativeWebSocket_send url string next ->
                         -- TODO: verify that the connection is open
-                        TestContext
+                        TestContext newQuery_
                             { context
                                 | pendingWebSocketMessages =
                                     context.pendingWebSocketMessages
@@ -590,10 +601,10 @@ processTask pid task =
                             |> processTask_preventTailCallOptimization pid (next Nothing)
 
 
-update : msg -> TestContext model msg -> TestContext model msg
+update : msg -> TestContext query model msg -> TestContext SingleQuery model msg
 update msg =
     withContext <|
-        \context ->
+        \query context ->
             let
                 _ =
                     debug "update" msg
@@ -603,15 +614,24 @@ update msg =
 
                 newSubs =
                     context.program.subscriptions newModel
-            in
-                TestContext
+
+                newContext =
                     { context
                         | model = newModel
                         , msgTranscript = ( context.sequence, msg ) :: context.msgTranscript
-                        , query = SingleQuery <| fromHtml (context.program.view newModel)
                     }
+            in
+                TestContext
+                    (newQuery newContext)
+                    newContext
                     |> dispatchEffects newCmds newSubs
                     |> drainWorkQueue
+
+
+newQuery : ActiveContext model msg -> SingleQuery
+newQuery context =
+    context.program.view context.model
+        |> fromHtml
 
 
 getPendingTask : String -> MockTask x a -> ActiveContext model msg -> Result String (Mapper (Task Never msg))
@@ -652,7 +672,7 @@ getPendingTask fnName mock context =
                     |> Err
 
 
-expectMockTask : MockTask x a -> TestContext model msg -> Expectation
+expectMockTask : MockTask x a -> TestContext query model msg -> Expectation
 expectMockTask whichMock =
     expect "TestContext.expectMockTask"
         (getPendingTask "expectMockTask" whichMock)
@@ -690,10 +710,10 @@ listFailure collectionName emptyIndicator actuals view expectationName expected 
         |> String.join "\n"
 
 
-resolveMockTask : MockTask x a -> Result x a -> TestContext model msg -> TestContext model msg
+resolveMockTask : MockTask x a -> Result x a -> TestContext query model msg -> TestContext SingleQuery model msg
 resolveMockTask mock result =
     withContext <|
-        \context ->
+        \query context ->
             let
                 label =
                     mock |> getId
@@ -706,6 +726,7 @@ resolveMockTask mock result =
                         Mapper.apply mapper result
                             |> (\next ->
                                     TestContext
+                                        query
                                         { context
                                             | mockTasks =
                                                 Dict.insert label (Resolved <| toString result) context.mockTasks
@@ -728,11 +749,11 @@ isPortSub sub =
 send :
     ((value -> msg) -> Sub msg)
     -> value
-    -> TestContext model msg
-    -> TestContext model msg
+    -> TestContext query model msg
+    -> TestContext SingleQuery model msg
 send subPort value =
     withContext <|
-        \context ->
+        \query context ->
             let
                 subs =
                     context.program.subscriptions context.model
@@ -741,6 +762,9 @@ send subPort value =
 
                 portName =
                     extractSubPortName subPort
+
+                newQuery_ =
+                    (newQuery context)
             in
                 case Dict.get portName subs |> Maybe.withDefault [] of
                     [] ->
@@ -749,7 +773,7 @@ send subPort value =
                     mappers ->
                         List.foldl
                             (\mapper c -> Mapper.apply mapper value |> flip update c)
-                            (TestContext context)
+                            (TestContext newQuery_ context)
                             mappers
 
 
@@ -779,7 +803,7 @@ hasPendingCmd cmd context =
                 |> Ok
 
 
-expectCmd : Cmd msg -> TestContext model msg -> Expectation
+expectCmd : Cmd msg -> TestContext query model msg -> Expectation
 expectCmd expected =
     expect "TestContext.expectCmd"
         identity
@@ -804,27 +828,30 @@ expectCmd expected =
         )
 
 
-advanceTime : Time -> TestContext model msg -> TestContext model msg
+advanceTime : Time -> TestContext query model msg -> TestContext SingleQuery model msg
 advanceTime dt context =
-    flip withContext context <|
-        \c ->
-            advanceTimeUntil (c.now + dt) context
+    withContext
+        (\_ activeContext ->
+            advanceTimeUntil (activeContext.now + dt) context
+        )
+        context
 
 
-advanceTimeUntil : Time -> TestContext model msg -> TestContext model msg
+advanceTimeUntil : Time -> TestContext query model msg -> TestContext SingleQuery model msg
 advanceTimeUntil targetTime =
     withContext <|
-        \context ->
+        \query context ->
             case PairingHeap.findMin (debug ("advanceTimeUntil:" ++ toString targetTime) context.futureTasks) of
                 Nothing ->
-                    TestContext { context | now = targetTime }
+                    TestContext (newQuery context) { context | now = targetTime }
 
                 Just ( time, ( ProcessId processId, next ) ) ->
                     if Set.member processId (debug "killedProcesses" context.killedProcesses) then
-                        TestContext { context | futureTasks = PairingHeap.deleteMin context.futureTasks }
+                        TestContext query { context | futureTasks = PairingHeap.deleteMin context.futureTasks }
                             |> advanceTimeUntil targetTime
                     else if time <= targetTime then
                         TestContext
+                            query
                             { context
                                 | futureTasks = PairingHeap.deleteMin context.futureTasks
                                 , now = time
@@ -833,10 +860,10 @@ advanceTimeUntil targetTime =
                             |> drainWorkQueue
                             |> advanceTimeUntil targetTime
                     else
-                        TestContext { context | now = targetTime }
+                        TestContext (newQuery context) { context | now = targetTime }
 
 
-error : ActiveContext model msg -> String -> TestContext model msg
+error : ActiveContext model msg -> String -> TestContext query model msg
 error context error =
     TestError
         { error = error
@@ -850,10 +877,10 @@ error context error =
         }
 
 
-expect : String -> (ActiveContext model msg -> a) -> (a -> Expectation) -> TestContext model msg -> Expectation
+expect : String -> (ActiveContext model msg -> a) -> (a -> Expectation) -> TestContext query model msg -> Expectation
 expect entryName get check context_ =
     case context_ of
-        TestContext context ->
+        TestContext _ context ->
             case Expect.getFailure (get context |> check) of
                 Nothing ->
                     Expect.pass
@@ -867,10 +894,10 @@ expect entryName get check context_ =
             Expect.fail <| report entryName context_
 
 
-report : String -> TestContext model msg -> String
+report : String -> TestContext query model msg -> String
 report entryName context =
     case context of
-        TestContext _ ->
+        TestContext _ _ ->
             "No error"
 
         TestError details ->
@@ -900,12 +927,12 @@ show pre f list =
     String.concat (list |> List.map (f >> (++) pre >> flip (++) "\n"))
 
 
-expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
+expectModel : (model -> Expectation) -> TestContext query model msg -> Expectation
 expectModel check context =
     expect "TestContext.expectModel" .model check context
 
 
-done : TestContext model msg -> Expectation
+done : TestContext query model msg -> Expectation
 done =
     expect "TestContext.done" (always ()) (always Expect.pass)
 
@@ -914,105 +941,79 @@ done =
 -- Query
 
 
-expectView : (Test.Html.Query.Single -> Expectation) -> TestContext model msg -> Expectation
+expectView : (Test.Html.Query.Single -> Expectation) -> TestContext SingleQuery model msg -> Expectation
 expectView check context =
     case context of
-        TestContext activeContext ->
-            case activeContext.query of
-                SingleQuery query ->
-                    check query
-
-                MultipleQuery _ ->
-                    Expect.fail (report "multiple query where is should be single query" context)
+        TestContext query activeContext ->
+            check query
 
         TestError details ->
             Expect.fail (report "expectView" context)
 
 
-expectViewAll : (Test.Html.Query.Multiple -> Expectation) -> TestContext model msg -> Expectation
+expectViewAll : (Test.Html.Query.Multiple -> Expectation) -> TestContext MultipleQuery model msg -> Expectation
 expectViewAll check context =
     case context of
-        TestContext activeContext ->
-            case activeContext.query of
-                SingleQuery _ ->
-                    Expect.fail (report "single query where is should be multiple query" context)
-
-                MultipleQuery query ->
-                    check query
+        TestContext query activeContext ->
+            check query
 
         TestError details ->
-            Expect.fail (report "expectViewAll" context)
+            Expect.fail (report "expectView" context)
 
 
-query : (Test.Html.Query.Single -> Test.Html.Query.Single) -> TestContext model msg -> TestContext model msg
+query : (Test.Html.Query.Single -> Test.Html.Query.Single) -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
 query singleQuery =
-    withContext
-        (\activeContext ->
-            withSingleQuery
-                (\query ->
-                    TestContext { activeContext | query = SingleQuery (singleQuery query) }
-                )
-                activeContext
+    withSingleQuery
+        (\query activeContext ->
+            TestContext (singleQuery query) activeContext
         )
 
 
-queryFromAll : (Test.Html.Query.Multiple -> Test.Html.Query.Single) -> TestContext model msg -> TestContext model msg
+queryFromAll : (Test.Html.Query.Multiple -> Test.Html.Query.Single) -> TestContext MultipleQuery model msg -> TestContext SingleQuery model msg
 queryFromAll multipleQuery =
-    withContext
-        (\activeContext ->
-            withMultipleQuery
-                (\query ->
-                    TestContext { activeContext | query = SingleQuery (multipleQuery query) }
-                )
-                activeContext
+    withMultipleQuery
+        (\query activeContext ->
+            TestContext (multipleQuery query) activeContext
         )
 
 
-queryToAll : (Test.Html.Query.Single -> Test.Html.Query.Multiple) -> TestContext model msg -> TestContext model msg
+queryToAll : (Test.Html.Query.Single -> Test.Html.Query.Multiple) -> TestContext SingleQuery model msg -> TestContext MultipleQuery model msg
 queryToAll multipleQuery =
-    withContext
-        (\activeContext ->
-            withSingleQuery
-                (\query ->
-                    TestContext { activeContext | query = MultipleQuery (multipleQuery query) }
-                )
-                activeContext
+    withSingleQuery
+        (\query activeContext ->
+            TestContext (multipleQuery query) activeContext
         )
 
 
-trigger : Test.Html.Events.Event -> TestContext model msg -> TestContext model msg
+trigger : Test.Html.Events.Event -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
 trigger event context =
-    withContext
-        (\activeContext ->
-            withSingleQuery
-                (\query ->
-                    case Test.Html.Events.eventResult event query of
-                        Ok msg ->
-                            update msg context
+    withSingleQuery
+        (\query activeContext ->
+            case Test.Html.Events.eventResult event query of
+                Ok msg ->
+                    update msg context
 
-                        Err err ->
-                            error activeContext err
-                )
-                activeContext
+                Err err ->
+                    error activeContext err
         )
         context
 
 
-withSingleQuery : (Test.Html.Query.Single -> TestContext model msg) -> ActiveContext model msg -> TestContext model msg
-withSingleQuery f activeContext =
-    case activeContext.query of
-        SingleQuery query ->
-            f query
+withSingleQuery : (Test.Html.Query.Single -> ActiveContext model msg -> TestContext query model msg) -> TestContext SingleQuery model msg -> TestContext query model msg
+withSingleQuery f context =
+    case context of
+        TestContext query activeContext ->
+            f query activeContext
 
-        MultipleQuery _ ->
-            error activeContext "A multiple query operation was called while having a single node available"
+        TestError description ->
+            TestError description
 
 
-withMultipleQuery : (Test.Html.Query.Multiple -> TestContext model msg) -> ActiveContext model msg -> TestContext model msg
-withMultipleQuery f activeContext =
-    case activeContext.query of
-        SingleQuery _ ->
-            error activeContext "A single query operation was called when there are multiple nodes found"
+withMultipleQuery : (Test.Html.Query.Multiple -> ActiveContext model msg -> TestContext query model msg) -> TestContext MultipleQuery model msg -> TestContext query model msg
+withMultipleQuery f context =
+    case context of
+        TestContext query activeContext ->
+            f query activeContext
 
-        MultipleQuery query ->
-            f query
+        TestError description ->
+            TestError description

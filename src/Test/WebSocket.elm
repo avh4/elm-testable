@@ -4,30 +4,30 @@ import DefaultDict
 import Dict
 import Fifo
 import Testable.Task exposing (ProcessId(..))
-import TestContextInternal as Internal exposing (TestContext(..))
+import TestContextInternal as Internal exposing (TestContext(..), SingleQuery)
 
 
-acceptConnection : String -> TestContext msg model -> TestContext msg model
+acceptConnection : String -> TestContext query msg model -> TestContext SingleQuery msg model
 acceptConnection socketUrl =
     Internal.withContext <|
-        \context ->
+        \query context ->
             case Dict.get socketUrl context.pendingWebSocketConnections of
                 Nothing ->
                     -- TODO: show list of pending connections
                     Internal.error context ("Expected a websocket connection to " ++ socketUrl ++ ", but none was made")
 
                 Just next ->
-                    TestContext context
+                    TestContext query context
                         |> Internal.processTask
                             (ProcessId -5)
                             (next <| Ok ())
                         |> Internal.drainWorkQueue
 
 
-acceptMessage : String -> String -> TestContext msg model -> TestContext msg model
+acceptMessage : String -> String -> TestContext query msg model -> TestContext query msg model
 acceptMessage socketUrl expectedMessage =
     Internal.withContext <|
-        \context ->
+        \query context ->
             case
                 DefaultDict.get socketUrl context.pendingWebSocketMessages
                     |> Fifo.remove
@@ -38,6 +38,7 @@ acceptMessage socketUrl expectedMessage =
                 ( Just first, rest ) ->
                     if first == expectedMessage then
                         TestContext
+                            query
                             { context
                                 | pendingWebSocketMessages =
                                     context.pendingWebSocketMessages

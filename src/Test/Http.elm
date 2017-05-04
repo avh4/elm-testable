@@ -12,7 +12,7 @@ import Dict exposing (Dict)
 import Expect exposing (Expectation)
 import Http
 import Testable.Task exposing (fromPlatformTask, Task(..), ProcessId(..))
-import TestContextInternal as Internal exposing (TestContext(..))
+import TestContextInternal as Internal exposing (TestContext(..), SingleQuery)
 
 
 type alias RequestMatcher =
@@ -31,7 +31,7 @@ type alias Response =
     }
 
 
-expectGet : String -> TestContext model msg -> Expectation
+expectGet : String -> TestContext query model msg -> Expectation
 expectGet url =
     expectRequest
         { method = "GET"
@@ -41,7 +41,7 @@ expectGet url =
         }
 
 
-expectRequest : RequestMatcher -> TestContext model msg -> Expectation
+expectRequest : RequestMatcher -> TestContext query model msg -> Expectation
 expectRequest { method, url } =
     Internal.expect "Test.Http.expectRequest" identity <|
         \context ->
@@ -66,7 +66,7 @@ expectRequest { method, url } =
                     |> Expect.fail
 
 
-resolveGet : String -> String -> TestContext model msg -> TestContext model msg
+resolveGet : String -> String -> TestContext query model msg -> TestContext SingleQuery model msg
 resolveGet url body =
     resolveRequest
         { method = "GET"
@@ -92,7 +92,7 @@ badStatus statusCode =
         }
 
 
-rejectGet : String -> Http.Error -> TestContext model msg -> TestContext model msg
+rejectGet : String -> Http.Error -> TestContext query model msg -> TestContext SingleQuery model msg
 rejectGet url error =
     resolveRequest
         { method = "GET"
@@ -103,14 +103,15 @@ rejectGet url error =
         (Err error)
 
 
-resolveRequest : RequestMatcher -> Result Http.Error String -> TestContext model msg -> TestContext model msg
+resolveRequest : RequestMatcher -> Result Http.Error String -> TestContext query model msg -> TestContext SingleQuery model msg
 resolveRequest { method, url } response =
     Internal.withContext <|
-        \context ->
+        \query context ->
             case Dict.get ( method, url ) context.pendingHttpRequests of
                 Just next ->
                     -- TODO: need to drain the work queue
                     TestContext
+                        query
                         { context
                             | pendingHttpRequests =
                                 Dict.remove ( method, url )

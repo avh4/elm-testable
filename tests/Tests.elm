@@ -18,8 +18,7 @@ all : Test
 all =
     describe "Testable"
         [ Testable.TaskTests.all
-
-        -- Core Elm support
+          -- Core Elm support
         , ModelTests.all
         , ViewTests.all
         , FlagsTests.all
@@ -27,16 +26,13 @@ all =
         , PortSubTests.all
         , TaskTests.all
         , EffectManagerTests.all
-
-        -- Low-level APIs
+          -- Low-level APIs
         , MockTaskTests.all
-
-        -- Domain-specific APIs
+          -- Domain-specific APIs
         , HttpTests.all
         , TimeTests.all
-
-        -- TODO: Random
-        -- TODO: Add Websocket tests (see examples/tests/WebsocketChatTests)
-        -- TODO: Window
-        -- TODO: RAF
+          -- TODO: Random
+          -- TODO: Add Websocket tests (see examples/tests/WebsocketChatTests)
+          -- TODO: Window
+          -- TODO: RAF
         ]

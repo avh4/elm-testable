@@ -5,7 +5,7 @@ import Html
 import Http
 import Json.Decode as Decode
 import Test exposing (..)
-import TestContext exposing (TestContext)
+import TestContext exposing (TestContext, SingleQuery)
 import Test.Http
 import Test.Util exposing (..)
 
@@ -14,7 +14,7 @@ type LoadingMsg
     = NewData (Result Http.Error String)
 
 
-loadingProgram : TestContext String LoadingMsg
+loadingProgram : TestContext SingleQuery String LoadingMsg
 loadingProgram =
     { init =
         ( "INIT"
@@ -43,7 +43,7 @@ type JsonMsg
     = NewList (Result Http.Error (List String))
 
 
-jsonProgram : TestContext String JsonMsg
+jsonProgram : TestContext SingleQuery String JsonMsg
 jsonProgram =
     { init =
         ( "INIT"
@@ -146,15 +146,14 @@ all =
                         """@#not JSON"""
                     |> TestContext.expectModel
                         (expectContains "INIT;BadPayload \"Given an invalid JSON: Unexpected token @")
-
-        -- TODO: nicer message when an expected request was previously resolved
-        -- TODO: required body (for POST request)
-        -- TODO: disallow 3xx codes in response, since Http uses XHR, which silently follows redirects
-        -- TODO: verify/match HTTP headers
-        -- TODO: give headers for stubbed response
-        -- TODO: support Http.Progress
-        -- TODO: Do we need expectHttpRequest? won't resolveHttpRequest be enough?
-        -- TODO: give custom URL in response (this would happen in real life if there are redirects)
-        -- TODO: handle timeouts
-        -- TODO: what is Http.Request.withCredentials for?
+          -- TODO: nicer message when an expected request was previously resolved
+          -- TODO: required body (for POST request)
+          -- TODO: disallow 3xx codes in response, since Http uses XHR, which silently follows redirects
+          -- TODO: verify/match HTTP headers
+          -- TODO: give headers for stubbed response
+          -- TODO: support Http.Progress
+          -- TODO: Do we need expectHttpRequest? won't resolveHttpRequest be enough?
+          -- TODO: give custom URL in response (this would happen in real life if there are redirects)
+          -- TODO: handle timeouts
+          -- TODO: what is Http.Request.withCredentials for?
         ]

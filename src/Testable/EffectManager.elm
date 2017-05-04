@@ -17,23 +17,43 @@ import Dict exposing (Dict)
 
 
 type MyCmd
-    = MyCmd_ -- The actual type depends on the effect manager, so this is hidden in a native object
+    = MyCmd_
+
+
+
+-- The actual type depends on the effect manager, so this is hidden in a native object
 
 
 type MySub
-    = MySub_ -- The actual type depends on the effect manager, so this is hidden in a native object
+    = MySub_
+
+
+
+-- The actual type depends on the effect manager, so this is hidden in a native object
 
 
 type AppMsg
-    = AppMsg_ -- The actual type depends on the effect manager, so this is hidden in a native object
+    = AppMsg_
+
+
+
+-- The actual type depends on the effect manager, so this is hidden in a native object
 
 
 type SelfMsg
-    = SelfMsg_ -- The actual type depends on the effect manager, so this is hidden in a native object
+    = SelfMsg_
+
+
+
+-- The actual type depends on the effect manager, so this is hidden in a native object
 
 
 type State
-    = State_ -- The actual type depends on the effect manager, so this is hidden in a native object
+    = State_
+
+
+
+-- The actual type depends on the effect manager, so this is hidden in a native object
 
 
 type Message
