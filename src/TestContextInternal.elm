@@ -41,7 +41,7 @@ import Mapper exposing (Mapper)
 import Native.TestContext
 import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
-import Test.Html.Events
+import Test.Html.Events exposing (simulate, eventResult)
 import Test.Html.Query exposing (fromHtml)
 import Testable.EffectManager as EffectManager exposing (EffectManager)
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
@@ -989,7 +989,7 @@ trigger : Test.Html.Events.Event -> TestContext SingleQuery model msg -> TestCon
 trigger event context =
     withSingleQuery
         (\query activeContext ->
-            case Test.Html.Events.eventResult event query of
+            case eventResult (simulate event query) of
                 Ok msg ->
                     update msg context
 
