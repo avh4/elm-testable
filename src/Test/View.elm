@@ -54,7 +54,7 @@ hasNot =
     Query.hasNot >> Internal.expectView
 
 
-each : (Query.Single -> Expectation) -> MultipleQueryTest model msg -> Expectation
+each : (Query.Single msg -> Expectation) -> MultipleQueryTest model msg -> Expectation
 each =
     Query.each >> Internal.expectViewAll
 

@@ -129,11 +129,11 @@ type TestContext query model msg
 
 
 type alias SingleQueryTest model msg =
-    TestContext Query.Single model msg
+    TestContext (Query.Single msg) model msg
 
 
 type alias MultipleQueryTest model msg =
-    TestContext Query.Multiple model msg
+    TestContext (Query.Multiple msg) model msg
 
 
 withContext : (query -> ActiveContext model msg -> TestContext query_ model msg) -> TestContext query model msg -> TestContext query_ model msg
@@ -628,7 +628,7 @@ update msg =
                     |> drainWorkQueue
 
 
-newQuery : ActiveContext model msg -> Query.Single
+newQuery : ActiveContext model msg -> Query.Single msg
 newQuery context =
     context.program.view context.model
         |> fromHtml
@@ -941,7 +941,7 @@ done =
 -- Query
 
 
-expectView : (Query.Single -> Expectation) -> SingleQueryTest model msg -> Expectation
+expectView : (Query.Single msg -> Expectation) -> SingleQueryTest model msg -> Expectation
 expectView check context =
     case context of
         TestContext query activeContext ->
@@ -951,7 +951,7 @@ expectView check context =
             Expect.fail (report "expectView" context)
 
 
-expectViewAll : (Query.Multiple -> Expectation) -> MultipleQueryTest model msg -> Expectation
+expectViewAll : (Query.Multiple msg -> Expectation) -> MultipleQueryTest model msg -> Expectation
 expectViewAll check context =
     case context of
         TestContext query activeContext ->
@@ -961,7 +961,7 @@ expectViewAll check context =
             Expect.fail (report "expectView" context)
 
 
-query : (Query.Single -> Query.Single) -> SingleQueryTest model msg -> SingleQueryTest model msg
+query : (Query.Single msg -> Query.Single msg) -> SingleQueryTest model msg -> SingleQueryTest model msg
 query singleQuery =
     withSingleQuery
         (\query activeContext ->
@@ -969,7 +969,7 @@ query singleQuery =
         )
 
 
-queryFromAll : (Query.Multiple -> Query.Single) -> MultipleQueryTest model msg -> SingleQueryTest model msg
+queryFromAll : (Query.Multiple msg -> Query.Single msg) -> MultipleQueryTest model msg -> SingleQueryTest model msg
 queryFromAll multipleQuery =
     withMultipleQuery
         (\query activeContext ->
@@ -977,7 +977,7 @@ queryFromAll multipleQuery =
         )
 
 
-queryToAll : (Query.Single -> Query.Multiple) -> SingleQueryTest model msg -> MultipleQueryTest model msg
+queryToAll : (Query.Single msg -> Query.Multiple msg) -> SingleQueryTest model msg -> MultipleQueryTest model msg
 queryToAll multipleQuery =
     withSingleQuery
         (\query activeContext ->
@@ -999,7 +999,7 @@ trigger event context =
         context
 
 
-withSingleQuery : (Query.Single -> ActiveContext model msg -> TestContext query model msg) -> SingleQueryTest model msg -> TestContext query model msg
+withSingleQuery : (Query.Single msg -> ActiveContext model msg -> TestContext query model msg) -> SingleQueryTest model msg -> TestContext query model msg
 withSingleQuery f context =
     case context of
         TestContext query activeContext ->
@@ -1009,7 +1009,7 @@ withSingleQuery f context =
             TestError description
 
 
-withMultipleQuery : (Query.Multiple -> ActiveContext model msg -> TestContext query model msg) -> MultipleQueryTest model msg -> TestContext query model msg
+withMultipleQuery : (Query.Multiple msg -> ActiveContext model msg -> TestContext query model msg) -> MultipleQueryTest model msg -> TestContext query model msg
 withMultipleQuery f context =
     case context of
         TestContext query activeContext ->
