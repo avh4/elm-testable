@@ -1,8 +1,8 @@
 module TestContextInternal
     exposing
         ( TestContext(..)
-        , SingleQuery
-        , MultipleQuery
+        , SingleQueryTest
+        , MultipleQueryTest
         , MockTask
         , toTask
         , mockTask
@@ -42,7 +42,7 @@ import Native.TestContext
 import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
 import Test.Html.Events exposing (simulate, eventResult)
-import Test.Html.Query exposing (fromHtml)
+import Test.Html.Query as Query exposing (fromHtml)
 import Testable.EffectManager as EffectManager exposing (EffectManager)
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 import Time exposing (Time)
@@ -79,14 +79,6 @@ type TestableSub msg
 type MockTaskState msg
     = Pending (Mapper (Task Never msg))
     | Resolved String
-
-
-type alias SingleQuery =
-    Test.Html.Query.Single
-
-
-type alias MultipleQuery =
-    Test.Html.Query.Multiple
 
 
 isPending : MockTaskState msg -> Bool
@@ -134,6 +126,14 @@ type TestContext query model msg
         , taskTranscript : List ( Int, Task Never msg )
         , msgTranscript : List ( Int, msg )
         }
+
+
+type alias SingleQueryTest model msg =
+    TestContext Query.Single model msg
+
+
+type alias MultipleQueryTest model msg =
+    TestContext Query.Multiple model msg
 
 
 withContext : (query -> ActiveContext model msg -> TestContext query_ model msg) -> TestContext query model msg -> TestContext query_ model msg
@@ -277,17 +277,17 @@ orCrash message maybe =
             Debug.crash message
 
 
-startWithFlags : flags -> Program flags model msg -> TestContext SingleQuery model msg
+startWithFlags : flags -> Program flags model msg -> SingleQueryTest model msg
 startWithFlags flags realProgram =
     start_ (Just flags) realProgram
 
 
-start : Program Never model msg -> TestContext SingleQuery model msg
+start : Program Never model msg -> SingleQueryTest model msg
 start realProgram =
     start_ Nothing realProgram
 
 
-start_ : Maybe flags -> Program flags model msg -> TestContext SingleQuery model msg
+start_ : Maybe flags -> Program flags model msg -> SingleQueryTest model msg
 start_ flags realProgram =
     let
         _ =
@@ -343,7 +343,7 @@ start_ flags realProgram =
             |> drainWorkQueue
 
 
-drainWorkQueue : TestContext query model msg -> TestContext SingleQuery model msg
+drainWorkQueue : TestContext query model msg -> SingleQueryTest model msg
 drainWorkQueue =
     withContext <|
         \query context ->
@@ -368,7 +368,7 @@ drainWorkQueue =
                                 |> drainWorkQueue
 
 
-processMessage : String -> EffectManager.Message -> TestContext query model msg -> TestContext SingleQuery model msg
+processMessage : String -> EffectManager.Message -> TestContext query model msg -> SingleQueryTest model msg
 processMessage home message =
     withContext <|
         \query context ->
@@ -416,7 +416,7 @@ enqueueMessage home message =
                     }
 
 
-dispatchEffects : Cmd msg -> Sub msg -> TestContext query model msg -> TestContext SingleQuery model msg
+dispatchEffects : Cmd msg -> Sub msg -> TestContext query model msg -> SingleQueryTest model msg
 dispatchEffects cmd sub =
     withContext <|
         \query context ->
@@ -474,12 +474,12 @@ instead of calling itself, which will prevent the tail call optimization, and
 prevent the bug from being triggered.
 
 -}
-processTask_preventTailCallOptimization : ProcessId -> Task Never msg -> TestContext query model msg -> TestContext SingleQuery model msg
+processTask_preventTailCallOptimization : ProcessId -> Task Never msg -> TestContext query model msg -> SingleQueryTest model msg
 processTask_preventTailCallOptimization =
     processTask
 
 
-processTask : ProcessId -> Task Never msg -> TestContext query model msg -> TestContext SingleQuery model msg
+processTask : ProcessId -> Task Never msg -> TestContext query model msg -> SingleQueryTest model msg
 processTask pid task =
     withContext <|
         \query context_ ->
@@ -601,7 +601,7 @@ processTask pid task =
                             |> processTask_preventTailCallOptimization pid (next Nothing)
 
 
-update : msg -> TestContext query model msg -> TestContext SingleQuery model msg
+update : msg -> TestContext query model msg -> SingleQueryTest model msg
 update msg =
     withContext <|
         \query context ->
@@ -628,7 +628,7 @@ update msg =
                     |> drainWorkQueue
 
 
-newQuery : ActiveContext model msg -> SingleQuery
+newQuery : ActiveContext model msg -> Query.Single
 newQuery context =
     context.program.view context.model
         |> fromHtml
@@ -710,7 +710,7 @@ listFailure collectionName emptyIndicator actuals view expectationName expected 
         |> String.join "\n"
 
 
-resolveMockTask : MockTask x a -> Result x a -> TestContext query model msg -> TestContext SingleQuery model msg
+resolveMockTask : MockTask x a -> Result x a -> TestContext query model msg -> SingleQueryTest model msg
 resolveMockTask mock result =
     withContext <|
         \query context ->
@@ -750,7 +750,7 @@ send :
     ((value -> msg) -> Sub msg)
     -> value
     -> TestContext query model msg
-    -> TestContext SingleQuery model msg
+    -> SingleQueryTest model msg
 send subPort value =
     withContext <|
         \query context ->
@@ -828,7 +828,7 @@ expectCmd expected =
         )
 
 
-advanceTime : Time -> TestContext query model msg -> TestContext SingleQuery model msg
+advanceTime : Time -> TestContext query model msg -> SingleQueryTest model msg
 advanceTime dt context =
     withContext
         (\_ activeContext ->
@@ -837,7 +837,7 @@ advanceTime dt context =
         context
 
 
-advanceTimeUntil : Time -> TestContext query model msg -> TestContext SingleQuery model msg
+advanceTimeUntil : Time -> TestContext query model msg -> SingleQueryTest model msg
 advanceTimeUntil targetTime =
     withContext <|
         \query context ->
@@ -941,7 +941,7 @@ done =
 -- Query
 
 
-expectView : (Test.Html.Query.Single -> Expectation) -> TestContext SingleQuery model msg -> Expectation
+expectView : (Query.Single -> Expectation) -> SingleQueryTest model msg -> Expectation
 expectView check context =
     case context of
         TestContext query activeContext ->
@@ -951,7 +951,7 @@ expectView check context =
             Expect.fail (report "expectView" context)
 
 
-expectViewAll : (Test.Html.Query.Multiple -> Expectation) -> TestContext MultipleQuery model msg -> Expectation
+expectViewAll : (Query.Multiple -> Expectation) -> MultipleQueryTest model msg -> Expectation
 expectViewAll check context =
     case context of
         TestContext query activeContext ->
@@ -961,7 +961,7 @@ expectViewAll check context =
             Expect.fail (report "expectView" context)
 
 
-query : (Test.Html.Query.Single -> Test.Html.Query.Single) -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
+query : (Query.Single -> Query.Single) -> SingleQueryTest model msg -> SingleQueryTest model msg
 query singleQuery =
     withSingleQuery
         (\query activeContext ->
@@ -969,7 +969,7 @@ query singleQuery =
         )
 
 
-queryFromAll : (Test.Html.Query.Multiple -> Test.Html.Query.Single) -> TestContext MultipleQuery model msg -> TestContext SingleQuery model msg
+queryFromAll : (Query.Multiple -> Query.Single) -> MultipleQueryTest model msg -> SingleQueryTest model msg
 queryFromAll multipleQuery =
     withMultipleQuery
         (\query activeContext ->
@@ -977,7 +977,7 @@ queryFromAll multipleQuery =
         )
 
 
-queryToAll : (Test.Html.Query.Single -> Test.Html.Query.Multiple) -> TestContext SingleQuery model msg -> TestContext MultipleQuery model msg
+queryToAll : (Query.Single -> Query.Multiple) -> SingleQueryTest model msg -> MultipleQueryTest model msg
 queryToAll multipleQuery =
     withSingleQuery
         (\query activeContext ->
@@ -985,7 +985,7 @@ queryToAll multipleQuery =
         )
 
 
-trigger : Test.Html.Events.Event -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
+trigger : Test.Html.Events.Event -> SingleQueryTest model msg -> SingleQueryTest model msg
 trigger event context =
     withSingleQuery
         (\query activeContext ->
@@ -999,7 +999,7 @@ trigger event context =
         context
 
 
-withSingleQuery : (Test.Html.Query.Single -> ActiveContext model msg -> TestContext query model msg) -> TestContext SingleQuery model msg -> TestContext query model msg
+withSingleQuery : (Query.Single -> ActiveContext model msg -> TestContext query model msg) -> SingleQueryTest model msg -> TestContext query model msg
 withSingleQuery f context =
     case context of
         TestContext query activeContext ->
@@ -1009,7 +1009,7 @@ withSingleQuery f context =
             TestError description
 
 
-withMultipleQuery : (Test.Html.Query.Multiple -> ActiveContext model msg -> TestContext query model msg) -> TestContext MultipleQuery model msg -> TestContext query model msg
+withMultipleQuery : (Query.Multiple -> ActiveContext model msg -> TestContext query model msg) -> MultipleQueryTest model msg -> TestContext query model msg
 withMultipleQuery f context =
     case context of
         TestContext query activeContext ->

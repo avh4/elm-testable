@@ -9,7 +9,7 @@ import Test.View as View
 import Test.Html.Selector exposing (..)
 
 
-program : TestContext SingleQuery RandomGif.Model RandomGif.Msg
+program : SingleQueryTest RandomGif.Model RandomGif.Msg
 program =
     RandomGif.program
         |> startWithFlags
@@ -18,7 +18,7 @@ program =
             }
 
 
-assertShownImage : String -> TestContext SingleQuery RandomGif.Model msg -> Expectation
+assertShownImage : String -> SingleQueryTest RandomGif.Model msg -> Expectation
 assertShownImage expectedImageUrl testContext =
     testContext
         |> View.find [ tag "img" ]

@@ -1,8 +1,8 @@
 module TestContext
     exposing
         ( TestContext
-        , SingleQuery
-        , MultipleQuery
+        , SingleQueryTest
+        , MultipleQueryTest
         , start
         , startWithFlags
         , update
@@ -22,25 +22,25 @@ type alias TestContext query model msg =
     Internal.TestContext query model msg
 
 
-type alias SingleQuery =
-    Internal.SingleQuery
+type alias SingleQueryTest model msg =
+    Internal.SingleQueryTest model msg
 
 
-type alias MultipleQuery =
-    Internal.MultipleQuery
+type alias MultipleQueryTest model msg =
+    Internal.MultipleQueryTest model msg
 
 
-start : Program Never model msg -> TestContext SingleQuery model msg
+start : Program Never model msg -> SingleQueryTest model msg
 start realProgram =
     Internal.start realProgram
 
 
-startWithFlags : flags -> Program flags model msg -> TestContext SingleQuery model msg
+startWithFlags : flags -> Program flags model msg -> SingleQueryTest model msg
 startWithFlags flags realProgram =
     Internal.startWithFlags flags realProgram
 
 
-update : msg -> TestContext query model msg -> TestContext SingleQuery model msg
+update : msg -> TestContext query model msg -> SingleQueryTest model msg
 update msg context =
     Internal.update msg context
 
@@ -49,7 +49,7 @@ send :
     ((value -> msg) -> Sub msg)
     -> value
     -> TestContext query model msg
-    -> TestContext SingleQuery model msg
+    -> SingleQueryTest model msg
 send subPort value context =
     Internal.send subPort value context
 
@@ -59,7 +59,7 @@ expectCmd expected context =
     Internal.expectCmd expected context
 
 
-advanceTime : Time -> TestContext query model msg -> TestContext SingleQuery model msg
+advanceTime : Time -> TestContext query model msg -> SingleQueryTest model msg
 advanceTime dt context =
     Internal.advanceTime dt context
 

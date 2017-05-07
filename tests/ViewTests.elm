@@ -6,12 +6,12 @@ import Html.Attributes
 import Test exposing (..)
 import Test.Html.Events as Events
 import Test.Html.Selector as Selector
-import TestContext exposing (TestContext, SingleQuery)
+import TestContext exposing (SingleQueryTest)
 import Test.View exposing (..)
 import Expect
 
 
-htmlProgram : TestContext SingleQuery (List String) String
+htmlProgram : SingleQueryTest (List String) String
 htmlProgram =
     { model = []
     , update = \msg model -> msg :: model

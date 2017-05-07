@@ -1,8 +1,8 @@
 module TestContextWithMocks
     exposing
         ( TestContext
-        , SingleQuery
-        , MultipleQuery
+        , SingleQueryTest
+        , MultipleQueryTest
         , MockTask
         , toTask
         , mockTask
@@ -34,12 +34,12 @@ type alias MockTask x a =
     Internal.MockTask x a
 
 
-type alias SingleQuery =
-    Internal.SingleQuery
+type alias SingleQueryTest model msg =
+    Internal.SingleQueryTest model msg
 
 
-type alias MultipleQuery =
-    Internal.MultipleQuery
+type alias MultipleQueryTest model msg =
+    Internal.MultipleQueryTest model msg
 
 
 toTask : MockTask x a -> Platform.Task x a
@@ -52,12 +52,12 @@ mockTask =
     Internal.mockTask
 
 
-startWithFlags : flags -> Program flags model msg -> TestContext SingleQuery model msg
+startWithFlags : flags -> Program flags model msg -> SingleQueryTest model msg
 startWithFlags flags realProgram =
     Internal.startWithFlags flags realProgram
 
 
-start : Program Never model msg -> TestContext SingleQuery model msg
+start : Program Never model msg -> SingleQueryTest model msg
 start realProgram =
     Internal.start realProgram
 
@@ -67,7 +67,7 @@ expectModel check context =
     Internal.expectModel check context
 
 
-update : msg -> TestContext query model msg -> TestContext SingleQuery model msg
+update : msg -> TestContext query model msg -> SingleQueryTest model msg
 update msg context =
     Internal.update msg context
 
@@ -77,7 +77,7 @@ expectMockTask whichMock context =
     Internal.expectMockTask whichMock context
 
 
-resolveMockTask : MockTask x a -> Result x a -> TestContext query model msg -> TestContext SingleQuery model msg
+resolveMockTask : MockTask x a -> Result x a -> TestContext query model msg -> SingleQueryTest model msg
 resolveMockTask mock result context =
     Internal.resolveMockTask mock result context
 
@@ -86,7 +86,7 @@ send :
     ((value -> msg) -> Sub msg)
     -> value
     -> TestContext query model msg
-    -> TestContext SingleQuery model msg
+    -> SingleQueryTest model msg
 send subPort value context =
     Internal.send subPort value context
 
@@ -96,6 +96,6 @@ expectCmd expected context =
     Internal.expectCmd expected context
 
 
-advanceTime : Time -> TestContext query model msg -> TestContext SingleQuery model msg
+advanceTime : Time -> TestContext query model msg -> SingleQueryTest model msg
 advanceTime dt context =
     Internal.advanceTime dt context

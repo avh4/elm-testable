@@ -8,57 +8,57 @@ module Test.View
         )
 
 import Expect exposing (Expectation)
-import TestContextInternal as Internal exposing (TestContext(..), SingleQuery, MultipleQuery)
-import Test.Html.Query
+import TestContextInternal as Internal exposing (TestContext(..), SingleQueryTest, MultipleQueryTest)
+import Test.Html.Query as Query
 import Test.Html.Selector exposing (Selector)
 import Test.Html.Events
 
 
-find : List Selector -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
+find : List Selector -> SingleQueryTest model msg -> SingleQueryTest model msg
 find =
-    Test.Html.Query.find >> Internal.query
+    Query.find >> Internal.query
 
 
-findAll : List Selector -> TestContext SingleQuery model msg -> TestContext MultipleQuery model msg
+findAll : List Selector -> SingleQueryTest model msg -> MultipleQueryTest model msg
 findAll =
-    Test.Html.Query.findAll >> Internal.queryToAll
+    Query.findAll >> Internal.queryToAll
 
 
-children : List Selector -> TestContext SingleQuery model msg -> TestContext MultipleQuery model msg
+children : List Selector -> SingleQueryTest model msg -> MultipleQueryTest model msg
 children =
-    Test.Html.Query.children >> Internal.queryToAll
+    Query.children >> Internal.queryToAll
 
 
-first : TestContext MultipleQuery model msg -> TestContext SingleQuery model msg
+first : MultipleQueryTest model msg -> SingleQueryTest model msg
 first =
-    Test.Html.Query.first |> Internal.queryFromAll
+    Query.first |> Internal.queryFromAll
 
 
-index : Int -> TestContext MultipleQuery model msg -> TestContext SingleQuery model msg
+index : Int -> MultipleQueryTest model msg -> SingleQueryTest model msg
 index =
-    Test.Html.Query.index >> Internal.queryFromAll
+    Query.index >> Internal.queryFromAll
 
 
-count : (Int -> Expectation) -> TestContext MultipleQuery model msg -> Expectation
+count : (Int -> Expectation) -> MultipleQueryTest model msg -> Expectation
 count =
-    Test.Html.Query.count >> Internal.expectViewAll
+    Query.count >> Internal.expectViewAll
 
 
-has : List Selector -> TestContext SingleQuery model msg -> Expectation
+has : List Selector -> SingleQueryTest model msg -> Expectation
 has =
-    Test.Html.Query.has >> Internal.expectView
+    Query.has >> Internal.expectView
 
 
-hasNot : List Selector -> TestContext SingleQuery model msg -> Expectation
+hasNot : List Selector -> SingleQueryTest model msg -> Expectation
 hasNot =
-    Test.Html.Query.hasNot >> Internal.expectView
+    Query.hasNot >> Internal.expectView
 
 
-each : (SingleQuery -> Expectation) -> TestContext MultipleQuery model msg -> Expectation
+each : (Query.Single -> Expectation) -> MultipleQueryTest model msg -> Expectation
 each =
-    Test.Html.Query.each >> Internal.expectViewAll
+    Query.each >> Internal.expectViewAll
 
 
-trigger : Test.Html.Events.Event -> TestContext SingleQuery model msg -> TestContext SingleQuery model msg
+trigger : Test.Html.Events.Event -> SingleQueryTest model msg -> SingleQueryTest model msg
 trigger event =
     Internal.trigger event

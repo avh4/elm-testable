@@ -5,7 +5,7 @@ import Html
 import Http
 import Json.Decode as Decode
 import Test exposing (..)
-import TestContext exposing (TestContext, SingleQuery)
+import TestContext exposing (SingleQueryTest)
 import Test.Http
 import Test.Util exposing (..)
 
@@ -14,7 +14,7 @@ type LoadingMsg
     = NewData (Result Http.Error String)
 
 
-loadingProgram : TestContext SingleQuery String LoadingMsg
+loadingProgram : SingleQueryTest String LoadingMsg
 loadingProgram =
     { init =
         ( "INIT"
@@ -43,7 +43,7 @@ type JsonMsg
     = NewList (Result Http.Error (List String))
 
 
-jsonProgram : TestContext SingleQuery String JsonMsg
+jsonProgram : SingleQueryTest String JsonMsg
 jsonProgram =
     { init =
         ( "INIT"

@@ -5,13 +5,13 @@ import Expect exposing (Expectation)
 import Html
 import Process
 import Task
-import TestContextWithMocks as TestContext exposing (TestContext, SingleQuery)
+import TestContextWithMocks as TestContext exposing (SingleQueryTest)
 import Test.Util exposing (..)
 
 
 cmdProgram :
     Cmd msg
-    -> TestContext SingleQuery (List msg) msg
+    -> SingleQueryTest (List msg) msg
 cmdProgram cmd =
     Html.program
         { init = ( [], cmd )

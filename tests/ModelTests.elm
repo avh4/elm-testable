@@ -3,10 +3,10 @@ module ModelTests exposing (..)
 import Test exposing (..)
 import Expect
 import Html
-import TestContext exposing (TestContext, SingleQuery)
+import TestContext exposing (SingleQueryTest)
 
 
-stringProgram : String -> TestContext SingleQuery String String
+stringProgram : String -> SingleQueryTest String String
 stringProgram init =
     { model = init
     , update = \msg model -> model ++ ";" ++ msg

@@ -12,7 +12,7 @@ import Dict exposing (Dict)
 import Expect exposing (Expectation)
 import Http
 import Testable.Task exposing (fromPlatformTask, Task(..), ProcessId(..))
-import TestContextInternal as Internal exposing (TestContext(..), SingleQuery)
+import TestContextInternal as Internal exposing (TestContext(..), SingleQueryTest)
 
 
 type alias RequestMatcher =
@@ -66,7 +66,7 @@ expectRequest { method, url } =
                     |> Expect.fail
 
 
-resolveGet : String -> String -> TestContext query model msg -> TestContext SingleQuery model msg
+resolveGet : String -> String -> TestContext query model msg -> SingleQueryTest model msg
 resolveGet url body =
     resolveRequest
         { method = "GET"
@@ -92,7 +92,7 @@ badStatus statusCode =
         }
 
 
-rejectGet : String -> Http.Error -> TestContext query model msg -> TestContext SingleQuery model msg
+rejectGet : String -> Http.Error -> TestContext query model msg -> SingleQueryTest model msg
 rejectGet url error =
     resolveRequest
         { method = "GET"
@@ -103,7 +103,7 @@ rejectGet url error =
         (Err error)
 
 
-resolveRequest : RequestMatcher -> Result Http.Error String -> TestContext query model msg -> TestContext SingleQuery model msg
+resolveRequest : RequestMatcher -> Result Http.Error String -> TestContext query model msg -> SingleQueryTest model msg
 resolveRequest { method, url } response =
     Internal.withContext <|
         \query context ->

@@ -4,10 +4,10 @@ import DefaultDict
 import Dict
 import Fifo
 import Testable.Task exposing (ProcessId(..))
-import TestContextInternal as Internal exposing (TestContext(..), SingleQuery)
+import TestContextInternal as Internal exposing (TestContext(..), SingleQueryTest)
 
 
-acceptConnection : String -> TestContext query msg model -> TestContext SingleQuery msg model
+acceptConnection : String -> TestContext query model msg -> SingleQueryTest model msg
 acceptConnection socketUrl =
     Internal.withContext <|
         \query context ->
@@ -24,7 +24,7 @@ acceptConnection socketUrl =
                         |> Internal.drainWorkQueue
 
 
-acceptMessage : String -> String -> TestContext query msg model -> TestContext query msg model
+acceptMessage : String -> String -> TestContext query model msg -> TestContext query model msg
 acceptMessage socketUrl expectedMessage =
     Internal.withContext <|
         \query context ->
