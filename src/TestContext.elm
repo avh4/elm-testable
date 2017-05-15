@@ -4,7 +4,7 @@ module TestContext
         , start
         , startWithFlags
         , update
-        , updateWith
+        , simulate
         , send
         , expectCmd
         , advanceTime
@@ -16,6 +16,7 @@ module TestContext
 import Expect exposing (Expectation)
 import TestContextInternal as Internal
 import Test.Html.Query
+import Test.Html.Events as Events exposing (Event)
 import Time exposing (Time)
 
 
@@ -67,9 +68,11 @@ expectView context =
     Internal.expectView context
 
 
-updateWith : (Test.Html.Query.Single msg -> Result String msg) -> TestContext model msg -> TestContext model msg
-updateWith eventTrigger context =
+simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> Event -> TestContext model msg -> TestContext model msg
+simulate eventTrigger event context =
     eventTrigger (expectView context)
+        |> Events.simulate event
+        |> Events.eventResult
         |> Result.map ((flip update) context)
         |> Result.withDefault (context)
 

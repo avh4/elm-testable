@@ -45,11 +45,7 @@ all =
         , test "triggers events" <|
             \() ->
                 htmlProgram
-                    |> TestContext.updateWith
-                        (Query.find [ Selector.tag "button" ]
-                            >> Events.simulate Events.Click
-                            >> Events.eventResult
-                        )
+                    |> TestContext.simulate (Query.find [ Selector.tag "button" ]) Events.Click
                     |> TestContext.expectView
                     |> Query.has [ Selector.tag "p" ]
         ]
