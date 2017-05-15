@@ -889,7 +889,7 @@ expectModel check context =
     expect "TestContext.expectModel" .model check context
 
 
-expectView : TestContext model msg -> Test.Html.Query.Single
+expectView : TestContext model msg -> Test.Html.Query.Single msg
 expectView context =
     case context of
         TestContext c ->

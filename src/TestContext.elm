@@ -62,12 +62,12 @@ expectModel check context =
     Internal.expectModel check context
 
 
-expectView : TestContext model msg -> Test.Html.Query.Single
+expectView : TestContext model msg -> Test.Html.Query.Single msg
 expectView context =
     Internal.expectView context
 
 
-updateWith : (Test.Html.Query.Single -> Result String msg) -> TestContext model msg -> TestContext model msg
+updateWith : (Test.Html.Query.Single msg -> Result String msg) -> TestContext model msg -> TestContext model msg
 updateWith eventTrigger context =
     eventTrigger (expectView context)
         |> Result.map ((flip update) context)

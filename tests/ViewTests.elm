@@ -47,7 +47,8 @@ all =
                 htmlProgram
                     |> TestContext.updateWith
                         (Query.find [ Selector.tag "button" ]
-                            >> Events.eventResult Events.Click
+                            >> Events.simulate Events.Click
+                            >> Events.eventResult
                         )
                     |> TestContext.expectView
                     |> Query.has [ Selector.tag "p" ]
