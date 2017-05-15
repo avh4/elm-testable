@@ -2,16 +2,14 @@ module ViewTests exposing (all)
 
 import Html
 import Html.Events exposing (onClick)
-import Html.Attributes
 import Test exposing (..)
 import Test.Html.Events as Events
+import Test.Html.Query as Query
 import Test.Html.Selector as Selector
-import TestContext exposing (SingleQueryTest)
-import Test.View exposing (..)
-import Expect
+import TestContext exposing (TestContext)
 
 
-htmlProgram : SingleQueryTest (List String) String
+htmlProgram : TestContext (List String) String
 htmlProgram =
     { model = []
     , update = \msg model -> msg :: model
@@ -22,8 +20,7 @@ htmlProgram =
                 , model
                     |> List.map (\tag -> Html.node tag [] [])
                     |> Html.div []
-                , Html.button [ Html.Attributes.class "first-button", onClick "p" ] []
-                , Html.button [ Html.Attributes.class "second-button", onClick "p" ] []
+                , Html.button [ onClick "p" ] []
                 ]
     }
         |> Html.beginnerProgram
@@ -36,33 +33,22 @@ all =
         [ test "verifying an initial view" <|
             \() ->
                 htmlProgram
-                    |> find [ Selector.tag "h1" ]
-                    |> has [ Selector.text "Title!" ]
+                    |> TestContext.expectView
+                    |> Query.find [ Selector.tag "h1" ]
+                    |> Query.has [ Selector.text "Title!" ]
         , test "view changes after update" <|
             \() ->
                 htmlProgram
                     |> TestContext.update "strong"
-                    |> has [ Selector.tag "strong" ]
+                    |> TestContext.expectView
+                    |> Query.has [ Selector.tag "strong" ]
         , test "triggers events" <|
             \() ->
                 htmlProgram
-                    |> find [ Selector.class "first-button" ]
-                    |> trigger Events.Click
-                    |> has [ Selector.tag "p" ]
-        , test "query for multiple nodes" <|
-            \() ->
-                htmlProgram
-                    |> find [ Selector.class "first-button" ]
-                    |> trigger Events.Click
-                    |> findAll [ Selector.tag "p" ]
-                    |> count (Expect.equal 1)
-        , test "triggers multiple events" <|
-            \() ->
-                htmlProgram
-                    |> find [ Selector.class "first-button" ]
-                    |> trigger Events.Click
-                    |> find [ Selector.class "second-button" ]
-                    |> trigger Events.Click
-                    |> findAll [ Selector.tag "p" ]
-                    |> count (Expect.equal 2)
+                    |> TestContext.updateWith
+                        (Query.find [ Selector.tag "button" ]
+                            >> Events.eventResult Events.Click
+                        )
+                    |> TestContext.expectView
+                    |> Query.has [ Selector.tag "p" ]
         ]

@@ -1,8 +1,6 @@
 module TestContextWithMocks
     exposing
         ( TestContext
-        , SingleQueryTest
-        , MultipleQueryTest
         , MockTask
         , toTask
         , mockTask
@@ -26,20 +24,12 @@ import Expect exposing (Expectation)
 import Time exposing (Time)
 
 
-type alias TestContext query model msg =
-    Internal.TestContext query model msg
+type alias TestContext model msg =
+    Internal.TestContext model msg
 
 
 type alias MockTask x a =
     Internal.MockTask x a
-
-
-type alias SingleQueryTest model msg =
-    Internal.SingleQueryTest model msg
-
-
-type alias MultipleQueryTest model msg =
-    Internal.MultipleQueryTest model msg
 
 
 toTask : MockTask x a -> Platform.Task x a
@@ -52,32 +42,32 @@ mockTask =
     Internal.mockTask
 
 
-startWithFlags : flags -> Program flags model msg -> SingleQueryTest model msg
+startWithFlags : flags -> Program flags model msg -> TestContext model msg
 startWithFlags flags realProgram =
     Internal.startWithFlags flags realProgram
 
 
-start : Program Never model msg -> SingleQueryTest model msg
+start : Program Never model msg -> TestContext model msg
 start realProgram =
     Internal.start realProgram
 
 
-expectModel : (model -> Expectation) -> TestContext query model msg -> Expectation
+expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
 expectModel check context =
     Internal.expectModel check context
 
 
-update : msg -> TestContext query model msg -> SingleQueryTest model msg
+update : msg -> TestContext model msg -> TestContext model msg
 update msg context =
     Internal.update msg context
 
 
-expectMockTask : MockTask x a -> TestContext query model msg -> Expectation
+expectMockTask : MockTask x a -> TestContext model msg -> Expectation
 expectMockTask whichMock context =
     Internal.expectMockTask whichMock context
 
 
-resolveMockTask : MockTask x a -> Result x a -> TestContext query model msg -> SingleQueryTest model msg
+resolveMockTask : MockTask x a -> Result x a -> TestContext model msg -> TestContext model msg
 resolveMockTask mock result context =
     Internal.resolveMockTask mock result context
 
@@ -85,17 +75,17 @@ resolveMockTask mock result context =
 send :
     ((value -> msg) -> Sub msg)
     -> value
-    -> TestContext query model msg
-    -> SingleQueryTest model msg
+    -> TestContext model msg
+    -> TestContext model msg
 send subPort value context =
     Internal.send subPort value context
 
 
-expectCmd : Cmd msg -> TestContext query model msg -> Expectation
+expectCmd : Cmd msg -> TestContext model msg -> Expectation
 expectCmd expected context =
     Internal.expectCmd expected context
 
 
-advanceTime : Time -> TestContext query model msg -> SingleQueryTest model msg
+advanceTime : Time -> TestContext model msg -> TestContext model msg
 advanceTime dt context =
     Internal.advanceTime dt context

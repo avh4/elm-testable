@@ -3,12 +3,12 @@ module PortSubTests exposing (..)
 import Test exposing (..)
 import Expect exposing (Expectation)
 import Html
-import TestContext exposing (SingleQueryTest)
+import TestContext exposing (TestContext)
 import Test.Ports as Ports
 import Test.Util exposing (..)
 
 
-subProgram : Sub String -> SingleQueryTest String String
+subProgram : Sub String -> TestContext String String
 subProgram subs =
     { init = ( "INIT", Cmd.none )
     , update = \msg model -> ( model ++ ";" ++ msg, Cmd.none )

@@ -5,11 +5,11 @@ import Expect exposing (Expectation)
 import RandomGif
 import Test exposing (..)
 import Test.Http
-import Test.View as View
+import Test.Html.Query as Query
 import Test.Html.Selector exposing (..)
 
 
-program : SingleQueryTest RandomGif.Model RandomGif.Msg
+program : TestContext RandomGif.Model RandomGif.Msg
 program =
     RandomGif.program
         |> startWithFlags
@@ -18,11 +18,12 @@ program =
             }
 
 
-assertShownImage : String -> SingleQueryTest RandomGif.Model msg -> Expectation
+assertShownImage : String -> TestContext RandomGif.Model msg -> Expectation
 assertShownImage expectedImageUrl testContext =
     testContext
-        |> View.find [ tag "img" ]
-        |> View.has [ attribute "src" expectedImageUrl ]
+        |> expectView
+        |> Query.find [ tag "img" ]
+        |> Query.has [ attribute "src" expectedImageUrl ]
 
 
 expectOk : (a -> Expectation) -> Result x a -> Expectation

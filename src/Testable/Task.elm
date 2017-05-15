@@ -59,8 +59,7 @@ type Task error success
     | MockTask String (Mapper (Task error success))
     | ToApp EffectManager.AppMsg (Task error success)
     | ToEffectManager String EffectManager.SelfMsg (Task error success)
-    | NewEffectManagerState String String EffectManager.State
-      -- first String is for debugging
+    | NewEffectManagerState String String EffectManager.State -- first String is for debugging
       -- Native binding tasks in elm-lang/core
     | Core_NativeScheduler_sleep Time (() -> Task error success)
     | Core_NativeScheduler_spawn (Task Never Never) (ProcessId -> Task error success)

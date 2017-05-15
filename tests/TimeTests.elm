@@ -4,7 +4,7 @@ import Test exposing (..)
 import Expect
 import Html
 import Process
-import TestContext exposing (SingleQueryTest)
+import TestContext exposing (TestContext)
 import Task
 import Time exposing (Time)
 
@@ -15,7 +15,7 @@ type SleepProgramMsg
     | Custom (List (Cmd String))
 
 
-sleepProgram : List ( Time, String ) -> SingleQueryTest String SleepProgramMsg
+sleepProgram : List ( Time, String ) -> TestContext String SleepProgramMsg
 sleepProgram initSleeps =
     { init =
         ( "INIT"
@@ -48,7 +48,7 @@ sleepProgram initSleeps =
         |> TestContext.start
 
 
-nowProgram : SingleQueryTest String Time
+nowProgram : TestContext String Time
 nowProgram =
     { init =
         ( "INIT"

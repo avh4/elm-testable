@@ -1,46 +1,39 @@
 module TestContext
     exposing
         ( TestContext
-        , SingleQueryTest
-        , MultipleQueryTest
         , start
         , startWithFlags
         , update
+        , updateWith
         , send
         , expectCmd
         , advanceTime
         , expectModel
+        , expectView
         , done
         )
 
 import Expect exposing (Expectation)
 import TestContextInternal as Internal
+import Test.Html.Query
 import Time exposing (Time)
 
 
-type alias TestContext query model msg =
-    Internal.TestContext query model msg
+type alias TestContext model msg =
+    Internal.TestContext model msg
 
 
-type alias SingleQueryTest model msg =
-    Internal.SingleQueryTest model msg
-
-
-type alias MultipleQueryTest model msg =
-    Internal.MultipleQueryTest model msg
-
-
-start : Program Never model msg -> SingleQueryTest model msg
+start : Program Never model msg -> TestContext model msg
 start realProgram =
     Internal.start realProgram
 
 
-startWithFlags : flags -> Program flags model msg -> SingleQueryTest model msg
+startWithFlags : flags -> Program flags model msg -> TestContext model msg
 startWithFlags flags realProgram =
     Internal.startWithFlags flags realProgram
 
 
-update : msg -> TestContext query model msg -> SingleQueryTest model msg
+update : msg -> TestContext model msg -> TestContext model msg
 update msg context =
     Internal.update msg context
 
@@ -48,27 +41,39 @@ update msg context =
 send :
     ((value -> msg) -> Sub msg)
     -> value
-    -> TestContext query model msg
-    -> SingleQueryTest model msg
+    -> TestContext model msg
+    -> TestContext model msg
 send subPort value context =
     Internal.send subPort value context
 
 
-expectCmd : Cmd msg -> TestContext query model msg -> Expectation
+expectCmd : Cmd msg -> TestContext model msg -> Expectation
 expectCmd expected context =
     Internal.expectCmd expected context
 
 
-advanceTime : Time -> TestContext query model msg -> SingleQueryTest model msg
+advanceTime : Time -> TestContext model msg -> TestContext model msg
 advanceTime dt context =
     Internal.advanceTime dt context
 
 
-expectModel : (model -> Expectation) -> TestContext query model msg -> Expectation
+expectModel : (model -> Expectation) -> TestContext model msg -> Expectation
 expectModel check context =
     Internal.expectModel check context
 
 
-done : TestContext query model msg -> Expectation
+expectView : TestContext model msg -> Test.Html.Query.Single
+expectView context =
+    Internal.expectView context
+
+
+updateWith : (Test.Html.Query.Single -> Result String msg) -> TestContext model msg -> TestContext model msg
+updateWith eventTrigger context =
+    eventTrigger (expectView context)
+        |> Result.map ((flip update) context)
+        |> Result.withDefault (context)
+
+
+done : TestContext model msg -> Expectation
 done =
     Internal.done
