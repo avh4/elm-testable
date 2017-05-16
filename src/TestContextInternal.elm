@@ -14,6 +14,7 @@ module TestContextInternal
         , advanceTime
         , expectModel
         , expectView
+        , simulate
         , done
           -- private to elm-testable
         , error
@@ -37,6 +38,7 @@ import Set exposing (Set)
 import Testable.EffectManager as EffectManager exposing (EffectManager)
 import Testable.Task exposing (fromPlatformTask, Task(..), ProcessId(..))
 import Test.Html.Query
+import Test.Html.Events as Events exposing (Event)
 import Time exposing (Time)
 import WebSocket.LowLevel
 
@@ -899,6 +901,22 @@ expectView context =
             -- TODO: ideally there would be a way we could create a Query.Single
             -- that is already in an error state with our custom message
             Html.text (report "expectView" context) |> Test.Html.Query.fromHtml
+
+
+simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> Event -> TestContext model msg -> TestContext model msg
+simulate eventTrigger event context =
+    let
+        eventResult =
+            eventTrigger (expectView context)
+                |> Events.simulate event
+                |> Events.eventResult
+    in
+        case eventResult of
+            Ok msg ->
+                update msg context
+
+            Err err ->
+                withContext ((flip error) err) context
 
 
 done : TestContext model msg -> Expectation

@@ -16,7 +16,7 @@ module TestContext
 import Expect exposing (Expectation)
 import TestContextInternal as Internal
 import Test.Html.Query
-import Test.Html.Events as Events exposing (Event)
+import Test.Html.Events exposing (Event)
 import Time exposing (Time)
 
 
@@ -70,11 +70,7 @@ expectView context =
 
 simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> Event -> TestContext model msg -> TestContext model msg
 simulate eventTrigger event context =
-    eventTrigger (expectView context)
-        |> Events.simulate event
-        |> Events.eventResult
-        |> Result.map ((flip update) context)
-        |> Result.withDefault (context)
+    Internal.simulate eventTrigger event context
 
 
 done : TestContext model msg -> Expectation
