@@ -1,10 +1,10 @@
 module ViewTests exposing (all)
 
-import Test exposing (..)
 import Html
-import TestContext exposing (TestContext)
+import Test exposing (..)
 import Test.Html.Query as Query
 import Test.Html.Selector as Selector
+import TestContext exposing (TestContext)
 
 
 htmlProgram : TestContext (List String) String

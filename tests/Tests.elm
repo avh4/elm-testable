@@ -1,6 +1,5 @@
 module Tests exposing (all)
 
-import Test exposing (..)
 import EffectManagerTests
 import FlagsTests
 import HttpTests
@@ -9,6 +8,7 @@ import ModelTests
 import PortCmdTests
 import PortSubTests
 import TaskTests
+import Test exposing (..)
 import Testable.TaskTests
 import TimeTests
 import ViewTests

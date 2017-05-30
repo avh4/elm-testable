@@ -1,4 +1,4 @@
-module DefaultDict exposing (DefaultDict, empty, insert, update, get, toList, toDict)
+module DefaultDict exposing (DefaultDict, empty, get, insert, toDict, toList, update)
 
 import Dict exposing (Dict)
 

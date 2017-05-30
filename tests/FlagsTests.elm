@@ -1,8 +1,8 @@
 module FlagsTests exposing (..)
 
-import Test exposing (..)
 import Expect
 import Html
+import Test exposing (..)
 import TestContext exposing (TestContext)
 
 

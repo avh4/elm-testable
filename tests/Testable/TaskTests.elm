@@ -1,11 +1,11 @@
 module Testable.TaskTests exposing (all)
 
-import Test exposing (..)
 import Expect exposing (Expectation)
+import Process
 import Task as PlatformTask
+import Test exposing (..)
 import Testable.Task exposing (..)
 import Time exposing (Time)
-import Process
 
 
 expectSleepTask : Time -> (Task x a -> Expectation) -> Task x a -> Expectation

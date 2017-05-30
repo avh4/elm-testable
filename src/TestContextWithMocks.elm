@@ -1,26 +1,26 @@
 module TestContextWithMocks
     exposing
-        ( TestContext
-        , MockTask
-        , toTask
-        , mockTask
-        , start
-        , startWithFlags
-        , expectModel
-        , update
+        ( MockTask
+        , TestContext
+        , advanceTime
+        , expectCmd
         , expectMockTask
+        , expectModel
+        , mockTask
         , resolveMockTask
         , send
-        , expectCmd
-        , advanceTime
+        , start
+        , startWithFlags
+        , toTask
+        , update
         )
 
 {-| This is a TestContext that allows mock Tasks. You probably want to use
 the `TestContext` module instead unless you are really sure of what you are doing.
 -}
 
-import TestContextInternal as Internal
 import Expect exposing (Expectation)
+import TestContextInternal as Internal
 import Time exposing (Time)
 
 

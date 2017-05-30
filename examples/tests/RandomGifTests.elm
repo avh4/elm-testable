@@ -1,12 +1,12 @@
 module RandomGifTests exposing (..)
 
-import TestContext exposing (..)
 import Expect exposing (Expectation)
 import RandomGif
 import Test exposing (..)
-import Test.Http
 import Test.Html.Query as Query
 import Test.Html.Selector exposing (..)
+import Test.Http
+import TestContext exposing (..)
 
 
 program : TestContext RandomGif.Model RandomGif.Msg

@@ -3,7 +3,7 @@ module RandomGif exposing (..)
 -- From section 5 of the Elm Architecture Tutorial https://github.com/evancz/elm-architecture-tutorial#example-5-random-gif-viewer
 
 import Html exposing (..)
-import Html.Attributes exposing (style, src)
+import Html.Attributes exposing (src, style)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Json

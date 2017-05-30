@@ -1,11 +1,11 @@
 module PortSubTests exposing (..)
 
-import Test exposing (..)
 import Expect exposing (Expectation)
 import Html
-import TestContext exposing (TestContext)
+import Test exposing (..)
 import Test.Ports as Ports
 import Test.Util exposing (..)
+import TestContext exposing (TestContext)
 
 
 subProgram : Sub String -> TestContext String String
@@ -42,7 +42,7 @@ all =
                         (Expect.equal "INIT;a1")
         , test "gives an error when not subscribed" <|
             \() ->
-                subProgram (Sub.none)
+                subProgram Sub.none
                     |> TestContext.send Ports.stringSub "VALUE"
                     |> TestContext.expectModel (always Expect.pass)
                     |> expectFailure [ "Not subscribed to port: stringSub" ]

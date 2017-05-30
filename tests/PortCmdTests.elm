@@ -1,11 +1,11 @@
 module PortCmdTests exposing (..)
 
-import Test exposing (..)
 import Expect exposing (Expectation)
 import Html
-import TestContext exposing (TestContext)
-import Test.Ports as Ports
 import Task
+import Test exposing (..)
+import Test.Ports as Ports
+import TestContext exposing (TestContext)
 
 
 testEqual : Gen a -> String -> (a -> a -> Expectation) -> Test

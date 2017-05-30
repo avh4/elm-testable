@@ -5,9 +5,9 @@ import Html
 import Http
 import Json.Decode as Decode
 import Test exposing (..)
-import TestContext exposing (TestContext)
 import Test.Http
 import Test.Util exposing (..)
+import TestContext exposing (TestContext)
 
 
 type LoadingMsg

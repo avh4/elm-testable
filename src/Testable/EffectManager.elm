@@ -1,19 +1,19 @@
 module Testable.EffectManager
     exposing
-        ( EffectManager
-        , SelfMsg
-        , AppMsg
-        , MySub
-        , MyCmd
-        , State
+        ( AppMsg
+        , EffectManager
         , Message(..)
+        , MyCmd
+        , MySub
+        , SelfMsg
+        , State
         , extractEffectManager
         , extractEffectManagers
         , unwrapAppMsg
         )
 
-import Native.Testable.EffectManager
 import Dict exposing (Dict)
+import Native.Testable.EffectManager
 
 
 type MyCmd

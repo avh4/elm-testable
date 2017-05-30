@@ -1,12 +1,12 @@
 module PairingHeap
     exposing
         ( PairingHeap
+        , deleteMin
         , empty
         , findMin
-        , merge
-        , insert
-        , deleteMin
         , fromList
+        , insert
+        , merge
         , toSortedList
         )
 
@@ -139,4 +139,4 @@ toSortedList heap =
             []
 
         Heap k v _ ->
-            ( k, v ) :: (toSortedList (deleteMin heap))
+            ( k, v ) :: toSortedList (deleteMin heap)

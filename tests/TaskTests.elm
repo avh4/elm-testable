@@ -1,10 +1,10 @@
 module TaskTests exposing (all)
 
-import Test exposing (..)
 import Expect exposing (Expectation)
 import Html
-import TestContext exposing (TestContext)
 import Task
+import Test exposing (..)
+import TestContext exposing (TestContext)
 
 
 testEqual : Gen a -> String -> (a -> a -> Expectation) -> Test
