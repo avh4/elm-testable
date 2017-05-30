@@ -36,7 +36,7 @@ expectError expectedError context =
             Expect.fail "TestContext should have an error an it doesn't"
 
         TestContextInternal.TestError { error } ->
-            Expect.equal expectedError error
+            Expect.equal True (String.contains expectedError error)
 
 
 all : Test
@@ -64,10 +64,13 @@ all =
             \() ->
                 htmlProgram
                     |> TestContext.simulate (Query.find [ Selector.tag "foo" ]) Events.Click
-                    |> expectError "Query.find always expects to find 1 element, but it found 0 instead."
+                    |> expectError "expects to find 1 element, but it found 0 instead."
         , test "fails when triggersingevents on an element that does not handle that event" <|
             \() ->
                 htmlProgram
                     |> TestContext.simulate (Query.find [ Selector.tag "button" ]) Events.DoubleClick
-                    |> expectError "Failed to decode string"
+                    |> Expect.all
+                        [ expectError "The event"
+                        , expectError "does not exist on the found node."
+                        ]
         ]
