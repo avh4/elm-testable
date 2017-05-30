@@ -35,6 +35,7 @@ import Native.TestContext
 import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
 import Test.Html.Query
+import Test.Runner
 import Testable.EffectManager as EffectManager exposing (EffectManager)
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 import Time exposing (Time)
@@ -839,7 +840,7 @@ expect : String -> (ActiveContext model msg -> a) -> (a -> Expectation) -> TestC
 expect entryName get check context_ =
     case context_ of
         TestContext context ->
-            case Expect.getFailure (get context |> check) of
+            case Test.Runner.getFailure (get context |> check) of
                 Nothing ->
                     Expect.pass
 
@@ -890,7 +891,7 @@ expectModel check context =
     expect "TestContext.expectModel" .model check context
 
 
-expectView : TestContext model msg -> Test.Html.Query.Single
+expectView : TestContext model msg -> Test.Html.Query.Single msg
 expectView context =
     case context of
         TestContext c ->

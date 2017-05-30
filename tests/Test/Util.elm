@@ -1,12 +1,13 @@
 module Test.Util exposing (..)
 
 import Expect exposing (Expectation)
+import Test.Runner
 
 
 expectFailure : List String -> Expectation -> Expectation
 expectFailure expectedMessage expectation =
     expectation
-        |> Expect.getFailure
+        |> Test.Runner.getFailure
         |> expectJust
             (.message >> expectContains (String.join "\n" expectedMessage))
 

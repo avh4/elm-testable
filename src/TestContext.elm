@@ -61,7 +61,7 @@ expectModel check context =
     Internal.expectModel check context
 
 
-expectView : TestContext model msg -> Test.Html.Query.Single
+expectView : TestContext model msg -> Test.Html.Query.Single msg
 expectView context =
     Internal.expectView context
 

@@ -4,6 +4,7 @@ import Expect exposing (Expectation)
 import Html
 import Task
 import Test exposing (..)
+import Test.Runner
 import TestContext exposing (TestContext)
 
 
@@ -15,7 +16,7 @@ testEqual ( a, b ) name testCase =
         , Test.test "when not equal" <|
             \() ->
                 testCase a b
-                    |> Expect.getFailure
+                    |> Test.Runner.getFailure
                     |> Maybe.map (always True)
                     |> Maybe.withDefault False
                     |> Expect.true ("Expected test case to fail when inputs are different: " ++ toString ( a, b ))
