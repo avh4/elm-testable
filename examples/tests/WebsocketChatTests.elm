@@ -1,8 +1,8 @@
 module WebsocketChatTests exposing (all)
 
 import Test exposing (..)
-import TestContext exposing (..)
 import Test.WebSocket
+import TestContext exposing (..)
 import WebsocketChat exposing (Msg(..))
 
 

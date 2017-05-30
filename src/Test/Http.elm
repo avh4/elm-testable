@@ -1,18 +1,18 @@
 module Test.Http
     exposing
         ( badStatus
-        , expectRequest
         , expectGet
-        , resolveRequest
-        , resolveGet
+        , expectRequest
         , rejectGet
+        , resolveGet
+        , resolveRequest
         )
 
 import Dict exposing (Dict)
 import Expect exposing (Expectation)
 import Http
-import Testable.Task exposing (fromPlatformTask, Task(..), ProcessId(..))
 import TestContextInternal as Internal exposing (TestContext(..))
+import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 
 
 type alias RequestMatcher =
@@ -56,7 +56,7 @@ expectRequest { method, url } =
                         |> List.sortBy (\( a, b ) -> ( b, a ))
                         |> List.map (\( a, b ) -> "    - " ++ a ++ " " ++ b)
                         |> String.join "\n"
-                        |> ((++) "pending HTTP requests:\n")
+                        |> (++) "pending HTTP requests:\n"
                 , "╷"
                 , "│ to include (Test.Http.expectRequest)"
                 , "╵"

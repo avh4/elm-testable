@@ -1,10 +1,10 @@
 module EffectManagerTests exposing (all)
 
-import Test exposing (..)
 import Expect
 import Html
-import TestContext exposing (TestContext)
+import Test exposing (..)
 import Test.EffectManager
+import TestContext exposing (TestContext)
 
 
 program : Cmd String -> Sub String -> Program Never String String
@@ -43,14 +43,14 @@ all =
             \() ->
                 program
                     (Test.EffectManager.getState identity)
-                    (Sub.none)
+                    Sub.none
                     |> TestContext.start
                     |> TestContext.expectModel
                         (Expect.equal "INIT;(INIT)")
         , test "it can process a Sub" <|
             \() ->
                 program
-                    (Cmd.none)
+                    Cmd.none
                     (Test.EffectManager.subState identity)
                     |> TestContext.start
                     |> TestContext.update "PING"
@@ -60,14 +60,14 @@ all =
             \() ->
                 program
                     (Cmd.map (prefix "a") <| Test.EffectManager.getState identity)
-                    (Sub.none)
+                    Sub.none
                     |> TestContext.start
                     |> TestContext.expectModel
                         (Expect.equal "INIT;a(INIT)")
         , test "it works with Sub.map" <|
             \() ->
                 program
-                    (Cmd.none)
+                    Cmd.none
                     (Sub.map (prefix "b") <| Test.EffectManager.subState identity)
                     |> TestContext.start
                     |> TestContext.update "PING"
@@ -77,7 +77,7 @@ all =
             \() ->
                 program
                     (Test.EffectManager.updateSelf "UP")
-                    (Sub.none)
+                    Sub.none
                     |> TestContext.start
                     |> TestContext.update "GET"
                     |> TestContext.expectModel

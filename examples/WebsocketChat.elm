@@ -1,4 +1,4 @@
-module WebsocketChat exposing (program, Msg(..))
+module WebsocketChat exposing (Msg(..), program)
 
 import Html exposing (Html)
 import WebSocket

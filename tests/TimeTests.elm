@@ -1,11 +1,11 @@
 module TimeTests exposing (all)
 
-import Test exposing (..)
 import Expect
 import Html
 import Process
-import TestContext exposing (TestContext)
 import Task
+import Test exposing (..)
+import TestContext exposing (TestContext)
 import Time exposing (Time)
 
 

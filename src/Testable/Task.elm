@@ -1,11 +1,11 @@
 module Testable.Task
     exposing
-        ( fromPlatformTask
+        ( ProcessId(..)
         , Task(..)
-        , ProcessId(..)
+        , andThen
+        , fromPlatformTask
         , map
         , mapError
-        , andThen
         )
 
 {-| `Testable.Task` can be generated from a elm-lang/core Task and is used
@@ -23,19 +23,17 @@ internally by elm-testable to inspect and simulate Tasks.
 
 -}
 
-import Native.Testable.Task
-import Time exposing (Time)
-import Task as PlatformTask
 import Http
 import Mapper exposing (Mapper)
+import Native.Testable.Task
+import
+    -- This "unused" import is required because Native.Testable.Task needs
+    -- it at runtime:
+    Process
+import Task as PlatformTask
 import Testable.EffectManager as EffectManager
+import Time exposing (Time)
 import WebSocket.LowLevel
-
-
--- This "unused" import is required because Native.Testable.Task needs
--- it at runtime:
-
-import Process
 
 
 fromPlatformTask : PlatformTask.Task x a -> Task x a
@@ -94,7 +92,7 @@ task then gets run.
     succeed 2 |> andThen (\n -> succeed (n + 2)) == succeed 4
 
 This is useful for chaining tasks together. Maybe you need to get a user from
-your servers *and then* lookup their picture once you know their name.
+your servers _and then_ lookup their picture once you know their name.
 
 -}
 andThen : (a -> Task x b) -> Task x a -> Task x b

@@ -1,12 +1,12 @@
 module MockTaskTests exposing (all)
 
-import Test exposing (..)
 import Expect exposing (Expectation)
 import Html
 import Process
 import Task
-import TestContextWithMocks as TestContext exposing (TestContext)
+import Test exposing (..)
 import Test.Util exposing (..)
+import TestContextWithMocks as TestContext exposing (TestContext)
 
 
 cmdProgram :
@@ -65,7 +65,7 @@ all =
         , test "can verify that a mock task is not pending" <|
             \() ->
                 cmdProgram
-                    (Cmd.none)
+                    Cmd.none
                     |> TestContext.expectMockTask singleMock
                     |> expectFailure
                         [ "pending mock tasks (none were initiated)"
@@ -186,7 +186,7 @@ all =
                     (singleMock |> TestContext.toTask |> Process.spawn |> Task.attempt (Result.map toString))
                     |> TestContext.resolveMockTask singleMock (Ok "spawned task")
                     |> TestContext.expectModel
-                        (List.filterMap (Result.toMaybe)
+                        (List.filterMap Result.toMaybe
                             >> expectNotInclude "spawned task"
                         )
         ]

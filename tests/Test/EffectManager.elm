@@ -83,10 +83,10 @@ onEffects router cmds subs state =
                 UpdateSelf msg ->
                     Platform.sendToSelf router msg
     in
-        cmds
-            |> List.map task
-            |> Task.sequence
-            |> Task.map (always state)
+    cmds
+        |> List.map task
+        |> Task.sequence
+        |> Task.map (always state)
 
 
 onSelfMsg : Platform.Router msg SelfMsg -> SelfMsg -> State -> Task Never State

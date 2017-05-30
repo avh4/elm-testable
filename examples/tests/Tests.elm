@@ -1,7 +1,7 @@
 module Tests exposing (..)
 
-import Test exposing (..)
 import RandomGifTests
+import Test exposing (..)
 import WebsocketChatTests
 
 

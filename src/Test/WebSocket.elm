@@ -3,8 +3,8 @@ module Test.WebSocket exposing (acceptConnection, acceptMessage)
 import DefaultDict
 import Dict
 import Fifo
-import Testable.Task exposing (ProcessId(..))
 import TestContextInternal as Internal exposing (TestContext(..))
+import Testable.Task exposing (ProcessId(..))
 
 
 acceptConnection : String -> TestContext msg model -> TestContext msg model

@@ -1,22 +1,22 @@
 module TestContext
     exposing
         ( TestContext
+        , advanceTime
+        , done
+        , expectCmd
+        , expectModel
+        , expectView
+        , send
+        , simulate
         , start
         , startWithFlags
         , update
-        , simulate
-        , send
-        , expectCmd
-        , advanceTime
-        , expectModel
-        , expectView
-        , done
         )
 
 import Expect exposing (Expectation)
-import TestContextInternal as Internal
-import Test.Html.Query
 import Test.Html.Events exposing (Event)
+import Test.Html.Query
+import TestContextInternal as Internal
 import Time exposing (Time)
 
 
