@@ -16,6 +16,7 @@ module TestContextInternal
         , processTask
         , resolveMockTask
         , send
+        , simulate
         , start
         , startWithFlags
         , toTask
@@ -34,6 +35,7 @@ import Mapper exposing (Mapper)
 import Native.TestContext
 import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
+import Test.Html.Events as Events exposing (Event)
 import Test.Html.Query
 import Test.Runner
 import Testable.EffectManager as EffectManager exposing (EffectManager)
@@ -901,6 +903,22 @@ expectView context =
             -- TODO: ideally there would be a way we could create a Query.Single
             -- that is already in an error state with our custom message
             Html.text (report "expectView" context) |> Test.Html.Query.fromHtml
+
+
+simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> Event -> TestContext model msg -> TestContext model msg
+simulate eventTrigger event context =
+    let
+        eventResult =
+            eventTrigger (expectView context)
+                |> Events.simulate event
+                |> Events.eventResult
+    in
+    case eventResult of
+        Ok msg ->
+            update msg context
+
+        Err err ->
+            withContext (flip error err) context
 
 
 done : TestContext model msg -> Expectation
