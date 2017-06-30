@@ -1,5 +1,11 @@
 module Test.WebSocket exposing (acceptConnection, acceptMessage)
 
+{-| Test.WebSocket has helpers for you to test websockets
+
+@docs acceptConnection, acceptMessage
+
+-}
+
 import DefaultDict
 import Dict
 import Fifo
@@ -7,6 +13,8 @@ import TestContextInternal as Internal exposing (TestContext(..))
 import Testable.Task exposing (ProcessId(..))
 
 
+{-| Simulates an open websocket connection
+-}
 acceptConnection : String -> TestContext msg model -> TestContext msg model
 acceptConnection socketUrl =
     Internal.withContext <|
@@ -24,6 +32,8 @@ acceptConnection socketUrl =
                         |> Internal.drainWorkQueue
 
 
+{-| Asserts that the open websocket received some message
+-}
 acceptMessage : String -> String -> TestContext msg model -> TestContext msg model
 acceptMessage socketUrl expectedMessage =
     Internal.withContext <|
