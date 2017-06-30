@@ -5,6 +5,7 @@ import FlagsTests
 import HttpTests
 import MockTaskTests
 import ModelTests
+import NavigationTests
 import PortCmdTests
 import PortSubTests
 import TaskTests
@@ -34,6 +35,7 @@ all =
         -- Domain-specific APIs
         , HttpTests.all
         , TimeTests.all
+        , NavigationTests.all
 
         -- TODO: Random
         -- TODO: Add Websocket tests (see examples/tests/WebsocketChatTests)

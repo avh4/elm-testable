@@ -37,6 +37,18 @@ _elm_lang$core$Native_Scheduler.sleep = setItUp(
 )
 _elm_lang$core$Process$sleep = _elm_lang$core$Native_Scheduler.sleep // eslint-disable-line no-global-assign, camelcase
 
+if (typeof _elm_lang$navigation$Native_Navigation === 'undefined') { // eslint-disable-line camelcase
+  throw new Error('Native.Testable.Task was loaded before _elm_lang$navigation$Native_Navigation: this shouldn\'t happen because Testable.Task imports Navigation. Please report this at https://github.com/avh4/elm-testable/issues')
+}
+
+_elm_lang$navigation$Native_Navigation.pushState = setItUp(
+  _elm_lang$navigation$Native_Navigation.pushState,
+  function (url) {
+    console.log(url);
+    return null;
+  }
+)
+
 if (typeof _elm_lang$core$Process$spawn === 'undefined') { // eslint-disable-line camelcase
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Process: this shouldn\'t happen because Testable.Task imports Process.  Please report this at https://github.com/avh4/elm-testable/issues')
 }

@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "elm": "^0.18.0",
-    "elm-test": "^0.18.4"
+    "elm-test": "^0.18.7"
   },
   "scripts": {
     "test": "elm-make --yes && elm-test 'tests/**/*Tests.elm' && (cd examples && elm-make --yes RandomGif.elm && elm-test)"
