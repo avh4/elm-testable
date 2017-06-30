@@ -173,6 +173,10 @@ _elm_lang$http$Native_Http.toTask = setItUp(
   })
 )
 
+if (typeof _elm_lang$websocket$Native_WebSocket === 'undefined') {
+  throw new Error('Native.Testable.Task was loaded before _elm_lang$websocket$Native_WebSocket: this shouldn\'t happen because Testable.Task imports WebSocket.  Please report this at https://github.com/avh4/elm-testable/issues')
+}
+
 _elm_lang$websocket$Native_WebSocket.open = setItUp(
   _elm_lang$websocket$Native_WebSocket.open,
   F2(function (url, settings) {
