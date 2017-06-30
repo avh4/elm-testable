@@ -32,8 +32,8 @@
       "_elm_lang$websocket$Native_WebSocket",
       "_elm_lang$websocket$WebSocket_LowLevel$open",
       "_elm_lang$websocket$WebSocket_LowLevel$send",
-      "_user$project$Testable_Task$andThen",
-      "_user$project$Testable_Task$onError"
+      "_xavh4$elm_testable$Testable_Task$andThen",
+      "_xavh4$elm_testable$Testable_Task$onError"
     ]
   },
   "devDependencies": {

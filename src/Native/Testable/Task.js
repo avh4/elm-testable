@@ -52,7 +52,7 @@ _elm_lang$core$Native_Scheduler.spawn = setItUp(
     var t2 = _elm_lang$core$Task$onError(function (x) { return { ctor: 'IgnoredTask' } })(t1)
     return {
       ctor: 'Core_NativeScheduler_spawn',
-      _0: _user$project$Native_Testable_Task.fromPlatformTask(t2),
+      _0: _xavh4$elm_testable$Native_Testable_Task.fromPlatformTask(t2),
       _1: function (processId) { return { ctor: 'Success', _0: processId } }
     }
   }
@@ -116,7 +116,7 @@ _elm_lang$core$Time$setInterval = setItUp( // eslint-disable-line no-global-assi
     return {
       ctor: 'Core_Time_setInterval',
       _0: delay,
-      _1: _user$project$Native_Testable_Task.fromPlatformTask(task)
+      _1: _xavh4$elm_testable$Native_Testable_Task.fromPlatformTask(task)
     }
   })
 )
@@ -216,7 +216,7 @@ _elm_lang$websocket$Native_WebSocket.send = setItUp(
 )
 _elm_lang$websocket$WebSocket_LowLevel$send = _elm_lang$websocket$Native_WebSocket.send // eslint-disable-line no-global-assign, camelcase
 
-var _user$project$Native_Testable_Task = (function () { // eslint-disable-line no-unused-vars, camelcase
+var _xavh4$elm_testable$Native_Testable_Task = (function () { // eslint-disable-line no-unused-vars, camelcase
   function fromPlatformTask (task) {
     if (task.elmTestable) return task.elmTestable
 
@@ -229,13 +229,13 @@ var _user$project$Native_Testable_Task = (function () { // eslint-disable-line n
 
       case '_Task_andThen':
         var next = fromPlatformTask(task.task)
-        return _user$project$Testable_Task$andThen(function (x) {
+        return _xavh4$elm_testable$Testable_Task$andThen(function (x) {
           return fromPlatformTask(task.callback(x))
         })(next)
 
       case '_Task_onError':
         var next_ = fromPlatformTask(task.task)
-        return _user$project$Testable_Task$onError(function (x) {
+        return _xavh4$elm_testable$Testable_Task$onError(function (x) {
           return fromPlatformTask(task.callback(x))
         })(next_)
 
