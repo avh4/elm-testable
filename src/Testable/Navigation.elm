@@ -1,11 +1,11 @@
 module Testable.Navigation exposing (..)
 
 import List.Extra
-import Native.Testable.Navigation
+import
+    -- This "unused" import is required for the native bindings
+    Native.Testable.Navigation
 import Navigation exposing (Location)
-import Process
 import Regex exposing (HowMany(..), find, regex)
-import Task exposing (Task)
 
 
 type alias History =
@@ -18,13 +18,18 @@ type Msg
     | Modify String
 
 
+type ReturnMsg
+    = ReturnLocation Location
+    | TriggerLocationMsg Location
+
+
 currentLocation : History -> Location
 currentLocation ( index, history ) =
     List.Extra.getAt index history
         |> Maybe.withDefault (getLocation "")
 
 
-update : Msg -> History -> ( History, Location )
+update : Msg -> History -> ( History, ReturnMsg )
 update msg ( index, history ) =
     let
         location =
@@ -36,25 +41,29 @@ update msg ( index, history ) =
                 nextIndex =
                     index + n
 
-                location =
+                nextLocation =
                     List.Extra.getAt nextIndex history
                         |> Maybe.withDefault (getLocation "")
             in
-            ( ( nextIndex, history ), location )
+            ( ( nextIndex, history ), TriggerLocationMsg nextLocation )
 
         New url ->
             let
                 nextLocation =
                     setLocation url location
             in
-            ( ( index + 1, history ++ [ nextLocation ] ), nextLocation )
+            ( ( index + 1, history ++ [ nextLocation ] ), ReturnLocation nextLocation )
 
         Modify url ->
             let
                 nextLocation =
                     setLocation url location
+
+                modifiedHistory =
+                    history
+                        |> List.Extra.updateIfIndex ((==) index) (always nextLocation)
             in
-            ( ( index + 1, history ++ [ nextLocation ] ), nextLocation )
+            ( ( index, history ), ReturnLocation nextLocation )
 
 
 init : History

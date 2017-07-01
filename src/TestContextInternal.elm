@@ -589,11 +589,25 @@ processTask pid task =
 
                 Navigation_NativeNavigation msg next ->
                     let
-                        ( history, location ) =
+                        ( history, nextLocation ) =
                             Testable.Navigation.update msg context.history
+
+                        updatedTestContext location =
+                            TestContext { context | history = history }
+                                |> processTask_preventTailCallOptimization pid (next location)
                     in
-                    TestContext { context | history = history }
-                        |> processTask_preventTailCallOptimization pid (next location)
+                    case nextLocation of
+                        Testable.Navigation.ReturnLocation location ->
+                            updatedTestContext location
+
+                        Testable.Navigation.TriggerLocationMsg location ->
+                            case context.program.locationToMessage of
+                                Just locationToMessage ->
+                                    updatedTestContext location
+                                        |> update (locationToMessage location)
+
+                                Nothing ->
+                                    updatedTestContext location
 
 
 update : msg -> TestContext model msg -> TestContext model msg
