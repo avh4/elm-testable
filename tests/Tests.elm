@@ -10,6 +10,7 @@ import PortCmdTests
 import PortSubTests
 import TaskTests
 import Test exposing (..)
+import Testable.NavigationTests
 import Testable.TaskTests
 import TimeTests
 import ViewTests
@@ -36,6 +37,7 @@ all =
         , HttpTests.all
         , TimeTests.all
         , NavigationTests.all
+        , Testable.NavigationTests.all
 
         -- TODO: Random
         -- TODO: Add Websocket tests (see examples/tests/WebsocketChatTests)

@@ -44,37 +44,14 @@ stringProgram =
 
 all : Test
 all =
-    describe "Navigation"
+    describe "Navigation TestContext"
         [ test "starting a navigation program" <|
             \() ->
                 stringProgram
                     |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/")
-        , test "updates the root path" <|
+        , test "modifyUrl" <|
             \() ->
                 stringProgram
                     |> TestContext.update (AskToModifyUrl "/foo")
                     |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
-        , test "updates to a relative path" <|
-            \() ->
-                stringProgram
-                    |> TestContext.update (AskToModifyUrl "/foo/bar")
-                    |> TestContext.update (AskToModifyUrl "baz")
-                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo/baz")
-        , test "updates the query string" <|
-            \() ->
-                stringProgram
-                    |> TestContext.update (AskToModifyUrl "/foo")
-                    |> TestContext.update (AskToModifyUrl "?q=bar")
-                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo?q=bar")
-        , test "updates the hash" <|
-            \() ->
-                stringProgram
-                    |> TestContext.update (AskToModifyUrl "/foo?bar#baz")
-                    |> TestContext.update (AskToModifyUrl "#qux")
-                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo?bar#qux")
-        , test "updates the whole path" <|
-            \() ->
-                stringProgram
-                    |> TestContext.update (AskToModifyUrl "http://www.google.com")
-                    |> TestContext.expectModel (.location >> .href >> Expect.equal "http://www.google.com")
         ]

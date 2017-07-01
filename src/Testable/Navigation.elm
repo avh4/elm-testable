@@ -45,8 +45,8 @@ getLocation href =
     }
 
 
-setLocation : Navigation.Location -> String -> Navigation.Location
-setLocation currentLocation url =
+setLocation : String -> Navigation.Location -> Navigation.Location
+setLocation url currentLocation =
     let
         nextHref =
             if Regex.contains (regex "^/") url then

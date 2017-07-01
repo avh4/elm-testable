@@ -588,7 +588,7 @@ processTask pid task =
                 Navigation_NativeNavigation_replaceState url next ->
                     let
                         nextLocation =
-                            setLocation context.location url
+                            setLocation url context.location
                     in
                     TestContext { context | location = nextLocation }
                         |> processTask_preventTailCallOptimization pid (next nextLocation)
