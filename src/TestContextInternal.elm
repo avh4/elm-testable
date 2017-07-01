@@ -39,6 +39,7 @@ import Test.Html.Events as Events exposing (Event)
 import Test.Html.Query
 import Test.Runner
 import Testable.EffectManager as EffectManager exposing (EffectManager)
+import Testable.Navigation
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 import Time exposing (Time)
 import WebSocket.LowLevel
