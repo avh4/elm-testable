@@ -26,6 +26,7 @@ internally by elm-testable to inspect and simulate Tasks.
 import Http
 import Mapper exposing (Mapper)
 import Native.Testable.Task
+import Navigation exposing (Location)
 import
     -- This "unused" import is required because Native.Testable.Task needs
     -- it at runtime:
@@ -69,6 +70,8 @@ type Task error success
       -- Native bindings for tasks in elm-lang/Websocket
     | WebSocket_NativeWebSocket_open String WebSocket.LowLevel.Settings (Result WebSocket.LowLevel.BadOpen () -> Task error success)
     | WebSocket_NativeWebSocket_send String String (Maybe WebSocket.LowLevel.BadSend -> Task error success)
+      -- Native bindings for tasks in elm-lang/Navigation
+    | Navigation_NativeNavigation_replaceState String (Location -> Task error success)
 
 
 {-| Transform a task.
@@ -143,6 +146,9 @@ andThen f source =
         WebSocket_NativeWebSocket_send url string next ->
             WebSocket_NativeWebSocket_send url string (next >> andThen f)
 
+        Navigation_NativeNavigation_replaceState url next ->
+            Navigation_NativeNavigation_replaceState url (next >> andThen f)
+
 
 
 -- Errors
@@ -212,3 +218,6 @@ onError f source =
 
         WebSocket_NativeWebSocket_send url string next ->
             WebSocket_NativeWebSocket_send url string (next >> onError f)
+
+        Navigation_NativeNavigation_replaceState url next ->
+            Navigation_NativeNavigation_replaceState url (next >> onError f)

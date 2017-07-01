@@ -33,13 +33,14 @@ import Http
 import Json.Encode
 import Mapper exposing (Mapper)
 import Native.TestContext
+import Navigation exposing (Location)
 import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
 import Test.Html.Events as Events exposing (Event)
 import Test.Html.Query
 import Test.Runner
 import Testable.EffectManager as EffectManager exposing (EffectManager)
-import Testable.Navigation
+import Testable.Navigation exposing (getLocation, setLocation)
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 import Time exposing (Time)
 import WebSocket.LowLevel
@@ -108,6 +109,9 @@ type alias ActiveContext model msg =
     -- reporting info
     , taskTranscript : List ( Int, Task Never msg )
     , msgTranscript : List ( Int, msg )
+
+    -- navigation
+    , location : Location
     }
 
 
@@ -322,6 +326,9 @@ start_ flags realProgram =
         -- reporting
         , taskTranscript = []
         , msgTranscript = []
+
+        -- navigation
+        , location = getLocation "https://elm.testable/"
         }
         |> initEffectManagers
         |> dispatchEffects
@@ -577,6 +584,14 @@ processTask pid task =
                                     |> DefaultDict.update url (Fifo.insert string)
                         }
                         |> processTask_preventTailCallOptimization pid (next Nothing)
+
+                Navigation_NativeNavigation_replaceState url next ->
+                    let
+                        nextLocation =
+                            setLocation context.location url
+                    in
+                    TestContext { context | location = nextLocation }
+                        |> processTask_preventTailCallOptimization pid (next nextLocation)
 
 
 update : msg -> TestContext model msg -> TestContext model msg
