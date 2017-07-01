@@ -4,7 +4,7 @@ import Expect
 import Html exposing (..)
 import Navigation
 import Test exposing (..)
-import TestContext exposing (TestContext)
+import TestContext exposing (..)
 
 
 type Msg
@@ -67,6 +67,11 @@ all =
                 stringProgram
                     |> TestContext.update (ModifyUrl "/foo")
                     |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+        , test "simulates navigation for testing" <|
+            \() ->
+                stringProgram
+                    |> navigate "/qux"
+                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/qux")
         , describe "back"
             [ test "returns to the previous url when using back" <|
                 \() ->

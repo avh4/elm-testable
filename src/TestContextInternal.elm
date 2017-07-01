@@ -13,6 +13,7 @@ module TestContextInternal
         , expectModel
         , expectView
         , mockTask
+        , navigate
         , processTask
         , resolveMockTask
         , send
@@ -40,7 +41,7 @@ import Test.Html.Events as Events exposing (Event)
 import Test.Html.Query
 import Test.Runner
 import Testable.EffectManager as EffectManager exposing (EffectManager)
-import Testable.Navigation exposing (getLocation, setLocation)
+import Testable.Navigation exposing (currentLocation, getLocation, setLocation)
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 import Time exposing (Time)
 import WebSocket.LowLevel
@@ -58,6 +59,7 @@ type alias TestableProgram model msg =
     , update : msg -> model -> ( model, Cmd msg )
     , subscriptions : model -> Sub msg
     , view : model -> Html msg
+    , locationToMessage : Maybe (Location -> msg)
     }
 
 
@@ -940,3 +942,28 @@ simulate eventTrigger event context =
 done : TestContext model msg -> Expectation
 done =
     expect "TestContext.done" (always ()) (always Expect.pass)
+
+
+navigate : String -> TestContext model msg -> TestContext model msg
+navigate url =
+    withContext <|
+        \context ->
+            case context.program.locationToMessage of
+                Just locationToMessage ->
+                    let
+                        newLocation : Location
+                        newLocation =
+                            setLocation url (currentLocation context.history)
+
+                        ( index, history ) =
+                            context.history
+
+                        newHistory : Testable.Navigation.History
+                        newHistory =
+                            ( List.length history, history ++ [ newLocation ] )
+                    in
+                    TestContext { context | history = newHistory }
+                        |> update (locationToMessage newLocation)
+
+                Nothing ->
+                    TestContext context

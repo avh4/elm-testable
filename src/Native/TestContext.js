@@ -121,7 +121,8 @@ var _xavh4$elm_testable$Native_TestContext = (function () { // eslint-disable-li
         init: app.init,
         update: program.elmTestable.update,
         subscriptions: program.elmTestable.subscriptions,
-        view: program.elmTestable.view
+        view: program.elmTestable.view,
+        locationToMessage: program.elmTestable.locationToMessage || { ctor: 'Nothing' }
       }
     }),
     extractCmd: F2(function (tagger, cmd) {

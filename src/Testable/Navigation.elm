@@ -18,12 +18,17 @@ type Msg
     | Modify String
 
 
+currentLocation : History -> Location
+currentLocation ( index, history ) =
+    List.Extra.getAt index history
+        |> Maybe.withDefault (getLocation "")
+
+
 update : Msg -> History -> ( History, Location )
 update msg ( index, history ) =
     let
-        currentLocation =
-            List.Extra.getAt index history
-                |> Maybe.withDefault (getLocation "")
+        location =
+            currentLocation ( index, history )
     in
     case msg of
         Jump n ->
@@ -40,21 +45,26 @@ update msg ( index, history ) =
         New url ->
             let
                 nextLocation =
-                    setLocation url currentLocation
+                    setLocation url location
             in
             ( ( index + 1, history ++ [ nextLocation ] ), nextLocation )
 
         Modify url ->
             let
                 nextLocation =
-                    setLocation url currentLocation
+                    setLocation url location
             in
             ( ( index + 1, history ++ [ nextLocation ] ), nextLocation )
 
 
 init : History
 init =
-    ( 0, [ getLocation "https://elm.testable/" ] )
+    ( 0, [ initialLocation ] )
+
+
+initialLocation : Location
+initialLocation =
+    getLocation "https://elm.testable/"
 
 
 getLocation : String -> Navigation.Location

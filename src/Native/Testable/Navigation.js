@@ -3,9 +3,8 @@ if (typeof _elm_lang$navigation$Native_Navigation === 'undefined') { // eslint-d
 }
 
 _elm_lang$navigation$Native_Navigation.getLocation = function () {
-  return _xavh4$elm_testable$Testable_Navigation$getLocation("https://elm.testable/");
+  return _xavh4$elm_testable$Testable_Navigation$initialLocation;
 }
-
 
 _elm_lang$navigation$Native_Navigation.pushState = setItUp(
   _elm_lang$navigation$Native_Navigation.pushState,
@@ -90,4 +89,21 @@ _elm_lang$navigation$Navigation$spawnPopWatcher = setItUp(
     return { ctor: 'IgnoredTask' }
     // TODO
   }
+)
+
+var originalNavigationProgram = _elm_lang$navigation$Navigation$program;
+_elm_lang$navigation$Navigation$program = setItUp2(
+  '_elm_lang$navigation$Navigation$program',
+  _elm_lang$navigation$Navigation$program,
+  F2(function (locationToMessage, stuff) {
+    var original = originalNavigationProgram(locationToMessage)(stuff).elmTestable;
+
+    return {
+      init: original.init,
+      update: original.update,
+      subscriptions: original.subscriptions,
+      view: original.view,
+      locationToMessage: { ctor: 'Just', _0: locationToMessage }
+    }
+  })
 )

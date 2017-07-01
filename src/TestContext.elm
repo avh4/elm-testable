@@ -6,6 +6,7 @@ module TestContext
         , expectCmd
         , expectModel
         , expectView
+        , navigate
         , send
         , simulate
         , start
@@ -113,6 +114,13 @@ expectView context =
 simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> Event -> TestContext model msg -> TestContext model msg
 simulate eventTrigger event context =
     Internal.simulate eventTrigger event context
+
+
+{-| Simulates a browser navigation by the user
+-}
+navigate : String -> TestContext model msg -> TestContext model msg
+navigate url context =
+    Internal.navigate url context
 
 
 {-| Ends the test ensuring that no previous actions had errors
