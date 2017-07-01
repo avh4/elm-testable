@@ -72,6 +72,7 @@ type Task error success
     | WebSocket_NativeWebSocket_send String String (Maybe WebSocket.LowLevel.BadSend -> Task error success)
       -- Native bindings for tasks in elm-lang/Navigation
     | Navigation_NativeNavigation_replaceState String (Location -> Task error success)
+    | Navigation_NativeNavigation_pushState String (Location -> Task error success)
 
 
 {-| Transform a task.
@@ -149,6 +150,9 @@ andThen f source =
         Navigation_NativeNavigation_replaceState url next ->
             Navigation_NativeNavigation_replaceState url (next >> andThen f)
 
+        Navigation_NativeNavigation_pushState url next ->
+            Navigation_NativeNavigation_pushState url (next >> andThen f)
+
 
 
 -- Errors
@@ -221,3 +225,6 @@ onError f source =
 
         Navigation_NativeNavigation_replaceState url next ->
             Navigation_NativeNavigation_replaceState url (next >> onError f)
+
+        Navigation_NativeNavigation_pushState url next ->
+            Navigation_NativeNavigation_pushState url (next >> onError f)

@@ -6,9 +6,17 @@ _elm_lang$navigation$Native_Navigation.getLocation = function () {
   return _xavh4$elm_testable$Testable_Navigation$getLocation("https://elm.testable/");
 }
 
-_elm_lang$navigation$Native_Navigation.pushState = function () {
-  throw new Error('elm-testable not implemented: _elm_lang$navigation$Native_Navigation.pushState')
-}
+
+_elm_lang$navigation$Native_Navigation.pushState = setItUp(
+  _elm_lang$navigation$Native_Navigation.pushState,
+  function (url) {
+    return {
+      ctor: 'Navigation_NativeNavigation_pushState',
+      _0: url,
+      _1: function (url) { return { ctor: 'Success', _0: url } }
+    }
+  }
+);
 _elm_lang$navigation$Navigation$pushState = _elm_lang$navigation$Native_Navigation.pushState
 
 
@@ -23,12 +31,6 @@ _elm_lang$navigation$Native_Navigation.replaceState = setItUp(
   }
 );
 _elm_lang$navigation$Navigation$replaceState = _elm_lang$navigation$Native_Navigation.replaceState
-
-
-_elm_lang$navigation$Native_Navigation.pushState = function () {
-  throw new Error('elm-testable not implemented: _elm_lang$navigation$Native_Navigation.pushState')
-}
-_elm_lang$navigation$Navigation$pushState = _elm_lang$navigation$Native_Navigation.pushState
 
 
 _elm_lang$navigation$Native_Navigation.go = function () {

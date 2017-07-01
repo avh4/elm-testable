@@ -9,6 +9,7 @@ import TestContext exposing (TestContext)
 
 type Msg
     = UrlChange Navigation.Location
+    | AskToPushUrl String
     | AskToModifyUrl String
 
 
@@ -26,6 +27,9 @@ update msg model =
     case msg of
         UrlChange location ->
             ( { model | location = location, msgs = msg :: model.msgs }, Cmd.none )
+
+        AskToPushUrl url ->
+            ( model, Navigation.newUrl url )
 
         AskToModifyUrl url ->
             ( model, Navigation.modifyUrl url )
@@ -49,6 +53,11 @@ all =
             \() ->
                 stringProgram
                     |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/")
+        , test "pushUrl" <|
+            \() ->
+                stringProgram
+                    |> TestContext.update (AskToPushUrl "/foo")
+                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
         , test "modifyUrl" <|
             \() ->
                 stringProgram

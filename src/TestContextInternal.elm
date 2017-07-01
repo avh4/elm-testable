@@ -593,6 +593,14 @@ processTask pid task =
                     TestContext { context | location = nextLocation }
                         |> processTask_preventTailCallOptimization pid (next nextLocation)
 
+                Navigation_NativeNavigation_pushState url next ->
+                    let
+                        nextLocation =
+                            setLocation url context.location
+                    in
+                    TestContext { context | location = nextLocation }
+                        |> processTask_preventTailCallOptimization pid (next nextLocation)
+
 
 update : msg -> TestContext model msg -> TestContext model msg
 update msg =
