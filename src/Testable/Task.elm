@@ -33,6 +33,7 @@ import
     Process
 import Task as PlatformTask
 import Testable.EffectManager as EffectManager
+import Testable.Navigation
 import Time exposing (Time)
 import WebSocket.LowLevel
 
@@ -71,8 +72,7 @@ type Task error success
     | WebSocket_NativeWebSocket_open String WebSocket.LowLevel.Settings (Result WebSocket.LowLevel.BadOpen () -> Task error success)
     | WebSocket_NativeWebSocket_send String String (Maybe WebSocket.LowLevel.BadSend -> Task error success)
       -- Native bindings for tasks in elm-lang/Navigation
-    | Navigation_NativeNavigation_replaceState String (Location -> Task error success)
-    | Navigation_NativeNavigation_pushState String (Location -> Task error success)
+    | Navigation_NativeNavigation Testable.Navigation.Msg (Location -> Task error success)
 
 
 {-| Transform a task.
@@ -147,11 +147,8 @@ andThen f source =
         WebSocket_NativeWebSocket_send url string next ->
             WebSocket_NativeWebSocket_send url string (next >> andThen f)
 
-        Navigation_NativeNavigation_replaceState url next ->
-            Navigation_NativeNavigation_replaceState url (next >> andThen f)
-
-        Navigation_NativeNavigation_pushState url next ->
-            Navigation_NativeNavigation_pushState url (next >> andThen f)
+        Navigation_NativeNavigation msg next ->
+            Navigation_NativeNavigation msg (next >> andThen f)
 
 
 
@@ -223,8 +220,5 @@ onError f source =
         WebSocket_NativeWebSocket_send url string next ->
             WebSocket_NativeWebSocket_send url string (next >> onError f)
 
-        Navigation_NativeNavigation_replaceState url next ->
-            Navigation_NativeNavigation_replaceState url (next >> onError f)
-
-        Navigation_NativeNavigation_pushState url next ->
-            Navigation_NativeNavigation_pushState url (next >> onError f)
+        Navigation_NativeNavigation msg next ->
+            Navigation_NativeNavigation msg (next >> onError f)

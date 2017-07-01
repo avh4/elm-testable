@@ -8,6 +8,55 @@ import Regex exposing (HowMany(..), find, regex)
 import Task exposing (Task)
 
 
+type alias History =
+    ( Int, List Location )
+
+
+type Msg
+    = Jump Int
+    | New String
+    | Modify String
+
+
+update : Msg -> History -> ( History, Location )
+update msg ( index, history ) =
+    let
+        currentLocation =
+            List.Extra.getAt index history
+                |> Maybe.withDefault (getLocation "")
+    in
+    case msg of
+        Jump n ->
+            let
+                nextIndex =
+                    index + n
+
+                location =
+                    List.Extra.getAt nextIndex history
+                        |> Maybe.withDefault (getLocation "")
+            in
+            ( ( nextIndex, history ), location )
+
+        New url ->
+            let
+                nextLocation =
+                    setLocation url currentLocation
+            in
+            ( ( index + 1, history ++ [ nextLocation ] ), nextLocation )
+
+        Modify url ->
+            let
+                nextLocation =
+                    setLocation url currentLocation
+            in
+            ( ( index + 1, history ++ [ nextLocation ] ), nextLocation )
+
+
+init : History
+init =
+    ( 0, [ getLocation "https://elm.testable/" ] )
+
+
 getLocation : String -> Navigation.Location
 getLocation href =
     let

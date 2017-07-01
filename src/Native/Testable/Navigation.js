@@ -11,8 +11,11 @@ _elm_lang$navigation$Native_Navigation.pushState = setItUp(
   _elm_lang$navigation$Native_Navigation.pushState,
   function (url) {
     return {
-      ctor: 'Navigation_NativeNavigation_pushState',
-      _0: url,
+      ctor: 'Navigation_NativeNavigation',
+      _0: {
+        ctor: 'New',
+        _0: url
+      },
       _1: function (url) { return { ctor: 'Success', _0: url } }
     }
   }
@@ -24,8 +27,11 @@ _elm_lang$navigation$Native_Navigation.replaceState = setItUp(
   _elm_lang$navigation$Native_Navigation.replaceState,
   function (url) {
     return {
-      ctor: 'Navigation_NativeNavigation_replaceState',
-      _0: url,
+      ctor: 'Navigation_NativeNavigation',
+      _0: {
+        ctor: 'Modify',
+        _0: url
+      },
       _1: function (url) { return { ctor: 'Success', _0: url } }
     }
   }
@@ -33,9 +39,19 @@ _elm_lang$navigation$Native_Navigation.replaceState = setItUp(
 _elm_lang$navigation$Navigation$replaceState = _elm_lang$navigation$Native_Navigation.replaceState
 
 
-_elm_lang$navigation$Native_Navigation.go = function () {
-  throw new Error('elm-testable not implemented: _elm_lang$navigation$Native_Navigation.go')
-}
+_elm_lang$navigation$Native_Navigation.go = setItUp(
+  _elm_lang$navigation$Native_Navigation.go,
+  function (amount) {
+    return {
+      ctor: 'Navigation_NativeNavigation',
+      _0: {
+        ctor: 'Jump',
+        _0: amount
+      },
+      _1: function (amount) { return { ctor: 'Success', _0: amount } }
+    }
+  }
+);
 _elm_lang$navigation$Navigation$go = _elm_lang$navigation$Native_Navigation.go
 
 

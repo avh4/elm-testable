@@ -9,8 +9,9 @@ import TestContext exposing (TestContext)
 
 type Msg
     = UrlChange Navigation.Location
-    | AskToPushUrl String
-    | AskToModifyUrl String
+    | PushUrl String
+    | ModifyUrl String
+    | Back Int
 
 
 type alias Model =
@@ -28,11 +29,14 @@ update msg model =
         UrlChange location ->
             ( { model | location = location, msgs = msg :: model.msgs }, Cmd.none )
 
-        AskToPushUrl url ->
+        PushUrl url ->
             ( model, Navigation.newUrl url )
 
-        AskToModifyUrl url ->
+        ModifyUrl url ->
             ( model, Navigation.modifyUrl url )
+
+        Back amount ->
+            ( model, Navigation.back amount )
 
 
 stringProgram : TestContext Model Msg
@@ -56,11 +60,36 @@ all =
         , test "pushUrl" <|
             \() ->
                 stringProgram
-                    |> TestContext.update (AskToPushUrl "/foo")
+                    |> TestContext.update (PushUrl "/foo")
                     |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
         , test "modifyUrl" <|
             \() ->
                 stringProgram
-                    |> TestContext.update (AskToModifyUrl "/foo")
+                    |> TestContext.update (ModifyUrl "/foo")
                     |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+        , describe "back"
+            [ test "returns to the previous url when using back" <|
+                \() ->
+                    stringProgram
+                        |> TestContext.update (PushUrl "/foo")
+                        |> TestContext.update (PushUrl "/bar")
+                        |> TestContext.update (Back 1)
+                        |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+            , test "returns two times" <|
+                \() ->
+                    stringProgram
+                        |> TestContext.update (PushUrl "/foo")
+                        |> TestContext.update (PushUrl "/bar")
+                        |> TestContext.update (PushUrl "/baz")
+                        |> TestContext.update (Back 2)
+                        |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+            , test "skip modified url" <|
+                \() ->
+                    stringProgram
+                        |> TestContext.update (PushUrl "/foo")
+                        |> TestContext.update (PushUrl "/bar")
+                        |> TestContext.update (ModifyUrl "/baz")
+                        |> TestContext.update (Back 1)
+                        |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+            ]
         ]

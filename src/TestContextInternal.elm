@@ -111,7 +111,7 @@ type alias ActiveContext model msg =
     , msgTranscript : List ( Int, msg )
 
     -- navigation
-    , location : Location
+    , history : Testable.Navigation.History
     }
 
 
@@ -328,7 +328,7 @@ start_ flags realProgram =
         , msgTranscript = []
 
         -- navigation
-        , location = getLocation "https://elm.testable/"
+        , history = Testable.Navigation.init
         }
         |> initEffectManagers
         |> dispatchEffects
@@ -585,21 +585,13 @@ processTask pid task =
                         }
                         |> processTask_preventTailCallOptimization pid (next Nothing)
 
-                Navigation_NativeNavigation_replaceState url next ->
+                Navigation_NativeNavigation msg next ->
                     let
-                        nextLocation =
-                            setLocation url context.location
+                        ( history, location ) =
+                            Testable.Navigation.update msg context.history
                     in
-                    TestContext { context | location = nextLocation }
-                        |> processTask_preventTailCallOptimization pid (next nextLocation)
-
-                Navigation_NativeNavigation_pushState url next ->
-                    let
-                        nextLocation =
-                            setLocation url context.location
-                    in
-                    TestContext { context | location = nextLocation }
-                        |> processTask_preventTailCallOptimization pid (next nextLocation)
+                    TestContext { context | history = history }
+                        |> processTask_preventTailCallOptimization pid (next location)
 
 
 update : msg -> TestContext model msg -> TestContext model msg
