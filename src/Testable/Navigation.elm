@@ -66,7 +66,7 @@ update msg ( index, history ) =
                     history
                         |> List.Extra.updateIfIndex ((==) index) (always nextLocation)
             in
-            ( ( index, history ), ReturnLocation nextLocation )
+            ( ( index, modifiedHistory ), ReturnLocation nextLocation )
 
 
 init : History

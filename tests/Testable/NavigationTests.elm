@@ -1,14 +1,8 @@
 module Testable.NavigationTests exposing (..)
 
 import Expect
-import Navigation
 import Test exposing (..)
 import Testable.Navigation exposing (..)
-
-
-initialLocation : Navigation.Location
-initialLocation =
-    getLocation "https://elm.testable"
 
 
 all : Test
@@ -73,4 +67,129 @@ all =
                         |> .href
                         |> Expect.equal "http://www.google.com"
             ]
+        , describe "update"
+            [ describe "new url"
+                [ test "adds a new url to the history" <|
+                    \() ->
+                        init
+                            |> update (New "/foo")
+                            |> Expect.equal
+                                ( ( 1
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/foo"
+                                    ]
+                                  )
+                                , ReturnLocation (getLocation "https://elm.testable/foo")
+                                )
+                , test "erases forward history" <|
+                    \() ->
+                        init
+                            |> update (New "/foo")
+                            |> thenUpdate (New "/bar")
+                            |> thenUpdate (Jump -2)
+                            |> thenUpdate (New "/baz")
+                            |> Expect.equal
+                                ( ( 1
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/baz"
+                                    ]
+                                  )
+                                , ReturnLocation (getLocation "https://elm.testable/baz")
+                                )
+                ]
+            , describe "modify url"
+                [ test "modify current location in the history" <|
+                    \() ->
+                        init
+                            |> update (Modify "/foo")
+                            |> Expect.equal
+                                ( ( 0
+                                  , [ getLocation "https://elm.testable/foo"
+                                    ]
+                                  )
+                                , ReturnLocation (getLocation "https://elm.testable/foo")
+                                )
+                , test "does not erase forward history" <|
+                    \() ->
+                        init
+                            |> update (New "/foo")
+                            |> thenUpdate (New "/bar")
+                            |> thenUpdate (Jump -1)
+                            |> thenUpdate (Modify "/baz")
+                            |> Expect.equal
+                                ( ( 1
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/baz"
+                                    , getLocation "https://elm.testable/bar"
+                                    ]
+                                  )
+                                , ReturnLocation (getLocation "https://elm.testable/baz")
+                                )
+                ]
+            , describe "jump in history" <|
+                [ test "goes back, asking to trigger location msg" <|
+                    \() ->
+                        init
+                            |> update (New "/foo")
+                            |> thenUpdate (New "/bar")
+                            |> thenUpdate (Jump -1)
+                            |> Expect.equal
+                                ( ( 1
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/foo"
+                                    , getLocation "https://elm.testable/bar"
+                                    ]
+                                  )
+                                , TriggerLocationMsg (getLocation "https://elm.testable/foo")
+                                )
+                , test "goes forward, asking to trigger location msg" <|
+                    \() ->
+                        init
+                            |> update (New "/foo")
+                            |> thenUpdate (New "/bar")
+                            |> thenUpdate (Jump -2)
+                            |> thenUpdate (Jump 1)
+                            |> Expect.equal
+                                ( ( 1
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/foo"
+                                    , getLocation "https://elm.testable/bar"
+                                    ]
+                                  )
+                                , TriggerLocationMsg (getLocation "https://elm.testable/foo")
+                                )
+                , test "has a limit to jumping back" <|
+                    \() ->
+                        init
+                            |> update (New "/foo")
+                            |> thenUpdate (Jump -100)
+                            |> Expect.equal
+                                ( ( 0
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/foo"
+                                    ]
+                                  )
+                                , TriggerLocationMsg initialLocation
+                                )
+                , test "has a limit to jumping forward" <|
+                    \() ->
+                        init
+                            |> update (New "/foo")
+                            |> thenUpdate (Jump -1)
+                            |> thenUpdate (Jump 100)
+                            |> Expect.equal
+                                ( ( 1
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/foo"
+                                    ]
+                                  )
+                                , TriggerLocationMsg (getLocation "https://elm.testable/foo")
+                                )
+                ]
+            ]
         ]
+
+
+thenUpdate : Msg -> ( History, a ) -> ( History, ReturnMsg )
+thenUpdate msg =
+    Tuple.first >> update msg
