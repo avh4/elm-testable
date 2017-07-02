@@ -1,4 +1,4 @@
-module NavigationSample exposing (..)
+module NavigationSample exposing (program)
 
 import Html exposing (..)
 import Html.Attributes exposing (class)
@@ -6,8 +6,8 @@ import Html.Events exposing (..)
 import Navigation
 
 
-main : Program Never Model Msg
-main =
+program : Program Never Model Msg
+program =
     Navigation.program UrlChange
         { init = init
         , view = view
@@ -77,7 +77,7 @@ view model =
 
 viewLink : String -> Html Msg
 viewLink name =
-    li [ class name ] [ button [ onClick (Go <| "#" ++ name) ] [ text name ] ]
+    li [] [ button [ class name, onClick (Go <| "#" ++ name) ] [ text name ] ]
 
 
 viewLocation : Navigation.Location -> Html msg

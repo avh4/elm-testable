@@ -27,7 +27,7 @@ allowing you to write integration tests.
 
 # Simulating Effects
 
-@docs advanceTime, send, simulate
+@docs advanceTime, send, simulate, navigate
 
 
 # Assertion

@@ -2,8 +2,25 @@ if (typeof _elm_lang$navigation$Native_Navigation === 'undefined') { // eslint-d
   throw new Error('Native.Testable.Navigation was loaded before _elm_lang$navigation$Native_Navigation: this shouldn\'t happen because Testable.Navigation imports Navigation. Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
+var original_getLocation = _elm_lang$navigation$Native_Navigation.getLocation;
 _elm_lang$navigation$Native_Navigation.getLocation = function () {
-  return _xavh4$elm_testable$Testable_Navigation$initialLocation;
+  if (typeof document !== 'undefined' && typeof document.location !== 'undefined') {
+    return original_getLocation()
+  }
+
+  return {
+    href: 'https://elm.testable/',
+    host: 'elm.testable',
+    hostname: 'elm.testable',
+    protocol: 'https:',
+    origin: 'https://elm.testable',
+    port_: '',
+    pathname: '/',
+    search: '',
+    hash: '',
+    username: '',
+    password: ''
+  }
 }
 
 _elm_lang$navigation$Native_Navigation.pushState = setItUp(
@@ -18,7 +35,7 @@ _elm_lang$navigation$Native_Navigation.pushState = setItUp(
       _1: function (url) { return { ctor: 'Success', _0: url } }
     }
   }
-);
+)
 _elm_lang$navigation$Navigation$pushState = _elm_lang$navigation$Native_Navigation.pushState
 
 
@@ -34,7 +51,7 @@ _elm_lang$navigation$Native_Navigation.replaceState = setItUp(
       _1: function (url) { return { ctor: 'Success', _0: url } }
     }
   }
-);
+)
 _elm_lang$navigation$Navigation$replaceState = _elm_lang$navigation$Native_Navigation.replaceState
 
 
@@ -50,7 +67,7 @@ _elm_lang$navigation$Native_Navigation.go = setItUp(
       _1: function (amount) { return { ctor: 'Success', _0: amount } }
     }
   }
-);
+)
 _elm_lang$navigation$Navigation$go = _elm_lang$navigation$Native_Navigation.go
 
 
@@ -80,8 +97,8 @@ _elm_lang$dom$Native_Dom.onWindow = setItUp(
     return { ctor: 'IgnoredTask' }
   })
 )
-_elm_lang$dom$Dom_LowLevel$onWindow = _elm_lang$dom$Native_Dom.onWindow;
-_elm_lang$dom$Dom_LowLevel$onDocument = _elm_lang$dom$Native_Dom.onDocument;
+_elm_lang$dom$Dom_LowLevel$onWindow = _elm_lang$dom$Native_Dom.onWindow
+_elm_lang$dom$Dom_LowLevel$onDocument = _elm_lang$dom$Native_Dom.onDocument
 
 _elm_lang$navigation$Navigation$spawnPopWatcher = setItUp(
   _elm_lang$navigation$Navigation$spawnPopWatcher,
