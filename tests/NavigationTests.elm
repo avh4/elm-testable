@@ -61,16 +61,38 @@ all =
             \() ->
                 sampleProgram
                     |> expectHref "https://elm.testable/"
-        , test "pushUrl" <|
-            \() ->
-                sampleProgram
-                    |> update (PushUrl "/foo")
-                    |> expectHref "https://elm.testable/foo"
-        , test "modifyUrl" <|
-            \() ->
-                sampleProgram
-                    |> update (ModifyUrl "/foo")
-                    |> expectHref "https://elm.testable/foo"
+        , describe "pushUrl"
+            [ test "goes to a new url" <|
+                \() ->
+                    sampleProgram
+                        |> update (PushUrl "/foo")
+                        |> expectHref "https://elm.testable/foo"
+            , test "erases forward history" <|
+                \() ->
+                    sampleProgram
+                        |> update (PushUrl "/foo")
+                        |> update (Back 1)
+                        |> update (PushUrl "/baz")
+                        |> update (Back 100)
+                        |> update (Forward 1)
+                        |> expectHref "https://elm.testable/baz"
+            ]
+        , describe "modifyUrl"
+            [ test "changes current url" <|
+                \() ->
+                    sampleProgram
+                        |> update (ModifyUrl "/foo")
+                        |> expectHref "https://elm.testable/foo"
+            , test "does not erase forward history" <|
+                \() ->
+                    sampleProgram
+                        |> update (PushUrl "/foo")
+                        |> update (PushUrl "/bar")
+                        |> update (Back 1)
+                        |> update (ModifyUrl "/baz")
+                        |> update (Forward 1)
+                        |> expectHref "https://elm.testable/bar"
+            ]
         , describe "navigation simulation"
             [ test "simulates navigation for testing" <|
                 \() ->
@@ -101,6 +123,11 @@ all =
                         |> update (ModifyUrl "/baz")
                         |> update (Back 1)
                         |> expectHref "https://elm.testable/foo"
+            , test "has a limit to go back" <|
+                \() ->
+                    sampleProgram
+                        |> update (Back 100)
+                        |> expectHref "https://elm.testable/"
             ]
         , describe "forward"
             [ test "goes to the next page in history using forward" <|
@@ -119,6 +146,13 @@ all =
                         |> update (ModifyUrl "/baz")
                         |> update (Back 2)
                         |> update (Forward 1)
+                        |> expectHref "https://elm.testable/foo"
+            , test "has a limit to go forward" <|
+                \() ->
+                    sampleProgram
+                        |> update (PushUrl "/foo")
+                        |> update (Back 1)
+                        |> update (Forward 100)
                         |> expectHref "https://elm.testable/foo"
             ]
         ]

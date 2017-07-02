@@ -39,7 +39,7 @@ update msg ( index, history ) =
         Jump n ->
             let
                 nextIndex =
-                    index + n
+                    min (max (index + n) 0) (List.length history - 1)
 
                 nextLocation =
                     List.Extra.getAt nextIndex history
@@ -51,8 +51,11 @@ update msg ( index, history ) =
             let
                 nextLocation =
                     setLocation url location
+
+                modifiedHistory =
+                    List.take (index + 1) history ++ [ nextLocation ]
             in
-            ( ( index + 1, history ++ [ nextLocation ] ), ReturnLocation nextLocation )
+            ( ( index + 1, modifiedHistory ), ReturnLocation nextLocation )
 
         Modify url ->
             let
@@ -98,6 +101,9 @@ getLocation href =
 
         host =
             matchOrEmptyAt 2
+
+        pathname =
+            Maybe.withDefault "/" (matchAt 4)
     in
     { href = href
     , host = host
@@ -105,7 +111,11 @@ getLocation href =
     , protocol = protocol
     , origin = protocol ++ "//" ++ host
     , port_ = matchOrEmptyAt 3
-    , pathname = Maybe.withDefault "/" (matchAt 4)
+    , pathname =
+        if String.isEmpty pathname then
+            "/"
+        else
+            pathname
     , search = matchOrEmptyAt 5
     , hash = matchOrEmptyAt 6
     , username = ""

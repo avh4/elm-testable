@@ -8,7 +8,7 @@ import Testable.Navigation exposing (..)
 
 initialLocation : Navigation.Location
 initialLocation =
-    getLocation "https://elm.testable/foo"
+    getLocation "https://elm.testable"
 
 
 all : Test
@@ -46,6 +46,12 @@ all =
                         |> setLocation "baz"
                         |> .href
                         |> Expect.equal "https://elm.testable/foo/baz"
+            , test "change relative path as root for pathless href" <|
+                \() ->
+                    initialLocation
+                        |> setLocation "foo"
+                        |> .href
+                        |> Expect.equal "https://elm.testable/foo"
             , test "updates the query string" <|
                 \() ->
                     initialLocation
