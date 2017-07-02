@@ -90,7 +90,7 @@ getLocation : String -> Navigation.Location
 getLocation href =
     let
         parser =
-            find All (regex "(.*?:)//(.*?):?(\\d+)?(/.*?|$)(\\?.*?|$)(#.*|$)") href
+            find All (regex "(.*?:)//(.*?):?(\\d+)?(/[^\\?^#]*)(\\?[^#]*)?(#.*)?") href
 
         matchAt index =
             List.head parser

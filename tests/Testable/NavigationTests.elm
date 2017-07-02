@@ -25,6 +25,22 @@ all =
                             , username = ""
                             , password = ""
                             }
+            , test "parses a location without querystring correclty" <|
+                \() ->
+                    getLocation "https://elm.testable:3030/foo/bar#lorem"
+                        |> Expect.equal
+                            { href = "https://elm.testable:3030/foo/bar#lorem"
+                            , host = "elm.testable"
+                            , hostname = "elm.testable"
+                            , protocol = "https:"
+                            , origin = "https://elm.testable"
+                            , port_ = "3030"
+                            , pathname = "/foo/bar"
+                            , search = ""
+                            , hash = "#lorem"
+                            , username = ""
+                            , password = ""
+                            }
             ]
         , describe "setLocation"
             [ test "replaces the path when the requested url is a root path" <|
@@ -60,6 +76,13 @@ all =
                         |> setLocation "#qux"
                         |> .href
                         |> Expect.equal "https://elm.testable/foo?bar#qux"
+            , test "updates the hash without search in the middle" <|
+                \() ->
+                    initialLocation
+                        |> setLocation "/foo#bar"
+                        |> setLocation "#qux"
+                        |> .href
+                        |> Expect.equal "https://elm.testable/foo#qux"
             , test "updates the whole path" <|
                 \() ->
                     initialLocation
