@@ -24,8 +24,8 @@ init location =
     ( { location = location, msgs = [] }, Cmd.none )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+programUpdate : Msg -> Model -> ( Model, Cmd Msg )
+programUpdate msg model =
     case msg of
         UrlChange location ->
             ( { model | location = location, msgs = msg :: model.msgs }, Cmd.none )
@@ -43,11 +43,11 @@ update msg model =
             ( model, Navigation.forward amount )
 
 
-stringProgram : TestContext Model Msg
-stringProgram =
+sampleProgram : TestContext Model Msg
+sampleProgram =
     Navigation.program UrlChange
         { init = init
-        , update = update
+        , update = programUpdate
         , subscriptions = \_ -> Sub.none
         , view = always <| div [] []
         }
@@ -59,57 +59,71 @@ all =
     describe "Navigation TestContext"
         [ test "starting a navigation program" <|
             \() ->
-                stringProgram
-                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/")
+                sampleProgram
+                    |> expectHref "https://elm.testable/"
         , test "pushUrl" <|
             \() ->
-                stringProgram
-                    |> TestContext.update (PushUrl "/foo")
-                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+                sampleProgram
+                    |> update (PushUrl "/foo")
+                    |> expectHref "https://elm.testable/foo"
         , test "modifyUrl" <|
             \() ->
-                stringProgram
-                    |> TestContext.update (ModifyUrl "/foo")
-                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
-        , test "simulates navigation for testing" <|
-            \() ->
-                stringProgram
-                    |> navigate "/qux"
-                    |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/qux")
+                sampleProgram
+                    |> update (ModifyUrl "/foo")
+                    |> expectHref "https://elm.testable/foo"
+        , describe "navigation simulation"
+            [ test "simulates navigation for testing" <|
+                \() ->
+                    sampleProgram
+                        |> navigate "/qux"
+                        |> expectHref "https://elm.testable/qux"
+            , test "allows to go back" <|
+                \() ->
+                    sampleProgram
+                        |> navigate "/foo"
+                        |> navigate "/bar"
+                        |> update (Back 1)
+                        |> expectHref "https://elm.testable/foo"
+            ]
         , describe "back"
             [ test "returns to the previous url when using back" <|
                 \() ->
-                    stringProgram
-                        |> TestContext.update (PushUrl "/foo")
-                        |> TestContext.update (PushUrl "/bar")
-                        |> TestContext.update (Back 1)
-                        |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+                    sampleProgram
+                        |> update (PushUrl "/foo")
+                        |> update (PushUrl "/bar")
+                        |> update (Back 1)
+                        |> expectHref "https://elm.testable/foo"
             , test "skip modified url" <|
                 \() ->
-                    stringProgram
-                        |> TestContext.update (PushUrl "/foo")
-                        |> TestContext.update (PushUrl "/bar")
-                        |> TestContext.update (ModifyUrl "/baz")
-                        |> TestContext.update (Back 1)
-                        |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+                    sampleProgram
+                        |> update (PushUrl "/foo")
+                        |> update (PushUrl "/bar")
+                        |> update (ModifyUrl "/baz")
+                        |> update (Back 1)
+                        |> expectHref "https://elm.testable/foo"
             ]
         , describe "forward"
             [ test "goes to the next page in history using forward" <|
                 \() ->
-                    stringProgram
-                        |> TestContext.update (PushUrl "/bar")
-                        |> TestContext.update (PushUrl "/baz")
-                        |> TestContext.update (Back 2)
-                        |> TestContext.update (Forward 1)
-                        |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/bar")
+                    sampleProgram
+                        |> update (PushUrl "/bar")
+                        |> update (PushUrl "/baz")
+                        |> update (Back 2)
+                        |> update (Forward 1)
+                        |> expectHref "https://elm.testable/bar"
             , test "skip modified url" <|
                 \() ->
-                    stringProgram
-                        |> TestContext.update (PushUrl "/foo")
-                        |> TestContext.update (PushUrl "/bar")
-                        |> TestContext.update (ModifyUrl "/baz")
-                        |> TestContext.update (Back 2)
-                        |> TestContext.update (Forward 1)
-                        |> TestContext.expectModel (.location >> .href >> Expect.equal "https://elm.testable/foo")
+                    sampleProgram
+                        |> update (PushUrl "/foo")
+                        |> update (PushUrl "/bar")
+                        |> update (ModifyUrl "/baz")
+                        |> update (Back 2)
+                        |> update (Forward 1)
+                        |> expectHref "https://elm.testable/foo"
             ]
         ]
+
+
+expectHref : String -> TestContext Model msg -> Expect.Expectation
+expectHref href =
+    TestContext.expectModel (.location >> .href >> Expect.equal href)
