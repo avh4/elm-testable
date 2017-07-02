@@ -609,6 +609,9 @@ processTask pid task =
                                 Nothing ->
                                     updatedTestContext location
 
+                        Testable.Navigation.NoOp ->
+                            TestContext { context | history = history }
+
 
 update : msg -> TestContext model msg -> TestContext model msg
 update msg =
@@ -975,6 +978,9 @@ navigate url =
 
                                 Testable.Navigation.TriggerLocationMsg location ->
                                     location
+
+                                Testable.Navigation.NoOp ->
+                                    currentLocation history
                     in
                     TestContext { context | history = history }
                         |> update (locationToMessage location)

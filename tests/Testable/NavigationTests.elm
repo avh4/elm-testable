@@ -125,6 +125,19 @@ all =
                                   )
                                 , ReturnLocation (getLocation "https://elm.testable/baz")
                                 )
+                , test "does not modify to the same url, preventing infinite loop" <|
+                    \() ->
+                        init
+                            |> update (New "/foo")
+                            |> thenUpdate (Modify "/foo")
+                            |> Expect.equal
+                                ( ( 1
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/foo"
+                                    ]
+                                  )
+                                , NoOp
+                                )
                 ]
             , describe "jump in history" <|
                 [ test "goes back, asking to trigger location msg" <|

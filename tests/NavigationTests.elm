@@ -28,7 +28,7 @@ programUpdate : Msg -> Model -> ( Model, Cmd Msg )
 programUpdate msg model =
     case msg of
         UrlChange location ->
-            ( { model | location = location, msgs = msg :: model.msgs }, Cmd.none )
+            ( { model | location = location, msgs = msg :: model.msgs }, Navigation.modifyUrl location.pathname )
 
         PushUrl url ->
             ( model, Navigation.newUrl url )

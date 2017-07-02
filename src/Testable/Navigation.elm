@@ -19,7 +19,8 @@ type Msg
 
 
 type ReturnMsg
-    = ReturnLocation Location
+    = NoOp
+    | ReturnLocation Location
     | TriggerLocationMsg Location
 
 
@@ -65,8 +66,14 @@ update msg ( index, history ) =
                 modifiedHistory =
                     history
                         |> List.Extra.updateIfIndex ((==) index) (always nextLocation)
+
+                effect =
+                    if nextLocation == location then
+                        NoOp
+                    else
+                        ReturnLocation nextLocation
             in
-            ( ( index, modifiedHistory ), ReturnLocation nextLocation )
+            ( ( index, modifiedHistory ), effect )
 
 
 init : History
