@@ -106,6 +106,15 @@ all =
                         |> navigate "/bar"
                         |> update (Back 1)
                         |> expectHref "https://elm.testable/foo"
+            , test "erases forward history" <|
+                \() ->
+                    sampleProgram
+                        |> navigate "/foo"
+                        |> update (Back 1)
+                        |> navigate "/baz"
+                        |> update (Back 100)
+                        |> update (Forward 1)
+                        |> expectHref "https://elm.testable/baz"
             ]
         , describe "back"
             [ test "returns to the previous url when using back" <|

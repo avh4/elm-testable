@@ -965,19 +965,19 @@ navigate url =
             case context.program.locationToMessage of
                 Just locationToMessage ->
                     let
-                        newLocation : Location
-                        newLocation =
-                            setLocation url (currentLocation context.history)
+                        ( history, nextLocation ) =
+                            Testable.Navigation.update (Testable.Navigation.New url) context.history
 
-                        ( index, history ) =
-                            context.history
+                        location =
+                            case nextLocation of
+                                Testable.Navigation.ReturnLocation location ->
+                                    location
 
-                        newHistory : Testable.Navigation.History
-                        newHistory =
-                            ( List.length history, history ++ [ newLocation ] )
+                                Testable.Navigation.TriggerLocationMsg location ->
+                                    location
                     in
-                    TestContext { context | history = newHistory }
-                        |> update (locationToMessage newLocation)
+                    TestContext { context | history = history }
+                        |> update (locationToMessage location)
 
                 Nothing ->
                     TestContext context
