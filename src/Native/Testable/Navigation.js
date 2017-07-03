@@ -124,3 +124,20 @@ _elm_lang$navigation$Navigation$program = setItUp2(
     }
   })
 )
+
+var originalNavigationProgramWithFlags = _elm_lang$navigation$Navigation$program;
+_elm_lang$navigation$Navigation$programWithFlags = setItUp2(
+  '_elm_lang$navigation$Navigation$programWithFlags',
+  _elm_lang$navigation$Navigation$programWithFlags,
+  F2(function (locationToMessage, stuff) {
+    var original = originalNavigationProgramWithFlags(locationToMessage)(stuff).elmTestable;
+
+    return {
+      init: original.init,
+      update: original.update,
+      subscriptions: original.subscriptions,
+      view: original.view,
+      locationToMessage: { ctor: 'Just', _0: locationToMessage }
+    }
+  })
+)

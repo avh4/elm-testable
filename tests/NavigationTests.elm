@@ -24,6 +24,11 @@ init location =
     ( { location = location, msgs = [] }, Cmd.none )
 
 
+initWithStringFlags : String -> Navigation.Location -> ( Model, Cmd Msg )
+initWithStringFlags flags location =
+    init location
+
+
 programUpdate : Msg -> Model -> ( Model, Cmd Msg )
 programUpdate msg model =
     case msg of
@@ -52,6 +57,17 @@ sampleProgram =
         , view = always <| div [] []
         }
         |> TestContext.start
+
+
+sampleProgramWithFlags : TestContext Model Msg
+sampleProgramWithFlags =
+    Navigation.programWithFlags UrlChange
+        { init = initWithStringFlags
+        , update = programUpdate
+        , subscriptions = \_ -> Sub.none
+        , view = always <| div [] []
+        }
+        |> TestContext.startWithFlags "foo"
 
 
 all : Test
@@ -109,6 +125,11 @@ all =
                         |> update (Forward 1)
                         |> expectHref "https://elm.testable/baz"
             ]
+        , test "works on program with flags" <|
+            \() ->
+                sampleProgramWithFlags
+                    |> navigate "/foo"
+                    |> expectHref "https://elm.testable/foo"
         ]
 
 
