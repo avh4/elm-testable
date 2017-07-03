@@ -16,6 +16,7 @@ type Msg
     = Jump Int
     | New String
     | Modify String
+    | Visit String
 
 
 type ReturnMsg
@@ -74,6 +75,13 @@ update msg ( index, history ) =
                         ReturnLocation nextLocation
             in
             ( ( index, modifiedHistory ), effect )
+
+        Visit url ->
+            let
+                ( modifiedHistory, _ ) =
+                    update (New url) ( index, history )
+            in
+            ( modifiedHistory, TriggerLocationMsg (currentLocation modifiedHistory) )
 
 
 init : History

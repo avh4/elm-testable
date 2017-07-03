@@ -13,6 +13,7 @@ type Msg
     | ModifyUrl String
     | Back Int
     | Forward Int
+    | Load String
 
 
 type alias Model =
@@ -46,6 +47,9 @@ programUpdate msg model =
 
         Forward amount ->
             ( model, Navigation.forward amount )
+
+        Load url ->
+            ( model, Navigation.load url )
 
 
 sampleProgram : TestContext Model Msg
@@ -102,6 +106,11 @@ all =
                     |> update (Back 2)
                     |> update (Forward 1)
                     |> expectHref "https://elm.testable/bar"
+        , test "load" <|
+            \() ->
+                sampleProgram
+                    |> update (Load "/foo")
+                    |> expectHref "https://elm.testable/foo"
         , describe "navigation simulation"
             [ test "simulates navigation for testing" <|
                 \() ->

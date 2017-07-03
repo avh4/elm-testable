@@ -222,6 +222,20 @@ all =
                                 , TriggerLocationMsg (getLocation "https://elm.testable/foo")
                                 )
                 ]
+            , describe "visit url"
+                [ test "visit adds a new url to the history, asking to trigger location msg" <|
+                    \() ->
+                        init
+                            |> update (Visit "/foo")
+                            |> Expect.equal
+                                ( ( 1
+                                  , [ initialLocation
+                                    , getLocation "https://elm.testable/foo"
+                                    ]
+                                  )
+                                , TriggerLocationMsg (getLocation "https://elm.testable/foo")
+                                )
+                ]
             ]
         ]
 
