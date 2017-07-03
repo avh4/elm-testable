@@ -14,6 +14,7 @@ type Msg
     | Back Int
     | Forward Int
     | Load String
+    | Reload
 
 
 type alias Model =
@@ -50,6 +51,9 @@ programUpdate msg model =
 
         Load url ->
             ( model, Navigation.load url )
+
+        Reload ->
+            ( model, Navigation.reload )
 
 
 sampleProgram : TestContext Model Msg
@@ -111,6 +115,11 @@ all =
                 sampleProgram
                     |> update (Load "/foo")
                     |> expectHref "https://elm.testable/foo"
+        , test "refresh does nothing" <|
+            \() ->
+                sampleProgram
+                    |> update Reload
+                    |> done
         , describe "navigation simulation"
             [ test "simulates navigation for testing" <|
                 \() ->
