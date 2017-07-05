@@ -37,7 +37,7 @@ allowing you to write integration tests.
 -}
 
 import Expect exposing (Expectation)
-import Test.Html.Events exposing (Event)
+import Json.Decode exposing (Value)
 import Test.Html.Query
 import TestContextInternal as Internal
 import Time exposing (Time)
@@ -111,7 +111,7 @@ expectView context =
 
 {-| Simulate a DOM event being triggered on the view
 -}
-simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> Event -> TestContext model msg -> TestContext model msg
+simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> ( String, Value ) -> TestContext model msg -> TestContext model msg
 simulate eventTrigger event context =
     Internal.simulate eventTrigger event context
 

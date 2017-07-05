@@ -31,13 +31,13 @@ import Expect exposing (Expectation)
 import Fifo exposing (Fifo)
 import Html exposing (Html)
 import Http
-import Json.Encode
+import Json.Encode exposing (Value)
 import Mapper exposing (Mapper)
 import Native.TestContext
 import Navigation exposing (Location)
 import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
-import Test.Html.Events as Events exposing (Event)
+import Test.Html.Event as Event exposing (Event)
 import Test.Html.Query
 import Test.Runner
 import Testable.EffectManager as EffectManager exposing (EffectManager)
@@ -940,13 +940,13 @@ expectView context =
             Html.text (report "expectView" context) |> Test.Html.Query.fromHtml
 
 
-simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> Event -> TestContext model msg -> TestContext model msg
+simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> ( String, Value ) -> TestContext model msg -> TestContext model msg
 simulate eventTrigger event context =
     let
         eventResult =
             eventTrigger (expectView context)
-                |> Events.simulate event
-                |> Events.eventResult
+                |> Event.simulate event
+                |> Event.toResult
     in
     case eventResult of
         Ok msg ->

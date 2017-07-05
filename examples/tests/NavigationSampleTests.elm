@@ -3,7 +3,7 @@ module NavigationSampleTests exposing (all)
 import Expect
 import NavigationSample exposing (program)
 import Test exposing (..)
-import Test.Html.Events as Events
+import Test.Html.Event as Event
 import Test.Html.Query exposing (..)
 import Test.Html.Selector exposing (..)
 import TestContext exposing (..)
@@ -16,8 +16,8 @@ all =
             \() ->
                 NavigationSample.program
                     |> start
-                    |> simulate (find [ class "bears" ]) Events.Click
-                    |> simulate (find [ class "cats" ]) Events.Click
+                    |> simulate (find [ class "bears" ]) Event.click
+                    |> simulate (find [ class "cats" ]) Event.click
                     |> expectView
                     |> find [ class "history" ]
                     |> Expect.all
