@@ -1,4 +1,4 @@
-var _xavh4$elm_testable$Native_Testable_EffectManager = // eslint-disable-line no-unused-vars, camelcase
+var _user$project$Native_Testable_EffectManager = // eslint-disable-line no-unused-vars, camelcase
  (function () {
    var effectManagers
 
