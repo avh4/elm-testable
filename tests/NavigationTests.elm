@@ -18,12 +18,12 @@ type Msg
 
 
 type alias Model =
-    { location : Navigation.Location, msgs : List Msg }
+    { location : Navigation.Location }
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
-    ( { location = location, msgs = [] }, Cmd.none )
+    ( { location = location }, Cmd.none )
 
 
 initWithStringFlags : String -> Navigation.Location -> ( Model, Cmd Msg )
@@ -35,7 +35,7 @@ programUpdate : Msg -> Model -> ( Model, Cmd Msg )
 programUpdate msg model =
     case msg of
         UrlChange location ->
-            ( { model | location = location, msgs = msg :: model.msgs }, Navigation.modifyUrl location.pathname )
+            ( { model | location = location }, Navigation.modifyUrl location.pathname )
 
         PushUrl url ->
             ( model, Navigation.newUrl url )

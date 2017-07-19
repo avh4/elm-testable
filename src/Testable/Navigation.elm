@@ -138,6 +138,8 @@ getLocation href =
     }
 
 
+{-| TODO: Check this implementation against the specs <https://www.w3.org/TR/WD-html40-970708/htmlweb.html>
+-}
 setLocation : String -> Navigation.Location -> Navigation.Location
 setLocation url currentLocation =
     let

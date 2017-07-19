@@ -21,8 +21,8 @@ all =
                     |> expectView
                     |> find [ class "history" ]
                     |> Expect.all
-                        [ has [ text "#bears" ]
-                        , has [ text "#cats" ]
+                        [ has [ text "/#bears" ]
+                        , has [ text "/#cats" ]
                         ]
         , test "works for user initiated navigation" <|
             \() ->
@@ -31,5 +31,5 @@ all =
                     |> navigate "#cats"
                     |> expectView
                     |> find [ class "history" ]
-                    |> has [ text "#cats" ]
+                    |> has [ text "/#cats" ]
         ]
