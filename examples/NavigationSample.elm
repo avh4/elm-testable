@@ -1,9 +1,10 @@
 module NavigationSample exposing (program)
 
-import Html exposing (..)
-import Html.Attributes exposing (class)
-import Html.Events exposing (..)
+import Html exposing (Html, a, button, code, div, h1, li, text, ul)
+import Html.Events exposing (onClick)
+import Http
 import Navigation
+import UrlParser as Url exposing ((</>), (<?>), int, s, stringParam, top)
 
 
 program : Program Never Model Msg
@@ -12,7 +13,7 @@ program =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
 
 
@@ -21,15 +22,34 @@ program =
 
 
 type alias Model =
-    { history : List Navigation.Location
+    { history : List (Maybe Route)
     }
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
-    ( Model [ location ]
+    ( Model [ Url.parsePath route location ]
     , Cmd.none
     )
+
+
+
+-- URL PARSING
+
+
+type Route
+    = Home
+    | BlogList (Maybe String)
+    | BlogPost Int
+
+
+route : Url.Parser (Route -> a) a
+route =
+    Url.oneOf
+        [ Url.map Home top
+        , Url.map BlogList (s "blog" <?> stringParam "search")
+        , Url.map BlogPost (s "blog" </> int)
+        ]
 
 
 
@@ -37,28 +57,31 @@ init location =
 
 
 type Msg
-    = UrlChange Navigation.Location
-    | Go String
-
-
-
-{- We are just storing the location in our history in this example, but
-   normally, you would use a package like evancz/url-parser to parse the path
-   or hash into nicely structured Elm values.
-       <http://package.elm-lang.org/packages/evancz/url-parser/latest>
--}
+    = NewUrl String
+    | UrlChange Navigation.Location
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NewUrl url ->
+            ( model
+            , Navigation.newUrl url
+            )
+
         UrlChange location ->
-            ( { model | history = location :: model.history }
+            ( { model | history = Url.parsePath route location :: model.history }
             , Cmd.none
             )
 
-        Go path ->
-            ( model, Navigation.newUrl path )
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
 
 
 
@@ -68,18 +91,39 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ h1 [] [ text "Pages" ]
-        , ul [] (List.map viewLink [ "bears", "cats", "dogs", "elephants", "fish" ])
+        [ h1 [] [ text "Links" ]
+        , ul [] (List.map viewLink [ "/", "/blog/", "/blog/42", "/blog/37", "/blog/?search=cats" ])
         , h1 [] [ text "History" ]
-        , ul [ class "history" ] (List.map viewLocation model.history)
+        , ul [] (List.map viewRoute model.history)
         ]
 
 
 viewLink : String -> Html Msg
-viewLink name =
-    li [] [ button [ class name, onClick (Go <| "#" ++ name) ] [ text name ] ]
+viewLink url =
+    li [] [ button [ onClick (NewUrl url) ] [ text url ] ]
 
 
-viewLocation : Navigation.Location -> Html msg
-viewLocation location =
-    li [] [ text (location.pathname ++ location.hash) ]
+viewRoute : Maybe Route -> Html msg
+viewRoute maybeRoute =
+    case maybeRoute of
+        Nothing ->
+            li [] [ text "Invalid URL" ]
+
+        Just route ->
+            li [] [ code [] [ text (routeToString route) ] ]
+
+
+routeToString : Route -> String
+routeToString route =
+    case route of
+        Home ->
+            "home"
+
+        BlogList Nothing ->
+            "list all blog posts"
+
+        BlogList (Just search) ->
+            "search for " ++ Http.encodeUri search
+
+        BlogPost id ->
+            "show blog " ++ toString id

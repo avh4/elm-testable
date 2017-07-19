@@ -16,20 +16,18 @@ all =
             \() ->
                 NavigationSample.program
                     |> start
-                    |> simulate (find [ class "bears" ]) Event.click
-                    |> simulate (find [ class "cats" ]) Event.click
+                    |> simulate (findAll [ tag "button" ] >> index 2) Event.click
+                    |> simulate (findAll [ tag "button" ] >> index 4) Event.click
                     |> expectView
-                    |> find [ class "history" ]
                     |> Expect.all
-                        [ has [ text "/#bears" ]
-                        , has [ text "/#cats" ]
+                        [ has [ text "show blog 42" ]
+                        , has [ text "search for cats" ]
                         ]
         , test "works for user initiated navigation" <|
             \() ->
                 NavigationSample.program
                     |> start
-                    |> navigate "#cats"
+                    |> navigate "/blog/?search=dogs"
                     |> expectView
-                    |> find [ class "history" ]
-                    |> has [ text "/#cats" ]
+                    |> has [ text "search for dogs" ]
         ]
