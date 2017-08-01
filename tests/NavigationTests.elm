@@ -18,17 +18,17 @@ type Msg
 
 
 type alias Model =
-    { location : Navigation.Location }
+    { location : Navigation.Location, flags : String }
 
 
-init : Navigation.Location -> ( Model, Cmd Msg )
-init location =
-    ( { location = location }, Cmd.none )
+init : String -> Navigation.Location -> ( Model, Cmd Msg )
+init flags location =
+    ( { location = location, flags = flags }, Cmd.none )
 
 
 initWithStringFlags : String -> Navigation.Location -> ( Model, Cmd Msg )
 initWithStringFlags flags location =
-    init location
+    init flags location
 
 
 programUpdate : Msg -> Model -> ( Model, Cmd Msg )
@@ -59,7 +59,7 @@ programUpdate msg model =
 sampleProgram : TestContext Model Msg
 sampleProgram =
     Navigation.program UrlChange
-        { init = init
+        { init = init ""
         , update = programUpdate
         , subscriptions = \_ -> Sub.none
         , view = always <| div [] []
@@ -67,15 +67,15 @@ sampleProgram =
         |> TestContext.start
 
 
-sampleProgramWithFlags : TestContext Model Msg
-sampleProgramWithFlags =
+sampleProgramWithFlags : String -> TestContext Model Msg
+sampleProgramWithFlags flags =
     Navigation.programWithFlags UrlChange
         { init = initWithStringFlags
         , update = programUpdate
         , subscriptions = \_ -> Sub.none
         , view = always <| div [] []
         }
-        |> TestContext.startWithFlags "foo"
+        |> TestContext.startWithFlags flags
 
 
 all : Test
@@ -145,9 +145,16 @@ all =
             ]
         , test "works on program with flags" <|
             \() ->
-                sampleProgramWithFlags
+                sampleProgramWithFlags "something"
                     |> navigate "/foo"
                     |> expectHref "https://elm.testable/foo"
+        , test "flags are used" <|
+            \() ->
+                sampleProgramWithFlags "barbaz"
+                    |> expectModel
+                        (\model ->
+                            Expect.equal "barbaz" model.flags
+                        )
         ]
 
 
