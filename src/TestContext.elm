@@ -2,10 +2,12 @@ module TestContext
     exposing
         ( TestContext
         , advanceTime
+        , back
         , done
         , expectCmd
         , expectModel
         , expectView
+        , forward
         , navigate
         , send
         , simulate
@@ -27,7 +29,12 @@ allowing you to write integration tests.
 
 # Simulating Effects
 
-@docs advanceTime, send, simulate, navigate
+@docs advanceTime, send, simulate
+
+
+# Navigation
+
+@docs navigate, back, forward
 
 
 # Assertion
@@ -121,6 +128,20 @@ simulate eventTrigger event context =
 navigate : String -> TestContext model msg -> TestContext model msg
 navigate url context =
     Internal.navigate url context
+
+
+{-| Simulates a user hitting the back button on the browser
+-}
+back : TestContext model msg -> TestContext model msg
+back context =
+    Internal.back context
+
+
+{-| Simulates a user hitting the forward button on the browser
+-}
+forward : TestContext model msg -> TestContext model msg
+forward context =
+    Internal.forward context
 
 
 {-| Ends the test ensuring that no previous actions had errors

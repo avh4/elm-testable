@@ -3,6 +3,7 @@ module TestContextInternal
         ( MockTask
         , TestContext(..)
         , advanceTime
+        , back
         , done
           -- private to elm-testable
         , drainWorkQueue
@@ -12,6 +13,7 @@ module TestContextInternal
         , expectMockTask
         , expectModel
         , expectView
+        , forward
         , mockTask
         , navigate
         , processTask
@@ -963,13 +965,28 @@ done =
 
 navigate : String -> TestContext model msg -> TestContext model msg
 navigate url =
+    updateHistory (Testable.Navigation.New url)
+
+
+back : TestContext model msg -> TestContext model msg
+back =
+    updateHistory (Testable.Navigation.Jump -1)
+
+
+forward : TestContext model msg -> TestContext model msg
+forward =
+    updateHistory (Testable.Navigation.Jump 1)
+
+
+updateHistory : Testable.Navigation.Msg -> TestContext model msg -> TestContext model msg
+updateHistory msg =
     withContext <|
         \context ->
             case context.program.locationToMessage of
                 Just locationToMessage ->
                     let
                         ( history, nextLocation ) =
-                            Testable.Navigation.update (Testable.Navigation.New url) context.history
+                            Testable.Navigation.update msg context.history
 
                         location =
                             case nextLocation of

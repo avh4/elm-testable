@@ -131,16 +131,18 @@ all =
                     sampleProgram
                         |> navigate "/foo"
                         |> navigate "/bar"
-                        |> update (Back 1)
+                        |> back
                         |> expectHref "https://elm.testable/foo"
             , test "erases forward history" <|
                 \() ->
                     sampleProgram
                         |> navigate "/foo"
-                        |> update (Back 1)
+                        |> back
                         |> navigate "/baz"
-                        |> update (Back 100)
-                        |> update (Forward 1)
+                        |> back
+                        |> back
+                        |> back
+                        |> forward
                         |> expectHref "https://elm.testable/baz"
             ]
         , test "works on program with flags" <|
