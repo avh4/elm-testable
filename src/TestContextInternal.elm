@@ -22,6 +22,8 @@ module TestContextInternal
         , simulate
         , start
         , startWithFlags
+        , startWithFlagsAndLocation
+        , startWithLocation
         , toTask
         , update
         , withContext
@@ -43,7 +45,7 @@ import Test.Html.Event as Event exposing (Event)
 import Test.Html.Query
 import Test.Runner
 import Testable.EffectManager as EffectManager exposing (EffectManager)
-import Testable.Navigation exposing (currentLocation, getLocation, setLocation)
+import Testable.Navigation exposing (currentLocation, getLocation, initialLocation, setLocation)
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 import Time exposing (Time)
 import WebSocket.LowLevel
@@ -62,6 +64,7 @@ type alias TestableProgram model msg =
     , subscriptions : model -> Sub msg
     , view : model -> Html msg
     , locationToMessage : Maybe (Location -> msg)
+    , navigationInit : Maybe (Location -> ( model, Cmd msg ))
     }
 
 
@@ -275,16 +278,26 @@ orCrash message maybe =
 
 startWithFlags : flags -> Program flags model msg -> TestContext model msg
 startWithFlags flags realProgram =
-    start_ (Just flags) realProgram
+    start_ (Just flags) Nothing realProgram
 
 
 start : Program Never model msg -> TestContext model msg
 start realProgram =
-    start_ Nothing realProgram
+    start_ Nothing Nothing realProgram
 
 
-start_ : Maybe flags -> Program flags model msg -> TestContext model msg
-start_ flags realProgram =
+startWithLocation : String -> Program Never model msg -> TestContext model msg
+startWithLocation url realProgram =
+    start_ Nothing (Just url) realProgram
+
+
+startWithFlagsAndLocation : flags -> String -> Program flags model msg -> TestContext model msg
+startWithFlagsAndLocation flags url realProgram =
+    start_ (Just flags) (Just url) realProgram
+
+
+start_ : Maybe flags -> Maybe String -> Program flags model msg -> TestContext model msg
+start_ flags url realProgram =
     let
         _ =
             debug "start" flags
@@ -294,7 +307,10 @@ start_ flags realProgram =
                 |> extractProgram "<TestContext fake module>" flags
 
         model =
-            Tuple.first program.init
+            program.navigationInit
+                |> Maybe.map (\init -> init <| initialLocation url)
+                |> Maybe.withDefault program.init
+                |> Tuple.first
 
         initEffectManager home em =
             em.init
@@ -332,7 +348,7 @@ start_ flags realProgram =
         , msgTranscript = []
 
         -- navigation
-        , history = Testable.Navigation.init
+        , history = Testable.Navigation.init url
         }
         |> initEffectManagers
         |> dispatchEffects

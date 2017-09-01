@@ -13,6 +13,8 @@ module TestContext
         , simulate
         , start
         , startWithFlags
+        , startWithFlagsAndLocation
+        , startWithLocation
         , update
         )
 
@@ -24,7 +26,7 @@ allowing you to write integration tests.
 
 # Managing lifecycle
 
-@docs start, startWithFlags, update
+@docs start, startWithFlags, startWithLocation, startWithFlagsAndLocation, update
 
 
 # Simulating Effects
@@ -68,6 +70,20 @@ start realProgram =
 startWithFlags : flags -> Program flags model msg -> TestContext model msg
 startWithFlags flags realProgram =
     Internal.startWithFlags flags realProgram
+
+
+{-| Create a `TestContext` for a Navigation Program with location
+-}
+startWithLocation : String -> Program Never model msg -> TestContext model msg
+startWithLocation url realProgram =
+    Internal.startWithLocation url realProgram
+
+
+{-| Create a `TestContext` for a Navigation Program with flags and location
+-}
+startWithFlagsAndLocation : flags -> String -> Program flags model msg -> TestContext model msg
+startWithFlagsAndLocation flags url realProgram =
+    Internal.startWithFlagsAndLocation flags url realProgram
 
 
 {-| Update your program with a message, exercising its update flow

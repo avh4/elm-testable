@@ -93,7 +93,8 @@ var rewireNavigation = function (realImplName, realImpl) {
         update: program.update,
         subscriptions: program.subscriptions,
         view: program.view,
-        locationToMessage: { ctor: 'Just', _0: locationToMessage }
+        locationToMessage: { ctor: 'Just', _0: locationToMessage },
+        navigationInit: stuff.init
       }
     })
   );

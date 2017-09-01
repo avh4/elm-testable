@@ -114,6 +114,10 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
       // This gets the return value from the modified
       // _elm_lang$core$Native_Platform.initialize above
       var app = containerModule.embed(embedRoot, realFlags)
+      var navigationInit;
+      if (program.elmTestable.navigationInit) {
+        navigationInit = realFlags ? program.elmTestable.navigationInit(realFlags) : program.elmTestable.navigationInit
+      }
 
       return {
         // TODO: just use the init in program.elmTestable instead of intecepting initialize
@@ -122,7 +126,8 @@ var _user$project$Native_TestContext = (function () { // eslint-disable-line no-
         update: program.elmTestable.update,
         subscriptions: program.elmTestable.subscriptions,
         view: program.elmTestable.view,
-        locationToMessage: program.elmTestable.locationToMessage || { ctor: 'Nothing' }
+        locationToMessage: program.elmTestable.locationToMessage || { ctor: 'Nothing' },
+        navigationInit: navigationInit ? { ctor: 'Just', _0: navigationInit } : { ctor: 'Nothing' }
       }
     }),
     extractCmd: F2(function (tagger, cmd) {

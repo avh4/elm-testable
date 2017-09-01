@@ -56,7 +56,7 @@ programUpdate msg model =
             ( model, Navigation.reload )
 
 
-sampleProgram : TestContext Model Msg
+sampleProgram : Program Never Model Msg
 sampleProgram =
     Navigation.program UrlChange
         { init = init ""
@@ -64,18 +64,28 @@ sampleProgram =
         , subscriptions = \_ -> Sub.none
         , view = always <| div [] []
         }
-        |> TestContext.start
 
 
-sampleProgramWithFlags : String -> TestContext Model Msg
-sampleProgramWithFlags flags =
+startSampleProgram : TestContext Model Msg
+startSampleProgram =
+    sampleProgram
+        |> TestContext.startWithLocation "https://mywebsite.com/"
+
+
+sampleProgramWithFlags : Program String Model Msg
+sampleProgramWithFlags =
     Navigation.programWithFlags UrlChange
         { init = initWithStringFlags
         , update = programUpdate
         , subscriptions = \_ -> Sub.none
         , view = always <| div [] []
         }
-        |> TestContext.startWithFlags flags
+
+
+startSampleProgramWithFlags : String -> TestContext Model Msg
+startSampleProgramWithFlags flags =
+    sampleProgramWithFlags
+        |> TestContext.startWithFlagsAndLocation flags "https://mywebsite.com/"
 
 
 all : Test
@@ -83,59 +93,59 @@ all =
     describe "Navigation TestContext"
         [ test "starting a navigation program" <|
             \() ->
-                sampleProgram
-                    |> expectHref "https://elm.testable/"
+                startSampleProgram
+                    |> expectHref "https://mywebsite.com/"
         , test "pushUrl" <|
             \() ->
-                sampleProgram
+                startSampleProgram
                     |> update (PushUrl "/foo")
-                    |> expectHref "https://elm.testable/foo"
+                    |> expectHref "https://mywebsite.com/foo"
         , test "modifyUrl" <|
             \() ->
-                sampleProgram
+                startSampleProgram
                     |> update (ModifyUrl "/foo")
-                    |> expectHref "https://elm.testable/foo"
+                    |> expectHref "https://mywebsite.com/foo"
         , test "back" <|
             \() ->
-                sampleProgram
+                startSampleProgram
                     |> update (PushUrl "/foo")
                     |> update (PushUrl "/bar")
                     |> update (Back 1)
-                    |> expectHref "https://elm.testable/foo"
+                    |> expectHref "https://mywebsite.com/foo"
         , test "forward" <|
             \() ->
-                sampleProgram
+                startSampleProgram
                     |> update (PushUrl "/bar")
                     |> update (PushUrl "/baz")
                     |> update (Back 2)
                     |> update (Forward 1)
-                    |> expectHref "https://elm.testable/bar"
+                    |> expectHref "https://mywebsite.com/bar"
         , test "load" <|
             \() ->
-                sampleProgram
+                startSampleProgram
                     |> update (Load "/foo")
-                    |> expectHref "https://elm.testable/foo"
+                    |> expectHref "https://mywebsite.com/foo"
         , test "refresh does nothing" <|
             \() ->
-                sampleProgram
+                startSampleProgram
                     |> update Reload
                     |> done
         , describe "navigation simulation"
             [ test "simulates navigation for testing" <|
                 \() ->
-                    sampleProgram
+                    startSampleProgram
                         |> navigate "/qux"
-                        |> expectHref "https://elm.testable/qux"
+                        |> expectHref "https://mywebsite.com/qux"
             , test "allows to go back" <|
                 \() ->
-                    sampleProgram
+                    startSampleProgram
                         |> navigate "/foo"
                         |> navigate "/bar"
                         |> back
-                        |> expectHref "https://elm.testable/foo"
+                        |> expectHref "https://mywebsite.com/foo"
             , test "erases forward history" <|
                 \() ->
-                    sampleProgram
+                    startSampleProgram
                         |> navigate "/foo"
                         |> back
                         |> navigate "/baz"
@@ -143,20 +153,38 @@ all =
                         |> back
                         |> back
                         |> forward
-                        |> expectHref "https://elm.testable/baz"
+                        |> expectHref "https://mywebsite.com/baz"
             ]
         , test "works on program with flags" <|
             \() ->
-                sampleProgramWithFlags "something"
+                startSampleProgramWithFlags "something"
                     |> navigate "/foo"
-                    |> expectHref "https://elm.testable/foo"
+                    |> expectHref "https://mywebsite.com/foo"
         , test "flags are used" <|
             \() ->
-                sampleProgramWithFlags "barbaz"
+                startSampleProgramWithFlags "barbaz"
                     |> expectModel
                         (\model ->
                             Expect.equal "barbaz" model.flags
                         )
+        , describe "start a navigation Program without using startWithLocation"
+            [ test "has a default url" <|
+                \() ->
+                    sampleProgram
+                        |> TestContext.start
+                        |> expectHref "https://elm.testable/"
+            , test "has a default url and flags" <|
+                \() ->
+                    sampleProgramWithFlags
+                        |> TestContext.startWithFlags "barbaz"
+                        |> Expect.all
+                            [ expectHref "https://elm.testable/"
+                            , expectModel
+                                (\model ->
+                                    Expect.equal "barbaz" model.flags
+                                )
+                            ]
+            ]
         ]
 
 

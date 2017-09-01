@@ -1,8 +1,19 @@
 module Testable.NavigationTests exposing (..)
 
 import Expect
+import Navigation
 import Test exposing (..)
 import Testable.Navigation exposing (..)
+
+
+initialLocation : Navigation.Location
+initialLocation =
+    getLocation "https://elm.testable/"
+
+
+initWithLocation : History
+initWithLocation =
+    init (Just "https://elm.testable/")
 
 
 all : Test
@@ -94,7 +105,7 @@ all =
             [ describe "new url"
                 [ test "adds a new url to the history" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (New "/foo")
                             |> Expect.equal
                                 ( ( 1
@@ -106,7 +117,7 @@ all =
                                 )
                 , test "erases forward history" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (New "/foo")
                             |> thenUpdate (New "/bar")
                             |> thenUpdate (Jump -2)
@@ -123,7 +134,7 @@ all =
             , describe "modify url"
                 [ test "modify current location in the history" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (Modify "/foo")
                             |> Expect.equal
                                 ( ( 0
@@ -134,7 +145,7 @@ all =
                                 )
                 , test "does not erase forward history" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (New "/foo")
                             |> thenUpdate (New "/bar")
                             |> thenUpdate (Jump -1)
@@ -150,7 +161,7 @@ all =
                                 )
                 , test "does not modify to the same url, preventing infinite loop" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (New "/foo")
                             |> thenUpdate (Modify "/foo")
                             |> Expect.equal
@@ -165,7 +176,7 @@ all =
             , describe "jump in history" <|
                 [ test "goes back, asking to trigger location msg" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (New "/foo")
                             |> thenUpdate (New "/bar")
                             |> thenUpdate (Jump -1)
@@ -180,7 +191,7 @@ all =
                                 )
                 , test "goes forward, asking to trigger location msg" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (New "/foo")
                             |> thenUpdate (New "/bar")
                             |> thenUpdate (Jump -2)
@@ -196,7 +207,7 @@ all =
                                 )
                 , test "has a limit to jumping back" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (New "/foo")
                             |> thenUpdate (Jump -100)
                             |> Expect.equal
@@ -209,7 +220,7 @@ all =
                                 )
                 , test "has a limit to jumping forward" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (New "/foo")
                             |> thenUpdate (Jump -1)
                             |> thenUpdate (Jump 100)
@@ -225,7 +236,7 @@ all =
             , describe "visit url"
                 [ test "visit adds a new url to the history, asking to trigger location msg" <|
                     \() ->
-                        init
+                        initWithLocation
                             |> update (Visit "/foo")
                             |> Expect.equal
                                 ( ( 1

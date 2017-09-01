@@ -84,14 +84,16 @@ update msg ( index, history ) =
             ( modifiedHistory, TriggerLocationMsg (currentLocation modifiedHistory) )
 
 
-init : History
-init =
-    ( 0, [ initialLocation ] )
+init : Maybe String -> History
+init url =
+    ( 0, [ initialLocation url ] )
 
 
-initialLocation : Location
-initialLocation =
-    getLocation "https://elm.testable/"
+initialLocation : Maybe String -> Location
+initialLocation url =
+    url
+        |> Maybe.withDefault "https://elm.testable/"
+        |> getLocation
 
 
 getLocation : String -> Navigation.Location
