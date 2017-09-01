@@ -15,7 +15,7 @@ all =
         [ test "renders navigation history" <|
             \() ->
                 NavigationSample.program
-                    |> start
+                    |> startWithLocation "http://example.com/"
                     |> simulate (findAll [ tag "button" ] >> index 2) Event.click
                     |> simulate (findAll [ tag "button" ] >> index 4) Event.click
                     |> expectView
@@ -26,7 +26,7 @@ all =
         , test "works for user initiated navigation" <|
             \() ->
                 NavigationSample.program
-                    |> start
+                    |> startWithLocation "http://example.com/"
                     |> navigate "/blog/?search=dogs"
                     |> expectView
                     |> has [ text "search for dogs" ]
