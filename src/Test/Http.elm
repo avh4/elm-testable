@@ -1,12 +1,27 @@
 module Test.Http
     exposing
-        ( badStatus
+        ( RequestMatcher
+        , badStatus
         , expectGet
         , expectRequest
         , rejectGet
         , resolveGet
         , resolveRequest
         )
+
+{-| Test.Http has helpers for you to mock and assert http responses
+
+
+# Responses
+
+@docs badStatus, resolveGet, rejectGet, resolveRequest
+
+
+# Assertions
+
+@docs RequestMatcher, expectGet, expectRequest
+
+-}
 
 import Dict exposing (Dict)
 import Expect exposing (Expectation)
@@ -15,6 +30,8 @@ import TestContextInternal as Internal exposing (TestContext(..))
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 
 
+{-| A type used for asserting requests
+-}
 type alias RequestMatcher =
     { method : String
     , url : String
@@ -31,6 +48,8 @@ type alias Response =
     }
 
 
+{-| Asserts that a get was called to the right url
+-}
 expectGet : String -> TestContext model msg -> Expectation
 expectGet url =
     expectRequest
@@ -41,6 +60,8 @@ expectGet url =
         }
 
 
+{-| Asserts that a request was made with the right method, url, headers and body
+-}
 expectRequest : RequestMatcher -> TestContext model msg -> Expectation
 expectRequest { method, url } =
     Internal.expect "Test.Http.expectRequest" identity <|
@@ -66,6 +87,8 @@ expectRequest { method, url } =
                     |> Expect.fail
 
 
+{-| Simulate a GET HTTP response
+-}
 resolveGet : String -> String -> TestContext model msg -> TestContext model msg
 resolveGet url body =
     resolveRequest
@@ -77,6 +100,8 @@ resolveGet url body =
         (Ok body)
 
 
+{-| A convenient way to create bad status responses
+-}
 badStatus : Int -> Http.Error
 badStatus statusCode =
     Http.BadStatus
@@ -92,6 +117,8 @@ badStatus statusCode =
         }
 
 
+{-| Simulate a GET HTTP request that had an error
+-}
 rejectGet : String -> Http.Error -> TestContext model msg -> TestContext model msg
 rejectGet url error =
     resolveRequest
@@ -103,6 +130,8 @@ rejectGet url error =
         (Err error)
 
 
+{-| Simulate any kind of HTTP responses that matches the given `RequestMatcher`
+-}
 resolveRequest : RequestMatcher -> Result Http.Error String -> TestContext model msg -> TestContext model msg
 resolveRequest { method, url } response =
     Internal.withContext <|
@@ -124,6 +153,8 @@ resolveRequest { method, url } response =
                         ("No HTTP request was made matching: " ++ method ++ " " ++ url)
 
 
+{-| Standard http status messages
+-}
 statusMessages : Dict Int String
 statusMessages =
     Dict.fromList

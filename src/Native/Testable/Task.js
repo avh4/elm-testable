@@ -1,10 +1,15 @@
-
 function setItUp (realImpl, elmTestableTask) {
   var realImpl_ = realImpl
   if (elmTestableTask.arity === 2) {
     return F2(function (a, b) {
       var real = realImpl_(a)(b)
       real.elmTestable = elmTestableTask(a)(b)
+      return real
+    })
+  } else if (elmTestableTask.arity === 3) {
+    return F3(function (a, b, c) {
+      var real = realImpl_(a)(b)(c)
+      real.elmTestable = elmTestableTask(a)(b)(c)
       return real
     })
   } else if (typeof realImpl !== 'function') {
@@ -172,6 +177,10 @@ _elm_lang$http$Native_Http.toTask = setItUp(
     return { ctor: 'Http_NativeHttp_toTask', _0: options, _1: callback }
   })
 )
+
+if (typeof _elm_lang$websocket$Native_WebSocket === 'undefined') {
+  throw new Error('Native.Testable.Task was loaded before _elm_lang$websocket$Native_WebSocket: this shouldn\'t happen because Testable.Task imports WebSocket.  Please report this at https://github.com/avh4/elm-testable/issues')
+}
 
 _elm_lang$websocket$Native_WebSocket.open = setItUp(
   _elm_lang$websocket$Native_WebSocket.open,

@@ -4,7 +4,7 @@ import Expect
 import Html
 import Html.Events exposing (onClick)
 import Test exposing (..)
-import Test.Html.Events as Events
+import Test.Html.Event as Event
 import Test.Html.Query as Query
 import Test.Html.Selector as Selector
 import TestContext exposing (TestContext)
@@ -57,18 +57,18 @@ all =
         , test "triggers events" <|
             \() ->
                 htmlProgram
-                    |> TestContext.simulate (Query.find [ Selector.tag "button" ]) Events.Click
+                    |> TestContext.simulate (Query.find [ Selector.tag "button" ]) Event.click
                     |> TestContext.expectView
                     |> Query.has [ Selector.tag "p" ]
         , test "fails when triggering events on a not found element" <|
             \() ->
                 htmlProgram
-                    |> TestContext.simulate (Query.find [ Selector.tag "foo" ]) Events.Click
+                    |> TestContext.simulate (Query.find [ Selector.tag "foo" ]) Event.click
                     |> expectError "expects to find 1 element, but it found 0 instead."
         , test "fails when triggersingevents on an element that does not handle that event" <|
             \() ->
                 htmlProgram
-                    |> TestContext.simulate (Query.find [ Selector.tag "button" ]) Events.DoubleClick
+                    |> TestContext.simulate (Query.find [ Selector.tag "button" ]) Event.doubleClick
                     |> Expect.all
                         [ expectError "The event"
                         , expectError "does not exist on the found node."

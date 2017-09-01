@@ -3,6 +3,7 @@ module TestContextInternal
         ( MockTask
         , TestContext(..)
         , advanceTime
+        , back
         , done
           -- private to elm-testable
         , drainWorkQueue
@@ -12,13 +13,17 @@ module TestContextInternal
         , expectMockTask
         , expectModel
         , expectView
+        , forward
         , mockTask
+        , navigate
         , processTask
         , resolveMockTask
         , send
         , simulate
         , start
         , startWithFlags
+        , startWithFlagsAndLocation
+        , startWithLocation
         , toTask
         , update
         , withContext
@@ -30,15 +35,17 @@ import Expect exposing (Expectation)
 import Fifo exposing (Fifo)
 import Html exposing (Html)
 import Http
-import Json.Encode
+import Json.Encode exposing (Value)
 import Mapper exposing (Mapper)
 import Native.TestContext
+import Navigation exposing (Location)
 import PairingHeap exposing (PairingHeap)
 import Set exposing (Set)
-import Test.Html.Events as Events exposing (Event)
+import Test.Html.Event as Event exposing (Event)
 import Test.Html.Query
 import Test.Runner
 import Testable.EffectManager as EffectManager exposing (EffectManager)
+import Testable.Navigation exposing (currentLocation, getLocation, initialLocation, setLocation)
 import Testable.Task exposing (ProcessId(..), Task(..), fromPlatformTask)
 import Time exposing (Time)
 import WebSocket.LowLevel
@@ -56,6 +63,8 @@ type alias TestableProgram model msg =
     , update : msg -> model -> ( model, Cmd msg )
     , subscriptions : model -> Sub msg
     , view : model -> Html msg
+    , locationToMessage : Maybe (Location -> msg)
+    , navigationInit : Maybe (Location -> ( model, Cmd msg ))
     }
 
 
@@ -107,6 +116,9 @@ type alias ActiveContext model msg =
     -- reporting info
     , taskTranscript : List ( Int, Task Never msg )
     , msgTranscript : List ( Int, msg )
+
+    -- navigation
+    , history : Testable.Navigation.History
     }
 
 
@@ -266,16 +278,26 @@ orCrash message maybe =
 
 startWithFlags : flags -> Program flags model msg -> TestContext model msg
 startWithFlags flags realProgram =
-    start_ (Just flags) realProgram
+    start_ (Just flags) Nothing realProgram
 
 
 start : Program Never model msg -> TestContext model msg
 start realProgram =
-    start_ Nothing realProgram
+    start_ Nothing Nothing realProgram
 
 
-start_ : Maybe flags -> Program flags model msg -> TestContext model msg
-start_ flags realProgram =
+startWithLocation : String -> Program Never model msg -> TestContext model msg
+startWithLocation url realProgram =
+    start_ Nothing (Just url) realProgram
+
+
+startWithFlagsAndLocation : flags -> String -> Program flags model msg -> TestContext model msg
+startWithFlagsAndLocation flags url realProgram =
+    start_ (Just flags) (Just url) realProgram
+
+
+start_ : Maybe flags -> Maybe String -> Program flags model msg -> TestContext model msg
+start_ flags url realProgram =
     let
         _ =
             debug "start" flags
@@ -285,7 +307,10 @@ start_ flags realProgram =
                 |> extractProgram "<TestContext fake module>" flags
 
         model =
-            Tuple.first program.init
+            program.navigationInit
+                |> Maybe.map (\init -> init <| initialLocation url)
+                |> Maybe.withDefault program.init
+                |> Tuple.first
 
         initEffectManager home em =
             em.init
@@ -321,6 +346,9 @@ start_ flags realProgram =
         -- reporting
         , taskTranscript = []
         , msgTranscript = []
+
+        -- navigation
+        , history = Testable.Navigation.init url
         }
         |> initEffectManagers
         |> dispatchEffects
@@ -576,6 +604,31 @@ processTask pid task =
                                     |> DefaultDict.update url (Fifo.insert string)
                         }
                         |> processTask_preventTailCallOptimization pid (next Nothing)
+
+                Navigation_NativeNavigation msg next ->
+                    let
+                        ( history, nextLocation ) =
+                            Testable.Navigation.update msg context.history
+
+                        updatedTestContext location =
+                            TestContext { context | history = history }
+                                |> processTask_preventTailCallOptimization pid (next location)
+                    in
+                    case nextLocation of
+                        Testable.Navigation.ReturnLocation location ->
+                            updatedTestContext location
+
+                        Testable.Navigation.TriggerLocationMsg location ->
+                            case context.program.locationToMessage of
+                                Just locationToMessage ->
+                                    updatedTestContext location
+                                        |> update (locationToMessage location)
+
+                                Nothing ->
+                                    updatedTestContext location
+
+                        Testable.Navigation.NoOp ->
+                            TestContext { context | history = history }
 
 
 update : msg -> TestContext model msg -> TestContext model msg
@@ -905,13 +958,13 @@ expectView context =
             Html.text (report "expectView" context) |> Test.Html.Query.fromHtml
 
 
-simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> Event -> TestContext model msg -> TestContext model msg
+simulate : (Test.Html.Query.Single msg -> Test.Html.Query.Single msg) -> ( String, Value ) -> TestContext model msg -> TestContext model msg
 simulate eventTrigger event context =
     let
         eventResult =
             eventTrigger (expectView context)
-                |> Events.simulate event
-                |> Events.eventResult
+                |> Event.simulate event
+                |> Event.toResult
     in
     case eventResult of
         Ok msg ->
@@ -924,3 +977,46 @@ simulate eventTrigger event context =
 done : TestContext model msg -> Expectation
 done =
     expect "TestContext.done" (always ()) (always Expect.pass)
+
+
+navigate : String -> TestContext model msg -> TestContext model msg
+navigate url =
+    updateHistory (Testable.Navigation.New url)
+
+
+back : TestContext model msg -> TestContext model msg
+back =
+    updateHistory (Testable.Navigation.Jump -1)
+
+
+forward : TestContext model msg -> TestContext model msg
+forward =
+    updateHistory (Testable.Navigation.Jump 1)
+
+
+updateHistory : Testable.Navigation.Msg -> TestContext model msg -> TestContext model msg
+updateHistory msg =
+    withContext <|
+        \context ->
+            case context.program.locationToMessage of
+                Just locationToMessage ->
+                    let
+                        ( history, nextLocation ) =
+                            Testable.Navigation.update msg context.history
+
+                        location =
+                            case nextLocation of
+                                Testable.Navigation.ReturnLocation location ->
+                                    location
+
+                                Testable.Navigation.TriggerLocationMsg location ->
+                                    location
+
+                                Testable.Navigation.NoOp ->
+                                    currentLocation history
+                    in
+                    TestContext { context | history = history }
+                        |> update (locationToMessage location)
+
+                Nothing ->
+                    TestContext context
