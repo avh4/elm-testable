@@ -1,8 +1,8 @@
 module WebsocketChatTests exposing (all)
 
 import Test exposing (..)
-import Test.WebSocket
 import TestContext exposing (..)
+import TestContext.WebSocket
 import WebsocketChat exposing (Msg(..))
 
 
@@ -15,8 +15,8 @@ all =
                     |> start
                     |> update (TypeMessage "hi!")
                     |> update SendMessage
-                    |> Test.WebSocket.acceptConnection "ws://localhost:3000/chat"
-                    |> Test.WebSocket.acceptMessage "ws://localhost:3000/chat"
+                    |> TestContext.WebSocket.acceptConnection "ws://localhost:3000/chat"
+                    |> TestContext.WebSocket.acceptMessage "ws://localhost:3000/chat"
                         "hi!"
                     |> done
         ]

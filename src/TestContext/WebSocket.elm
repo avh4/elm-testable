@@ -1,4 +1,4 @@
-module Test.WebSocket exposing (acceptConnection, acceptMessage)
+module TestContext.WebSocket exposing (acceptConnection, acceptMessage)
 
 import DefaultDict
 import Dict
