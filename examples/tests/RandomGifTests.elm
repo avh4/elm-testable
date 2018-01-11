@@ -5,8 +5,8 @@ import RandomGif
 import Test exposing (..)
 import Test.Html.Query as Query
 import Test.Html.Selector exposing (..)
-import Test.Http
 import TestContext exposing (..)
+import TestContext.Http
 
 
 program : TestContext RandomGif.Model RandomGif.Msg
@@ -51,27 +51,27 @@ all =
         , test "makes initial API request" <|
             \() ->
                 program
-                    |> Test.Http.expectGet "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats"
+                    |> TestContext.Http.expectGet "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats"
         , test "shows the new image on API success" <|
             \() ->
                 program
-                    |> Test.Http.resolveGet
+                    |> TestContext.Http.resolveGet
                         "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats"
                         """{"data":{"image_url":"http://giphy.com/cat2000.gif"}}"""
                     |> assertShownImage "http://giphy.com/cat2000.gif"
         , test "shows the loading image on API failure" <|
             \() ->
                 program
-                    |> Test.Http.rejectGet
+                    |> TestContext.Http.rejectGet
                         "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats"
-                        (Test.Http.badStatus 403)
+                        (TestContext.Http.badStatus 403)
                     |> assertShownImage "/favicon.ico"
         , test "pressing the button makes a new API request" <|
             \() ->
                 program
-                    |> Test.Http.resolveGet
+                    |> TestContext.Http.resolveGet
                         "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats"
                         """{"data":{"image_url":"http://giphy.com/cat2000.gif"}}"""
                     |> update RandomGif.RequestMore
-                    |> Test.Http.expectGet "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats"
+                    |> TestContext.Http.expectGet "https://api.giphy.com/v1/gifs/random?api_key=__API_KEY__&tag=cats"
         ]

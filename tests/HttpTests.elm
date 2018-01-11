@@ -5,9 +5,9 @@ import Html
 import Http
 import Json.Decode as Decode
 import Test exposing (..)
-import Test.Http
 import Test.Util exposing (..)
 import TestContext exposing (TestContext)
+import TestContext.Http
 
 
 type LoadingMsg
@@ -87,23 +87,23 @@ all =
         [ test "verifying an initial HTTP request" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.expectGet "https://example.com/books"
+                    |> TestContext.Http.expectGet "https://example.com/books"
         , test "verifying an unmade request gives an error" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.expectGet "https://example.com/wrong_url"
+                    |> TestContext.Http.expectGet "https://example.com/wrong_url"
                     |> expectFailure
                         [ "pending HTTP requests:"
                         , "    - GET https://example.com/books"
                         , "╷"
-                        , "│ to include (Test.Http.expectRequest)"
+                        , "│ to include (TestContext.Http.expectRequest)"
                         , "╵"
                         , "GET https://example.com/wrong_url"
                         ]
         , test "stubbing an HTTP response" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.resolveGet
+                    |> TestContext.Http.resolveGet
                         "https://example.com/books"
                         "BOOKS1"
                     |> TestContext.expectModel
@@ -111,29 +111,29 @@ all =
         , test "stubbing an HTTP error" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.rejectGet
+                    |> TestContext.Http.rejectGet
                         "https://example.com/books"
-                        (Test.Http.badStatus 404)
+                        (TestContext.Http.badStatus 404)
                     |> TestContext.expectModel
                         (Expect.equal "INIT;BadStatus 404")
         , test "requests should be removed after they are resolve" <|
             \() ->
                 loadingProgram
-                    |> Test.Http.resolveGet
+                    |> TestContext.Http.resolveGet
                         "https://example.com/books"
                         "BOOKS1"
-                    |> Test.Http.expectGet "https://example.com/books"
+                    |> TestContext.Http.expectGet "https://example.com/books"
                     |> expectFailure
                         [ "pending HTTP requests (none were made)"
                         , "╷"
-                        , "│ to include (Test.Http.expectRequest)"
+                        , "│ to include (TestContext.Http.expectRequest)"
                         , "╵"
                         , "GET https://example.com/books"
                         ]
         , test "decodes JSON" <|
             \() ->
                 jsonProgram
-                    |> Test.Http.resolveGet
+                    |> TestContext.Http.resolveGet
                         "https://example.com/books"
                         """["a","b","c"]"""
                     |> TestContext.expectModel
@@ -141,7 +141,7 @@ all =
         , test "fails with BadPayload when the JSON fails to parse" <|
             \() ->
                 jsonProgram
-                    |> Test.Http.resolveGet
+                    |> TestContext.Http.resolveGet
                         "https://example.com/books"
                         """@#not JSON"""
                     |> TestContext.expectModel

@@ -1,4 +1,4 @@
-module Test.Http
+module TestContext.Http
     exposing
         ( badStatus
         , expectGet
@@ -43,7 +43,7 @@ expectGet url =
 
 expectRequest : RequestMatcher -> TestContext model msg -> Expectation
 expectRequest { method, url } =
-    Internal.expect "Test.Http.expectRequest" identity <|
+    Internal.expect "TestContext.Http.expectRequest" identity <|
         \context ->
             if Dict.member ( method, url ) context.pendingHttpRequests then
                 Expect.pass
@@ -58,7 +58,7 @@ expectRequest { method, url } =
                         |> String.join "\n"
                         |> (++) "pending HTTP requests:\n"
                 , "╷"
-                , "│ to include (Test.Http.expectRequest)"
+                , "│ to include (TestContext.Http.expectRequest)"
                 , "╵"
                 , method ++ " " ++ url
                 ]
