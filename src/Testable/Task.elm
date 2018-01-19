@@ -31,14 +31,27 @@ import
     -- it at runtime:
     Process
 import Task as PlatformTask
+import Test.Http
 import Testable.EffectManager as EffectManager
 import Time exposing (Time)
 import WebSocket.LowLevel
 
 
 fromPlatformTask : PlatformTask.Task x a -> Task x a
-fromPlatformTask =
-    Native.Testable.Task.fromPlatformTask
+fromPlatformTask task =
+    List.filterMap (\f -> f task)
+        [ Test.Http.fromTask
+            >> Maybe.map
+                (\info ->
+                    Http_NativeHttp_toTask
+                        { method = info.method
+                        , url = info.url
+                        }
+                        (info.callback >> fromPlatformTask)
+                )
+        ]
+        |> List.head
+        |> Maybe.withDefault (Native.Testable.Task.fromPlatformTask task)
 
 
 type ProcessId

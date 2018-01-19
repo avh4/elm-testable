@@ -41,9 +41,16 @@ all =
             , test "works with nested Task.andThen" <|
                 \() ->
                     Task.succeed 1
-                        |> Task.andThen (\x -> Task.succeed (x + 1))
-                        |> Task.andThen (\x -> Task.fail (x + 1))
+                        |> Task.andThen (\x -> Task.succeed (x + 10))
+                        |> Task.andThen (\x -> Task.succeed (x + 100))
                         |> Test.Task.resolvedTask
-                        |> Expect.equal (Just (Err 3))
+                        |> Expect.equal (Just (Ok 111))
+            , test "works with nested Task.onError" <|
+                \() ->
+                    Task.fail 1
+                        |> Task.onError (\x -> Task.fail (x + 10))
+                        |> Task.onError (\x -> Task.fail (x + 100))
+                        |> Test.Task.resolvedTask
+                        |> Expect.equal (Just (Err 111))
             ]
         ]

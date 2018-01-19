@@ -6,7 +6,8 @@
     "source-directories": [
         ".",
         "..",
-        "../../src"
+        "../../src",
+        "../../move-to-elm-test/src"
     ],
     "exposed-modules": [],
     "native-modules": true,

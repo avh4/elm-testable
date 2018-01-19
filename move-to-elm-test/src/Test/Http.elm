@@ -2,15 +2,16 @@ module Test.Http exposing (fromTask)
 
 import Http
 import Native.Test.Http
-import Task
+import Task exposing (Task)
 
 
-type alias Request =
+type alias Request x a =
     { url : String
     , method : String
+    , callback : Result Http.Error String -> Task x a
     }
 
 
-fromTask : Task.Task x a -> Maybe Request
+fromTask : Task x a -> Maybe (Request x a)
 fromTask =
     Native.Test.Http.fromTask

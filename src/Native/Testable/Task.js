@@ -131,7 +131,6 @@ _elm_lang$http$Native_Http.toTask = setItUp(
     // TODO: handle maybeProgress
     // TODO: handle request.{headers, body, withCredentials}
     // TODO: handle request.timeout ?
-    var options = { method: request.method, url: request.url }
     var callback = function (response) {
       switch (response.ctor) {
         case 'Ok':
@@ -146,13 +145,10 @@ _elm_lang$http$Native_Http.toTask = setItUp(
               var result = request.expect.responseToResult(fullResponse)
               switch (result.ctor) {
                 case 'Ok':
-                  return { ctor: 'Success', _0: result._0 }
+                  return _elm_lang$core$Task$succeed(result._0)
 
                 case 'Err':
-                  return {
-                    ctor: 'Failure',
-                    _0: { ctor: 'BadPayload', _0: result._0, _1: fullResponse }
-                  }
+                  return _elm_lang$core$Task$fail({ ctor: 'BadPayload', _0: result._0, _1: fullResponse })
 
                 default:
                   throw new Error('Unknown Result type: ' + result.ctor)
@@ -163,13 +159,18 @@ _elm_lang$http$Native_Http.toTask = setItUp(
           }
 
         case 'Err':
-          return { ctor: 'Failure', _0: response._0 }
+          return _elm_lang$core$Task$fail(response._0)
 
         default:
           throw new Error('Unknown Result type: ' + response.ctor)
       }
     }
-    return { ctor: 'Http_NativeHttp_toTask', _0: options, _1: callback }
+    return {
+      ctor: 'Http_NativeHttp_toTask',
+      method: request.method,
+      url: request.url,
+      callback: callback,
+    }
   })
 )
 
