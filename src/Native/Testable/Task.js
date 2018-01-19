@@ -121,59 +121,6 @@ _elm_lang$core$Time$setInterval = setItUp( // eslint-disable-line no-global-assi
   })
 )
 
-if (typeof _elm_lang$http$Native_Http.toTask === 'undefined') {
-  throw new Error('Native.TestContext was loaded before _elm_lang$http$Native_Http: this shouldn\'t happen because Testable.Task imports Http.  Please report this at https://github.com/avh4/elm-testable/issues')
-}
-
-_elm_lang$http$Native_Http.toTask = setItUp(
-  _elm_lang$http$Native_Http.toTask,
-  F2(function (request, maybeProgress) {
-    // TODO: handle maybeProgress
-    // TODO: handle request.{headers, body, withCredentials}
-    // TODO: handle request.timeout ?
-    var callback = function (response) {
-      switch (response.ctor) {
-        case 'Ok':
-          var fullResponse = {
-            url: request.url,
-            status: { code: 200, message: 'OK' },
-            headers: _elm_lang$core$Dict$empty,
-            body: response._0
-          }
-          switch (request.expect.responseType) {
-            case 'text':
-              var result = request.expect.responseToResult(fullResponse)
-              switch (result.ctor) {
-                case 'Ok':
-                  return _elm_lang$core$Task$succeed(result._0)
-
-                case 'Err':
-                  return _elm_lang$core$Task$fail({ ctor: 'BadPayload', _0: result._0, _1: fullResponse })
-
-                default:
-                  throw new Error('Unknown Result type: ' + result.ctor)
-              }
-
-            default:
-              throw new Error('Unknown Http.Expect type: ' + request.expect.responseType)
-          }
-
-        case 'Err':
-          return _elm_lang$core$Task$fail(response._0)
-
-        default:
-          throw new Error('Unknown Result type: ' + response.ctor)
-      }
-    }
-    return {
-      ctor: 'Http_NativeHttp_toTask',
-      method: request.method,
-      url: request.url,
-      callback: callback,
-    }
-  })
-)
-
 _elm_lang$websocket$Native_WebSocket.open = setItUp(
   _elm_lang$websocket$Native_WebSocket.open,
   F2(function (url, settings) {
