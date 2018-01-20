@@ -41,6 +41,6 @@
     "elm-test": "^0.18.12"
   },
   "scripts": {
-    "test": "elm-make --yes && elm-test && (cd examples && elm-make --yes RandomGif.elm && elm-test)"
+    "test": "(cd move-to-elm-test && elm-test) && elm-make --yes && elm-test && (cd examples && elm-make --yes RandomGif.elm && elm-test)"
   }
 }

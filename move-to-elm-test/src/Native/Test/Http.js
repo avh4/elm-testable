@@ -99,7 +99,7 @@ var _user$project$Native_Test_Http = (function () { // eslint-disable-line no-un
         return Nothing
 
       case '_Task_nativeBinding':
-        if (task.elmTestable.ctor == "Http_NativeHttp_toTask") {
+        if (task.elmTestable && task.elmTestable.ctor == "Http_NativeHttp_toTask") {
           return Just({
             method: task.elmTestable.method,
             url: task.elmTestable.url,
