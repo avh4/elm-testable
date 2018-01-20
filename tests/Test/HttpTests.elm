@@ -129,8 +129,6 @@ all =
                         |> Maybe.map Test.Task.resolvedTask
                         |> Expect.equal (Just <| Just (Ok "321A"))
 
-            -- TODO: mapping to a different type when simulating repsonses
-            -- TODO: onError to a different type?
             -- TODO: what to do with Process.spawn? :frog:
             ]
         ]
