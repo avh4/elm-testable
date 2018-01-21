@@ -1,6 +1,6 @@
 module Test.HttpTests exposing (..)
 
-import Expect
+import Expect exposing (Expectation)
 import Http
 import Random
 import Task
@@ -17,14 +17,47 @@ type Msg a
 all : Test
 all =
     describe "Test.Http"
-        [ describe "fromTask"
-            [ test "we can get the URL from an Http Task" <|
+        [ describe "Test.Http.Result" <|
+            let
+                resultTest name check =
+                    describe name
+                        [ test "(fromTask)" <|
+                            \() ->
+                                check
+                                    (Http.toTask
+                                        >> Test.Http.fromTask
+                                        >> orCrash
+                                    )
+                        , test "(fromCmd)" <|
+                            \() ->
+                                check
+                                    (Http.send resultToTask
+                                        >> Test.Http.fromCmd
+                                        >> List.head
+                                        >> orCrash
+                                    )
+                        ]
+            in
+            [ resultTest ".url" <|
+                \toRequest ->
+                    Http.getString "https://example.com/kumquats"
+                        |> toRequest
+                        |> .url
+                        |> Expect.equal "https://example.com/kumquats"
+            , resultTest ".method" <|
+                \toRequest ->
+                    Http.getString "https://example.com/kumquats"
+                        |> toRequest
+                        |> .method
+                        |> Expect.equal "GET"
+            ]
+        , describe "fromTask"
+            [ test "we can get the request from an Http Task" <|
                 \() ->
                     Http.getString "https://example.com/kumquats"
                         |> Http.toTask
                         |> Test.Http.fromTask
-                        |> Maybe.map .url
-                        |> Expect.equal (Just "https://example.com/kumquats")
+                        |> expectIsJust
             , test "for non-Http tasks (without elmTestable field), returns Nothing" <|
                 \() ->
                     Task.succeed ()
@@ -41,31 +74,14 @@ all =
                         |> Http.toTask
                         |> Task.map toString
                         |> Test.Http.fromTask
-                        |> Maybe.map .url
-                        |> Expect.equal (Just "https://example.com/kumquats")
-            , test "works with Task.map (to a different type)" <|
-                \() ->
-                    Http.getString "https://example.com/kumquats"
-                        |> Http.toTask
-                        |> Task.map List.singleton
-                        |> Test.Http.fromTask
-                        |> Maybe.map .url
-                        |> Expect.equal (Just "https://example.com/kumquats")
+                        |> expectIsJust
             , test "works with Task.onError" <|
                 \() ->
                     Http.getString "https://example.com/kumquats"
                         |> Http.toTask
                         |> Task.onError Task.fail
                         |> Test.Http.fromTask
-                        |> Maybe.map .url
-                        |> Expect.equal (Just "https://example.com/kumquats")
-            , test "gets the request method" <|
-                \() ->
-                    Http.getString "https://example.com/kumquats"
-                        |> Http.toTask
-                        |> Test.Http.fromTask
-                        |> Maybe.map .method
-                        |> Expect.equal (Just "GET")
+                        |> expectIsJust
             , test "simulate a successful response" <|
                 \() ->
                     Http.getString "https://example.com/kumquats"
@@ -137,13 +153,13 @@ all =
             -- TODO: what to do with Process.spawn? :frog:
             ]
         , describe "send"
-            [ test "we can get the URL from an Http Cmd" <|
+            [ test "we can get the request from an Http Cmd" <|
                 \() ->
                     Http.getString "https://example.com/kumquats"
                         |> Http.send Msg
                         |> Test.Http.fromCmd
-                        |> List.map .url
-                        |> Expect.equal [ "https://example.com/kumquats" ]
+                        |> List.head
+                        |> expectIsJust
             , test "for Cmd.none, returns Nothing" <|
                 \() ->
                     Cmd.none
@@ -186,13 +202,6 @@ all =
                         |> Test.Http.fromCmd
                         |> List.map .url
                         |> Expect.equal [ "https://example.com/kumquats" ]
-            , test "gets the request method" <|
-                \() ->
-                    Http.getString "https://example.com/kumquats"
-                        |> Http.send Msg
-                        |> Test.Http.fromCmd
-                        |> List.map .method
-                        |> Expect.equal [ "GET" ]
             , test "simulate a successful response" <|
                 \() ->
                     Http.getString "https://example.com/kumquats"
@@ -219,3 +228,33 @@ all =
             -- TODO: what happens using Task.perform with a Task that is a chain of Http tasks?
             ]
         ]
+
+
+resultToTask : Result x a -> Platform.Task x a
+resultToTask result =
+    case result of
+        Ok a ->
+            Task.succeed a
+
+        Err x ->
+            Task.fail x
+
+
+orCrash : Maybe a -> a
+orCrash maybe =
+    case maybe of
+        Just a ->
+            a
+
+        Nothing ->
+            Debug.crash "Expected Just a, but got Nothing"
+
+
+expectIsJust : Maybe a -> Expectation
+expectIsJust maybe =
+    case maybe of
+        Just _ ->
+            Expect.pass
+
+        Nothing ->
+            Expect.fail "Expected Just a, but got Nothing"
