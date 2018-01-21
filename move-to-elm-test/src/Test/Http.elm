@@ -1,4 +1,4 @@
-module Test.Http exposing (fromCmd, fromTask)
+module Test.Http exposing (fromCmd, fromTask, map)
 
 import Http
 import Native.Test.Http
@@ -10,6 +10,11 @@ type alias Request outcome =
     , method : String
     , callback : Result Http.Error String -> outcome
     }
+
+
+map : (a -> b) -> Request a -> Request b
+map f request =
+    { request | callback = request.callback >> f }
 
 
 {-| Gives information about whether a Task would initiate an Http request.

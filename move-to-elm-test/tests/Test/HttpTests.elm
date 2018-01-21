@@ -2,6 +2,7 @@ module Test.HttpTests exposing (..)
 
 import Expect exposing (Expectation)
 import Http
+import Json.Decode
 import Random
 import Task
 import Test exposing (..)
@@ -12,6 +13,12 @@ import Time
 
 type Msg a
     = Msg a
+
+
+decoderA =
+    Json.Decode.map2 (,)
+        (Json.Decode.field "a" Json.Decode.int)
+        (Json.Decode.field "b" Json.Decode.string)
 
 
 all : Test
@@ -27,11 +34,12 @@ all =
                                     (Http.toTask
                                         >> Test.Http.fromTask
                                         >> orCrash
+                                        >> Test.Http.map (Test.Task.resolvedTask >> orCrash)
                                     )
                         , test "(fromCmd)" <|
                             \() ->
                                 check
-                                    (Http.send resultToTask
+                                    (Http.send identity
                                         >> Test.Http.fromCmd
                                         >> List.head
                                         >> orCrash
@@ -50,6 +58,13 @@ all =
                         |> toRequest
                         |> .method
                         |> Expect.equal "GET"
+            , resultTest "decoding JSON body" <|
+                \toRequest ->
+                    Http.get "https://example.com/kumquats" decoderA
+                        |> toRequest
+                        |> .callback
+                        |> (|>) (Ok """{"a":1,"b":"x"}""")
+                        |> Expect.equal (Ok ( 1, "x" ))
             ]
         , describe "fromTask"
             [ test "we can get the request from an Http Task" <|
@@ -228,16 +243,6 @@ all =
             -- TODO: what happens using Task.perform with a Task that is a chain of Http tasks?
             ]
         ]
-
-
-resultToTask : Result x a -> Platform.Task x a
-resultToTask result =
-    case result of
-        Ok a ->
-            Task.succeed a
-
-        Err x ->
-            Task.fail x
 
 
 orCrash : Maybe a -> a
