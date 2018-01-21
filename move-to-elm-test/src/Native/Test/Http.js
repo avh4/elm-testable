@@ -129,7 +129,7 @@ var _user$project$Native_Test_Http = (function () { // eslint-disable-line no-un
 
   // nextTaskToMsg : Task Never msg -> msg
   function nextTaskToMsg(nextTask) {
-    // `nextTask` *should* be built from a `Task.succeed` and be `Task Never msg`
+    // `nextTask` *should* be built from a `Task.succeed`
     var maybeResult = _user$project$Test_Task$resolvedTask(nextTask);
     switch (maybeResult.ctor) {
       case 'Just':
@@ -154,8 +154,8 @@ var _user$project$Native_Test_Http = (function () { // eslint-disable-line no-un
           case 'Task':
             switch (cmd.value.ctor) {
               case 'Perform':
+                // task : Task Never msg
                 var task = cmd.value._0;
-                // The task *should* be (Task Never msg), right??
                 return List.fromMaybe(fromTask(function(nextTask) {
                   return done(nextTaskToMsg(nextTask));
                 })(task));
