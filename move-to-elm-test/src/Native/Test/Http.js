@@ -77,6 +77,17 @@ var _user$project$Native_Test_Http = (function () { // eslint-disable-line no-un
   var Just = _elm_lang$core$Maybe$Just;
   var Nothing = _elm_lang$core$Maybe$Nothing;
   var identity = _elm_lang$core$Basics$identity;
+  var List = {
+    empty: { ctor: '[]' },
+    concatMap: _elm_lang$core$List$concatMap,
+    fromMaybe: function(maybe) {
+      switch (maybe.ctor) {
+        case 'Just': return List.singleton(maybe._0);
+        case 'Nothing': return List.empty;
+      }
+    },
+    singleton: _elm_lang$core$List$singleton,
+  };
 
   // done : Task x1 a1 -> Task x0 a0
   var fromTask = F2(function(done, task) {
@@ -116,7 +127,62 @@ var _user$project$Native_Test_Http = (function () { // eslint-disable-line no-un
     }
   });
 
+  // nextTaskToMsg : Task Never msg -> msg
+  function nextTaskToMsg(nextTask) {
+    // `nextTask` *should* be built from a `Task.succeed` and be `Task Never msg`
+    var maybeResult = _user$project$Test_Task$resolvedTask(nextTask);
+    switch (maybeResult.ctor) {
+      case 'Just':
+        var result = maybeResult._0;
+        switch (result.ctor) {
+          case 'Ok':
+            return result._0;
+
+          default:
+            throw new Error('An Http Cmd was built from a task (which *should* be `Task Never msg`) that resolved to an error.  How is this possible?  Please report this at https://github.com/avh4/elm-testable/issues')
+        }
+
+      default:
+        throw new Error('An Http Cmd was built from an unresolved task.  How is this possible?  Please report this at https://github.com/avh4/elm-testable/issues')
+    }
+  }
+
+  var fromCmd = F2(function(done, cmd) {
+    switch (cmd.type) {
+      case 'leaf':
+        switch (cmd.home) {
+          case 'Task':
+            switch (cmd.value.ctor) {
+              case 'Perform':
+                var task = cmd.value._0;
+                // The task *should* be (Task Never msg), right??
+                return List.fromMaybe(fromTask(function(nextTask) {
+                  return done(nextTaskToMsg(nextTask));
+                })(task));
+
+              default:
+                throw new Error('Unknown Task.MyCmd type: ' + cmd.value.ctor);
+            }
+
+          default:
+            return List.empty;
+        }
+
+      case 'node':
+        return List.concatMap(fromCmd(done))(cmd.branches);
+
+      case 'map':
+        return fromCmd(function(msg1) {
+          return done(cmd.tagger(msg1));
+        })(cmd.tree);
+
+      default:
+        throw new Error('Unknown Cmd type: ' + cmd.type);
+    }
+  });
+
   return {
     fromTask: fromTask(identity),
+    fromCmd: fromCmd(identity),
   }
 })()

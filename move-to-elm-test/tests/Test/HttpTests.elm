@@ -2,11 +2,16 @@ module Test.HttpTests exposing (..)
 
 import Expect
 import Http
+import Random
 import Task
 import Test exposing (..)
 import Test.Http
 import Test.Task
 import Time
+
+
+type Msg a
+    = Msg a
 
 
 all : Test
@@ -130,5 +135,87 @@ all =
                         |> Expect.equal (Just <| Just (Ok "321A"))
 
             -- TODO: what to do with Process.spawn? :frog:
+            ]
+        , describe "send"
+            [ test "we can get the URL from an Http Cmd" <|
+                \() ->
+                    Http.getString "https://example.com/kumquats"
+                        |> Http.send Msg
+                        |> Test.Http.fromCmd
+                        |> List.map .url
+                        |> Expect.equal [ "https://example.com/kumquats" ]
+            , test "for Cmd.none, returns Nothing" <|
+                \() ->
+                    Cmd.none
+                        |> Test.Http.fromCmd
+                        |> Expect.equal []
+            , test "for non-Http Cmds, returns Nothing" <|
+                \() ->
+                    Random.generate identity Random.bool
+                        |> Test.Http.fromCmd
+                        |> Expect.equal []
+            , test "works with Cmd.batch" <|
+                \() ->
+                    Cmd.batch
+                        [ Http.send Msg (Http.getString "https://example.com/kumquats")
+                        ]
+                        |> Test.Http.fromCmd
+                        |> List.map .url
+                        |> Expect.equal [ "https://example.com/kumquats" ]
+            , test "works with Cmd.batch (returns all pending requests)" <|
+                \() ->
+                    Cmd.batch
+                        [ Http.send Msg (Http.getString "https://example.com/kumquats")
+                        , Cmd.batch
+                            [ Http.send Msg (Http.getString "https://example.com/kumquats")
+                            , Http.send Msg (Http.getString "https://example.com/cucumbers")
+                            ]
+                        ]
+                        |> Test.Http.fromCmd
+                        |> List.map .url
+                        |> Expect.equal
+                            [ "https://example.com/kumquats"
+                            , "https://example.com/kumquats"
+                            , "https://example.com/cucumbers"
+                            ]
+            , test "works with Cmd.map" <|
+                \() ->
+                    Http.getString "https://example.com/kumquats"
+                        |> Http.send Msg
+                        |> Cmd.map List.singleton
+                        |> Test.Http.fromCmd
+                        |> List.map .url
+                        |> Expect.equal [ "https://example.com/kumquats" ]
+            , test "gets the request method" <|
+                \() ->
+                    Http.getString "https://example.com/kumquats"
+                        |> Http.send Msg
+                        |> Test.Http.fromCmd
+                        |> List.map .method
+                        |> Expect.equal [ "GET" ]
+            , test "simulate a successful response" <|
+                \() ->
+                    Http.getString "https://example.com/kumquats"
+                        |> Http.send Msg
+                        |> Test.Http.fromCmd
+                        |> List.map (\task -> task.callback (Ok "several kumquats"))
+                        |> Expect.equal [ Msg (Ok "several kumquats") ]
+            , test "simulate an error response" <|
+                \() ->
+                    Http.getString "https://example.com/kumquats"
+                        |> Http.send Msg
+                        |> Test.Http.fromCmd
+                        |> List.map (\task -> task.callback (Err Http.NetworkError))
+                        |> Expect.equal [ Msg (Err Http.NetworkError) ]
+            , test "simulating a response works with Cmd.map" <|
+                \() ->
+                    Http.getString "https://example.com/kumquats"
+                        |> Http.send Msg
+                        |> Cmd.map List.singleton
+                        |> Test.Http.fromCmd
+                        |> List.map (\task -> task.callback (Ok "several kumquats"))
+                        |> Expect.equal [ [ Msg (Ok "several kumquats") ] ]
+
+            -- TODO: what happens using Task.perform with a Task that is a chain of Http tasks?
             ]
         ]
