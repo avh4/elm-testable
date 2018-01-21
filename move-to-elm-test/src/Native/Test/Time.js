@@ -1,5 +1,5 @@
 if (typeof _elm_lang$core$Time$now === 'undefined') { // eslint-disable-line camelcase
-  throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Time: this shouldn\'t happen because Testable.Task imports Time.  Please report this at https://github.com/avh4/elm-testable/issues')
+  throw new Error('Native.Test.Time was loaded before _elm_lang$core$Time: this shouldn\'t happen because Test.Time imports Time.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
 function setItUp (realImpl, elmTestableTask) {
