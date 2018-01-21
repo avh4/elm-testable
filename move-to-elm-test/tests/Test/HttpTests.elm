@@ -15,6 +15,7 @@ type Msg a
     = Msg a
 
 
+decoderA : Json.Decode.Decoder ( Int, String )
 decoderA =
     Json.Decode.map2 (,)
         (Json.Decode.field "a" Json.Decode.int)
@@ -87,6 +88,21 @@ all =
                             , ( "Max-Forwards", "10" )
                             , ( "X-Requested-With", "XMLHttpRequest" )
                             ]
+            , resultTest ".body (empty body)" <|
+                \toRequest ->
+                    Http.post "https://example.com/kumquats" Http.emptyBody (Json.Decode.fail "")
+                        |> toRequest
+                        |> .body
+                        |> Expect.equal ""
+            , resultTest ".body (string body)" <|
+                \toRequest ->
+                    Http.post "https://example.com/kumquats" (Http.stringBody "text/plain" "XYZ") (Json.Decode.fail "")
+                        |> toRequest
+                        |> .body
+                        |> Expect.equal "XYZ"
+
+            -- TODO: Content-Type header
+            -- TODO: multipart bodies
             ]
         , describe "fromTask"
             [ test "we can get the request from an Http Task" <|

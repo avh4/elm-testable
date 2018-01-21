@@ -9,6 +9,7 @@ type alias Request outcome =
     { url : String
     , method : String
     , headers : List ( String, String )
+    , body : String
     , callback : Result Http.Error String -> outcome
     }
 

@@ -69,6 +69,7 @@ _elm_lang$http$Native_Http.toTask = setItUp(
       method: request.method,
       url: request.url,
       headers: request.headers,
+      body: request.body,
       callback: callback,
     }
   })
@@ -125,6 +126,18 @@ var _user$project$Native_Test_Http = (function () { // eslint-disable-line no-un
                   throw new Error('Unknown Http.Header type: ' + header.ctor);
               }
             })(task.elmTestable.headers),
+            body: function(body) {
+              switch (body.ctor) {
+                case 'EmptyBody':
+                  return '';
+
+                case 'StringBody':
+                  return body._1;
+
+                default:
+                  throw new Error('Unknown Http.Body type: ' + body.ctor);
+              }
+            }(task.elmTestable.body),
             callback: function(response) {
               return done(task.elmTestable.callback(response));
             },
