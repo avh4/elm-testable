@@ -65,6 +65,28 @@ all =
                         |> .callback
                         |> (|>) (Ok """{"a":1,"b":"x"}""")
                         |> Expect.equal (Ok ( 1, "x" ))
+            , resultTest ".headers" <|
+                \toRequest ->
+                    Http.request
+                        { method = "PUT"
+                        , headers =
+                            [ Http.header "If-Modified-Since" "Sat 29 Oct 1994 19:43:31 GMT"
+                            , Http.header "Max-Forwards" "10"
+                            , Http.header "X-Requested-With" "XMLHttpRequest"
+                            ]
+                        , url = "https://example.com/kumquats"
+                        , body = Http.emptyBody
+                        , expect = Http.expectString
+                        , timeout = Nothing
+                        , withCredentials = False
+                        }
+                        |> toRequest
+                        |> .headers
+                        |> Expect.equal
+                            [ ( "If-Modified-Since", "Sat 29 Oct 1994 19:43:31 GMT" )
+                            , ( "Max-Forwards", "10" )
+                            , ( "X-Requested-With", "XMLHttpRequest" )
+                            ]
             ]
         , describe "fromTask"
             [ test "we can get the request from an Http Task" <|

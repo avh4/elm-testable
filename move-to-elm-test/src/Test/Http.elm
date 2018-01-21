@@ -8,6 +8,7 @@ import Task exposing (Task)
 type alias Request outcome =
     { url : String
     , method : String
+    , headers : List ( String, String )
     , callback : Result Http.Error String -> outcome
     }
 

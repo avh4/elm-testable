@@ -68,6 +68,7 @@ _elm_lang$http$Native_Http.toTask = setItUp(
       ctor: 'Http_NativeHttp_toTask',
       method: request.method,
       url: request.url,
+      headers: request.headers,
       callback: callback,
     }
   })
@@ -86,6 +87,7 @@ var _user$project$Native_Test_Http = (function () { // eslint-disable-line no-un
         case 'Nothing': return List.empty;
       }
     },
+    map: _elm_lang$core$List$map,
     singleton: _elm_lang$core$List$singleton,
   };
 
@@ -114,6 +116,15 @@ var _user$project$Native_Test_Http = (function () { // eslint-disable-line no-un
           return Just({
             method: task.elmTestable.method,
             url: task.elmTestable.url,
+            headers: List.map(function(header) {
+              switch (header.ctor) {
+                case 'Header':
+                  return { ctor: '_Tuple2', _0: header._0, _1: header._1 };
+
+                default:
+                  throw new Error('Unknown Http.Header type: ' + header.ctor);
+              }
+            })(task.elmTestable.headers),
             callback: function(response) {
               return done(task.elmTestable.callback(response));
             },
