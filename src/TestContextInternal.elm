@@ -549,14 +549,14 @@ processTask pid task =
                     TestContext context
                         |> processTask_preventTailCallOptimization pid (step ())
 
-                Http_NativeHttp_toTask options next ->
+                Http_NativeHttp_toTask request ->
                     TestContext
                         { context
                             | pendingHttpRequests =
                                 context.pendingHttpRequests
                                     |> Dict.insert
-                                        ( options.method, options.url )
-                                        next
+                                        ( request.method, request.url )
+                                        request.callback
                         }
 
                 WebSocket_NativeWebSocket_open url settings next ->

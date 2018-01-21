@@ -1,4 +1,4 @@
-module Test.Http exposing (fromCmd, fromTask, map)
+module Test.Http exposing (Request, fromCmd, fromTask, map)
 
 import Http
 import Native.Test.Http

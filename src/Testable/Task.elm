@@ -23,7 +23,6 @@ internally by elm-testable to inspect and simulate Tasks.
 
 -}
 
-import Http
 import Mapper exposing (Mapper)
 import Native.Testable.Task
 import
@@ -41,14 +40,7 @@ fromPlatformTask : PlatformTask.Task x a -> Task x a
 fromPlatformTask task =
     List.filterMap (\f -> f task)
         [ Test.Http.fromTask
-            >> Maybe.map
-                (\info ->
-                    Http_NativeHttp_toTask
-                        { method = info.method
-                        , url = info.url
-                        }
-                        (info.callback >> fromPlatformTask)
-                )
+            >> Maybe.map (Test.Http.map fromPlatformTask >> Http_NativeHttp_toTask)
         ]
         |> List.head
         |> Maybe.withDefault (Native.Testable.Task.fromPlatformTask task)
@@ -78,7 +70,7 @@ type Task error success
     | Core_Time_now (Time -> Task error success)
     | Core_Time_setInterval Time (Task Never ())
       -- Native binding tasks in elm-lang/http
-    | Http_NativeHttp_toTask { method : String, url : String } (Result Http.Error String -> Task error success)
+    | Http_NativeHttp_toTask (Test.Http.Request (Task error success))
       -- Native bindings for tasks in elm-lang/Websocket
     | WebSocket_NativeWebSocket_open String WebSocket.LowLevel.Settings (Result WebSocket.LowLevel.BadOpen () -> Task error success)
     | WebSocket_NativeWebSocket_send String String (Maybe WebSocket.LowLevel.BadSend -> Task error success)
@@ -147,8 +139,8 @@ andThen f source =
         Core_Time_setInterval delay task ->
             Core_Time_setInterval delay task
 
-        Http_NativeHttp_toTask options next ->
-            Http_NativeHttp_toTask options (next >> andThen f)
+        Http_NativeHttp_toTask request ->
+            Http_NativeHttp_toTask (Test.Http.map (andThen f) request)
 
         WebSocket_NativeWebSocket_open url settings next ->
             WebSocket_NativeWebSocket_open url settings (next >> andThen f)
@@ -217,8 +209,8 @@ onError f source =
         Core_Time_setInterval delay task ->
             Core_Time_setInterval delay task
 
-        Http_NativeHttp_toTask options next ->
-            Http_NativeHttp_toTask options (next >> onError f)
+        Http_NativeHttp_toTask request ->
+            Http_NativeHttp_toTask (Test.Http.map (onError f) request)
 
         WebSocket_NativeWebSocket_open url settings next ->
             WebSocket_NativeWebSocket_open url settings (next >> onError f)
