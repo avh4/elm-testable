@@ -31,6 +31,7 @@ import
     Process
 import Task as PlatformTask
 import Test.Http
+import Test.Time
 import Testable.EffectManager as EffectManager
 import Time exposing (Time)
 import WebSocket.LowLevel
@@ -41,6 +42,8 @@ fromPlatformTask task =
     List.filterMap (\f -> f task)
         [ Test.Http.fromTask
             >> Maybe.map (Test.Http.map fromPlatformTask >> Http_NativeHttp_toTask)
+        , Test.Time.fromTask
+            >> Maybe.map (\f -> Core_Time_now (f >> fromPlatformTask))
         ]
         |> List.head
         |> Maybe.withDefault (Native.Testable.Task.fromPlatformTask task)

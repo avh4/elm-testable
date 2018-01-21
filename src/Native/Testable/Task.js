@@ -100,16 +100,6 @@ if (typeof _elm_lang$core$Time$now === 'undefined') { // eslint-disable-line cam
   throw new Error('Native.Testable.Task was loaded before _elm_lang$core$Time: this shouldn\'t happen because Testable.Task imports Time.  Please report this at https://github.com/avh4/elm-testable/issues')
 }
 
-_elm_lang$core$Time$now = setItUp( // eslint-disable-line no-global-assign, camelcase
-  _elm_lang$core$Time$now,
-  {
-    ctor: 'Core_Time_now',
-    _0: function (v) {
-      return { ctor: 'Success', _0: v }
-    }
-  }
-)
-
 _elm_lang$core$Time$setInterval = setItUp( // eslint-disable-line no-global-assign, camelcase
   _elm_lang$core$Time$setInterval,
   F2(function (delay, task) {
