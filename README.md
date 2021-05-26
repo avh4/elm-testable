@@ -1,6 +1,10 @@
-## Note:
+## Deprecated
 
-elm-testable does not support Elm 0.18.  A new package is currently in development that will allow testing of Cmds, Tasks, and Subs without the need for elm-testable's wrappers.  More details will be posted to elm-discuss when it is available.  (See the [rewrite-native branch](https://github.com/avh4/elm-testable/tree/rewrite-native).)
+Now use [avh4/elm-program-test](https://elm-program-test.netlify.app) instead.  (elm-testable only works with ELm 0.17)
+
+## ~~Note:~~
+
+~~elm-testable does not support Elm 0.18.  A new package is currently in development that will allow testing of Cmds, Tasks, and Subs without the need for elm-testable's wrappers.  More details will be posted to elm-discuss when it is available.  (See the [rewrite-native branch](https://github.com/avh4/elm-testable/tree/rewrite-native).)~~
 
 [![Build Status](https://travis-ci.org/avh4/elm-testable.svg?branch=master)](https://travis-ci.org/avh4/elm-testable)
 
